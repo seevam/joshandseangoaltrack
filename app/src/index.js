@@ -3,14 +3,51 @@ import ReactDOM from 'react-dom/client';
 import { ClerkProvider, RedirectToSignIn, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import App from './App';
+import { Dashboard } from './App';
+import Homepage from './Homepage';
 import SignInPage from './SignInPage';
 import SignUpPage from './SignUpPage';
 
 // Get the Publishable Key from environment variables
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 
+console.log('Environment check:', {
+  clerkPubKey: clerkPubKey ? 'Found' : 'Missing',
+  nodeEnv: process.env.NODE_ENV,
+  allEnvVars: Object.keys(process.env).filter(key => key.startsWith('REACT_APP_'))
+});
+
 if (!clerkPubKey) {
-  throw new Error('Missing Publishable Key. Please set REACT_APP_CLERK_PUBLISHABLE_KEY in your .env.local file');
+  // Show a more helpful error message
+  const errorMessage = `Missing Publishable Key. 
+  
+  For local development:
+  Create a .env.local file with: REACT_APP_CLERK_PUBLISHABLE_KEY=your_key_here
+  
+  For Vercel deployment:
+  Go to Settings > Environment Variables and add: REACT_APP_CLERK_PUBLISHABLE_KEY
+  
+  Available environment variables: ${Object.keys(process.env).filter(key => key.startsWith('REACT_APP_')).join(', ') || 'None'}`;
+  
+  console.error(errorMessage);
+  
+  // Show error in UI instead of throwing
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(
+    <div className="min-h-screen flex items-center justify-center bg-red-50">
+      <div className="max-w-lg p-6 bg-white rounded-lg shadow-lg">
+        <h1 className="text-xl font-bold text-red-600 mb-4">Configuration Error</h1>
+        <pre className="text-sm text-gray-700 whitespace-pre-wrap">{errorMessage}</pre>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Reload Page
+        </button>
+      </div>
+    </div>
+  );
+  return;
 }
 
 // Protected Route Component
@@ -25,6 +62,71 @@ function ProtectedRoute({ children }) {
   );
 }
 
+// Redirect component for signed-in users
+function RedirectToHome() {
+  const navigate = useNavigate();
+  
+  React.useEffect(() => {
+    navigate('/home');
+  }, [navigate]);
+  
+  return null;
+}
+
+// Main App Router Component
+function AppRouter() {
+  return (
+    <Routes>
+      {/* Landing page route - shows landing page for signed out users, redirects signed in users to home */}
+      <Route path="/" element={
+        <>
+          <SignedOut>
+            <App />
+          </SignedOut>
+          <SignedIn>
+            <RedirectToHome />
+          </SignedIn>
+        </>
+      } />
+      
+      {/* Authentication routes */}
+      <Route path="/sign-in/*" element={<SignInPage />} />
+      <Route path="/sign-up/*" element={<SignUpPage />} />
+      
+      {/* Protected app routes */}
+      <Route
+        path="/home"
+        element={
+          <ProtectedRoute>
+            <Homepage />
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Fallback route */}
+      <Route path="*" element={
+        <>
+          <SignedOut>
+            <App />
+          </SignedOut>
+          <SignedIn>
+            <Homepage />
+          </SignedIn>
+        </>
+      } />
+    </Routes>
+  );
+}
+
 // Clerk Provider with Router
 function ClerkProviderWithRoutes() {
   const navigate = useNavigate();
@@ -33,20 +135,10 @@ function ClerkProviderWithRoutes() {
     <ClerkProvider
       publishableKey={clerkPubKey}
       navigate={(to) => navigate(to)}
+      afterSignInUrl="/home"
+      afterSignUpUrl="/home"
     >
-      <Routes>
-        <Route path="/" element={<App />} />
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <App />
-            </ProtectedRoute>
-          }
-        />
-      </Routes>
+      <AppRouter />
     </ClerkProvider>
   );
 }
@@ -59,4 +151,3 @@ root.render(
     </BrowserRouter>
   </React.StrictMode>
 );
-
