@@ -148,9 +148,10 @@ const LandingPage = () => {
   );
 };
 
-// Main App Component (Dashboard)
-const Dashboard = () => {
-  const { user } = useUser();
+// Dashboard Component (Full Goal Management)
+export const Dashboard = () => {
+  const { user, isLoaded } = useUser();
+  const navigate = useNavigate();
   const [goals, setGoals] = useState([]);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showGoalDetails, setShowGoalDetails] = useState(false);
@@ -177,6 +178,15 @@ const Dashboard = () => {
     fitness: { bg: 'bg-red-500', light: 'bg-red-100', text: 'text-red-700', hex: '#EF4444' }
   };
 
+  // Show loading screen if user data isn't loaded yet
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
+
   // Load user-specific goals from localStorage
   useEffect(() => {
     if (user) {
@@ -192,7 +202,7 @@ const Dashboard = () => {
 
   // Save user-specific goals to localStorage
   useEffect(() => {
-    if (user) {
+    if (user && goals.length >= 0) {
       const userGoalsKey = `goaltracker-goals-${user.id}`;
       localStorage.setItem(userGoalsKey, JSON.stringify(goals));
     }
@@ -267,15 +277,18 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
+              <button
+                onClick={() => navigate('/')}
+                className="mr-4 p-2 text-gray-500 hover:text-gray-700"
+              >
+                <ChevronRight className="h-5 w-5 rotate-180" />
+              </button>
               <Target className="h-8 w-8 text-indigo-600 mr-3" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Goal Tracker
+                Dashboard
               </h1>
             </div>
             <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600">
-                Welcome, {user?.firstName || user?.username || 'User'}!
-              </span>
               <button
                 onClick={() => setShowAddGoal(true)}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
@@ -453,10 +466,9 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Add Goal Modal - Same as before */}
+      {/* Add Goal Modal */}
       {showAddGoal && (
         <div className="fixed z-10 inset-0 overflow-y-auto">
-          {/* Modal content remains the same */}
           <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
             <div className="fixed inset-0 transition-opacity" aria-hidden="true">
               <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
@@ -515,7 +527,6 @@ const Dashboard = () => {
                         </select>
                       </div>
 
-                      {/* Rest of the form fields remain the same */}
                       <div className="grid grid-cols-2 gap-4 mb-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Target Value *</label>
@@ -563,31 +574,17 @@ const Dashboard = () => {
           </div>
         </div>
       )}
-
-      {/* Goal Details Modal - Same as before */}
-      {showGoalDetails && selectedGoal && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          {/* Modal content remains the same */}
-        </div>
-      )}
     </div>
   );
 };
 
-// Main App Component
+// Main App Component - Now just shows landing page for signed out users
 const App = () => {
   return (
-    <>
-      <SignedOut>
-        <LandingPage />
-      </SignedOut>
-      
-      <SignedIn>
-        <Dashboard />
-      </SignedIn>
-    </>
+    <SignedOut>
+      <LandingPage />
+    </SignedOut>
   );
 };
 
 export default App;
-
