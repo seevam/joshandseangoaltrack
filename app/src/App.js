@@ -178,15 +178,6 @@ export const Dashboard = () => {
     fitness: { bg: 'bg-red-500', light: 'bg-red-100', text: 'text-red-700', hex: '#EF4444' }
   };
 
-  // Show loading screen if user data isn't loaded yet
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
-      </div>
-    );
-  }
-
   // Load user-specific goals from localStorage
   useEffect(() => {
     if (user) {
@@ -207,6 +198,15 @@ export const Dashboard = () => {
       localStorage.setItem(userGoalsKey, JSON.stringify(goals));
     }
   }, [goals, user]);
+
+  // Show loading screen if user data isn't loaded yet
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
+      </div>
+    );
+  }
 
   const handleAddGoal = (e) => {
     e.preventDefault();
