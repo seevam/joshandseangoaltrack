@@ -47,107 +47,106 @@ if (!clerkPubKey) {
       </div>
     </div>
   );
-  return;
-}
+} else {
+  // Protected Route Component
+  function ProtectedRoute({ children }) {
+    return (
+      <>
+        <SignedIn>{children}</SignedIn>
+        <SignedOut>
+          <RedirectToSignIn />
+        </SignedOut>
+      </>
+    );
+  }
 
-// Protected Route Component
-function ProtectedRoute({ children }) {
-  return (
-    <>
-      <SignedIn>{children}</SignedIn>
-      <SignedOut>
-        <RedirectToSignIn />
-      </SignedOut>
-    </>
+  // Redirect component for signed-in users
+  function RedirectToHome() {
+    const navigate = useNavigate();
+    
+    React.useEffect(() => {
+      navigate('/home');
+    }, [navigate]);
+    
+    return null;
+  }
+
+  // Main App Router Component
+  function AppRouter() {
+    return (
+      <Routes>
+        {/* Landing page route - shows landing page for signed out users, redirects signed in users to home */}
+        <Route path="/" element={
+          <>
+            <SignedOut>
+              <App />
+            </SignedOut>
+            <SignedIn>
+              <RedirectToHome />
+            </SignedIn>
+          </>
+        } />
+        
+        {/* Authentication routes */}
+        <Route path="/sign-in/*" element={<SignInPage />} />
+        <Route path="/sign-up/*" element={<SignUpPage />} />
+        
+        {/* Protected app routes */}
+        <Route
+          path="/home"
+          element={
+            <ProtectedRoute>
+              <Homepage />
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        
+        {/* Fallback route */}
+        <Route path="*" element={
+          <>
+            <SignedOut>
+              <App />
+            </SignedOut>
+            <SignedIn>
+              <Homepage />
+            </SignedIn>
+          </>
+        } />
+      </Routes>
+    );
+  }
+
+  // Clerk Provider with Router
+  function ClerkProviderWithRoutes() {
+    const navigate = useNavigate();
+    
+    return (
+      <ClerkProvider
+        publishableKey={clerkPubKey}
+        navigate={(to) => navigate(to)}
+        afterSignInUrl="/home"
+        afterSignUpUrl="/home"
+      >
+        <AppRouter />
+      </ClerkProvider>
+    );
+  }
+
+  const root = ReactDOM.createRoot(document.getElementById('root'));
+  root.render(
+    <React.StrictMode>
+      <BrowserRouter>
+        <ClerkProviderWithRoutes />
+      </BrowserRouter>
+    </React.StrictMode>
   );
 }
-
-// Redirect component for signed-in users
-function RedirectToHome() {
-  const navigate = useNavigate();
-  
-  React.useEffect(() => {
-    navigate('/home');
-  }, [navigate]);
-  
-  return null;
-}
-
-// Main App Router Component
-function AppRouter() {
-  return (
-    <Routes>
-      {/* Landing page route - shows landing page for signed out users, redirects signed in users to home */}
-      <Route path="/" element={
-        <>
-          <SignedOut>
-            <App />
-          </SignedOut>
-          <SignedIn>
-            <RedirectToHome />
-          </SignedIn>
-        </>
-      } />
-      
-      {/* Authentication routes */}
-      <Route path="/sign-in/*" element={<SignInPage />} />
-      <Route path="/sign-up/*" element={<SignUpPage />} />
-      
-      {/* Protected app routes */}
-      <Route
-        path="/home"
-        element={
-          <ProtectedRoute>
-            <Homepage />
-          </ProtectedRoute>
-        }
-      />
-      
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
-      
-      {/* Fallback route */}
-      <Route path="*" element={
-        <>
-          <SignedOut>
-            <App />
-          </SignedOut>
-          <SignedIn>
-            <Homepage />
-          </SignedIn>
-        </>
-      } />
-    </Routes>
-  );
-}
-
-// Clerk Provider with Router
-function ClerkProviderWithRoutes() {
-  const navigate = useNavigate();
-  
-  return (
-    <ClerkProvider
-      publishableKey={clerkPubKey}
-      navigate={(to) => navigate(to)}
-      afterSignInUrl="/home"
-      afterSignUpUrl="/home"
-    >
-      <AppRouter />
-    </ClerkProvider>
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <ClerkProviderWithRoutes />
-    </BrowserRouter>
-  </React.StrictMode>
-);
