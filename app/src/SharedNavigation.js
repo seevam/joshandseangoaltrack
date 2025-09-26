@@ -45,29 +45,31 @@ const SharedNavigation = () => {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40">
-      <div className="max-w-md mx-auto">
-        <div className="flex items-center justify-around py-2">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg" style={{ zIndex: 50 }}>
+      <div className="max-w-md mx-auto px-4">
+        <div className="flex items-center justify-around py-3">
           {navItems.map((item) => (
             <button
               key={item.id}
               onClick={() => handleNavigation(item.path, item.id)}
-              className={`flex flex-col items-center py-2 px-4 transition-colors ${
+              className={`flex flex-col items-center py-2 px-6 transition-all duration-200 rounded-lg ${
                 item.active 
-                  ? 'text-indigo-600' 
-                  : 'text-gray-400 hover:text-gray-600'
+                  ? 'text-indigo-600 bg-indigo-50' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               {item.special ? (
                 <div className="relative">
-                  <div className="h-6 w-6 mb-1 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center">
+                  <div className="h-7 w-7 mb-1 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center shadow-md">
                     <item.icon className="h-4 w-4 text-white" />
                   </div>
                 </div>
               ) : (
-                <item.icon className="h-6 w-6 mb-1" />
+                <item.icon className={`h-6 w-6 mb-1 ${item.active ? 'text-indigo-600' : ''}`} />
               )}
-              <span className="text-xs font-medium">{item.label}</span>
+              <span className={`text-xs font-medium ${item.active ? 'text-indigo-600' : ''}`}>
+                {item.label}
+              </span>
             </button>
           ))}
         </div>
