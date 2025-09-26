@@ -93,12 +93,14 @@ if (!clerkPubKey) {
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
         
-        {/* Protected app routes */}
+        {/* Protected app routes with AuthenticatedLayout wrapper */}
         <Route
           path="/home"
           element={
             <ProtectedRoute>
-              <Homepage />
+              <AuthenticatedLayout>
+                <Homepage />
+              </AuthenticatedLayout>
             </ProtectedRoute>
           }
         />
@@ -107,7 +109,20 @@ if (!clerkPubKey) {
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <AuthenticatedLayout>
+                <Dashboard />
+              </AuthenticatedLayout>
+            </ProtectedRoute>
+          }
+        />
+        
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <AuthenticatedLayout>
+                <ProfilePage />
+              </AuthenticatedLayout>
             </ProtectedRoute>
           }
         />
@@ -119,7 +134,9 @@ if (!clerkPubKey) {
               <App />
             </SignedOut>
             <SignedIn>
-              <Homepage />
+              <AuthenticatedLayout>
+                <Homepage />
+              </AuthenticatedLayout>
             </SignedIn>
           </>
         } />
