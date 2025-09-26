@@ -277,12 +277,6 @@ export const Dashboard = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center">
-              <button
-                onClick={() => navigate('/')}
-                className="mr-4 p-2 text-gray-500 hover:text-gray-700"
-              >
-                <ChevronRight className="h-5 w-5 rotate-180" />
-              </button>
               <Target className="h-8 w-8 text-indigo-600 mr-3" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 Dashboard
@@ -296,14 +290,6 @@ export const Dashboard = () => {
                 <Plus className="h-4 w-4 mr-2" />
                 New Goal
               </button>
-              <UserButton 
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox: "h-10 w-10"
-                  }
-                }}
-              />
             </div>
           </div>
         </div>
