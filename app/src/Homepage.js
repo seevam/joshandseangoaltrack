@@ -2,9 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { 
-  Home,
-  MessageCircle,
-  User,
   Plus,
   Target,
   TrendingUp,
@@ -17,7 +14,6 @@ const Homepage = () => {
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [goals, setGoals] = useState([]);
-  const [activeTab, setActiveTab] = useState('home');
 
   // Category color schemes
   const categoryColors = {
@@ -65,7 +61,7 @@ const Homepage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white px-4 pt-12 pb-6 border-b border-gray-100">
         <div className="max-w-md mx-auto">
@@ -77,7 +73,7 @@ const Homepage = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-md mx-auto px-4 py-6">
+      <div className="max-w-md mx-auto px-4 py-6 pb-24">
         {/* Your Goals Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
