@@ -5,6 +5,8 @@ import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import App from './App';
 import { Dashboard } from './App';
 import Homepage from './Homepage';
+import ProfilePage from './ProfilePage';
+import AuthenticatedLayout from './AuthenticatedLayout';
 import SignInPage from './SignInPage';
 import SignUpPage from './SignUpPage';
 
