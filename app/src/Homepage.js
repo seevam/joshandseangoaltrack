@@ -202,53 +202,7 @@ const Homepage = () => {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200">
-        <div className="max-w-md mx-auto">
-          <div className="flex items-center justify-around py-2">
-            <button
-              onClick={() => setActiveTab('home')}
-              className={`flex flex-col items-center py-2 px-4 ${
-                activeTab === 'home' 
-                  ? 'text-indigo-600' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <Home className="h-6 w-6 mb-1" />
-              <span className="text-xs font-medium">Home</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('chat')}
-              className={`flex flex-col items-center py-2 px-4 relative ${
-                activeTab === 'chat' 
-                  ? 'text-indigo-600' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {/* AI Chat Icon with Gradient */}
-              <div className="relative">
-                <div className="h-6 w-6 mb-1 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center">
-                  <MessageCircle className="h-4 w-4 text-white" />
-                </div>
-              </div>
-              <span className="text-xs font-medium">AI Chat</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`flex flex-col items-center py-2 px-4 ${
-                activeTab === 'profile' 
-                  ? 'text-indigo-600' 
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              <User className="h-6 w-6 mb-1" />
-              <span className="text-xs font-medium">Profile</span>
-            </button>
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 };
