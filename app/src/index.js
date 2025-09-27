@@ -117,6 +117,18 @@ if (!clerkPubKey) {
           }
         />
         
+        {/* AI Chat route - THIS WAS MISSING! */}
+        <Route
+          path="/chat"
+          element={
+            <ProtectedRoute>
+              <AuthenticatedLayout>
+                <AIChatPage />
+              </AuthenticatedLayout>
+            </ProtectedRoute>
+          }
+        />
+        
         <Route
           path="/profile"
           element={
