@@ -36,11 +36,6 @@ const SharedNavigation = () => {
   ];
 
   const handleNavigation = (path, id) => {
-    if (id === 'chat') {
-      // For now, just show a message since AI chat isn't implemented yet
-      alert('AI Chat feature coming soon!');
-      return;
-    }
     navigate(path);
   };
 
