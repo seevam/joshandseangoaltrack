@@ -6,6 +6,7 @@ import App from './App';
 import { Dashboard } from './App';
 import Homepage from './Homepage';
 import ProfilePage from './ProfilePage';
+import AIChatPage from './AIChatPage';
 import AuthenticatedLayout from './AuthenticatedLayout';
 import SignInPage from './SignInPage';
 import SignUpPage from './SignUpPage';
