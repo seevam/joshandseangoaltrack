@@ -39,21 +39,21 @@ const LandingPage = () => {
                 GoalQuest
               </h1>
             </div>
-            // <div className="flex gap-4">
-            //   <button 
-            //     onClick={() => navigate('/sign-in')}
-            //     className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            //   >
-            //     <LogIn className="h-4 w-4 mr-2" />
-            //     Sign In
-            //   </button>
-            //   <button 
-            //     onClick={() => navigate('/sign-up')}
-            //     className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-            //   >
-            //     <UserPlus className="h-4 w-4 mr-2" />
-            //     Sign Up
-            //   </button>
+            <div className="flex gap-4">
+              // <button 
+              //   onClick={() => navigate('/sign-in')}
+              //   className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              // >
+              //   <LogIn className="h-4 w-4 mr-2" />
+              //   Sign In
+              // </button>
+              // <button 
+              //   onClick={() => navigate('/sign-up')}
+              //   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              // >
+              //   <UserPlus className="h-4 w-4 mr-2" />
+              //   Sign Up
+              // </button>
               </div>
           </div>
         </div>
