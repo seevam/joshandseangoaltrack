@@ -179,7 +179,7 @@ const OnboardingPage = () => {
                   <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
-                  Welcome to Goal Tracker, {user?.firstName}! 🎉
+                  Welcome to GoalQuest, {user?.firstName}! 🎉
                 </h1>
                 <p className="text-sm sm:text-base text-gray-600">
                   Let's start your journey to success
