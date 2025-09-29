@@ -54,7 +54,7 @@ const LandingPage = () => {
             //     <UserPlus className="h-4 w-4 mr-2" />
             //     Sign Up
             //   </button>
-              </div>
+              // </div>
           </div>
         </div>
       </nav>
