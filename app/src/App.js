@@ -38,7 +38,7 @@ const LandingPage = () => {
               <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
                 GoalQuest
               </h1>
-            // </div>
+            </div>
             // <div className="flex gap-4">
             //   <button 
             //     onClick={() => navigate('/sign-in')}
