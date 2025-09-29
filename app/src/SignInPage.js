@@ -16,7 +16,7 @@ const SignInPage = () => {
           <Link to="/" className="flex items-center">
             <Target className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 mr-2 sm:mr-3" />
             <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Goal Tracker
+              GoalQuest
             </span>
           </Link>
           <div className="w-16 sm:w-24"></div>
