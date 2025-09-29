@@ -148,10 +148,8 @@ const LandingPage = () => {
   );
 };
 
-// Dashboard Component (Full Goal Management)
 export const Dashboard = () => {
   const { user, isLoaded } = useUser();
-  const navigate = useNavigate();
   const [goals, setGoals] = useState([]);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showGoalDetails, setShowGoalDetails] = useState(false);
@@ -168,7 +166,6 @@ export const Dashboard = () => {
     color: '#3B82F6'
   });
 
-  // Category color schemes
   const categoryColors = {
     personal: { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-700', hex: '#3B82F6' },
     health: { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-700', hex: '#10B981' },
@@ -178,20 +175,16 @@ export const Dashboard = () => {
     fitness: { bg: 'bg-red-500', light: 'bg-red-100', text: 'text-red-700', hex: '#EF4444' }
   };
 
-  // Load user-specific goals from localStorage
   useEffect(() => {
     if (user) {
       const userGoalsKey = `goaltracker-goals-${user.id}`;
       const savedGoals = localStorage.getItem(userGoalsKey);
       if (savedGoals) {
         setGoals(JSON.parse(savedGoals));
-      } else {
-        setGoals([]);
       }
     }
   }, [user]);
 
-  // Save user-specific goals to localStorage
   useEffect(() => {
     if (user && goals.length >= 0) {
       const userGoalsKey = `goaltracker-goals-${user.id}`;
@@ -199,7 +192,6 @@ export const Dashboard = () => {
     }
   }, [goals, user]);
 
-  // Show loading screen if user data isn't loaded yet
   if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -237,14 +229,6 @@ export const Dashboard = () => {
     }
   };
 
-  const updateGoalProgress = (goalId, newProgress) => {
-    setGoals(goals.map(goal => 
-      goal.id === goalId 
-        ? { ...goal, currentValue: Math.min(newProgress, goal.targetValue) }
-        : goal
-    ));
-  };
-
   const deleteGoal = (id) => {
     setGoals(goals.filter(goal => goal.id !== id));
     setShowGoalDetails(false);
@@ -271,107 +255,96 @@ export const Dashboard = () => {
   const overdueGoals = goals.filter(g => getGoalStatus(g) === 'overdue').length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <Target className="h-8 w-8 text-indigo-600 mr-3" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-20">
+      {/* Mobile-First Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+        <div className="px-4 py-3 sm:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center min-w-0">
+              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 mr-2 sm:mr-3 flex-shrink-0" />
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate">
                 Dashboard
               </h1>
             </div>
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => setShowAddGoal(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200"
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                New Goal
-              </button>
-            </div>
+            <button
+              onClick={() => setShowAddGoal(true)}
+              className="inline-flex items-center px-3 py-2 sm:px-4 text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all active:scale-95"
+            >
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">New Goal</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Stats Cards */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-shadow duration-200">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 p-3 bg-indigo-100 rounded-lg">
-                  <Target className="h-6 w-6 text-indigo-600" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Total Goals</dt>
-                    <dd className="text-2xl font-bold text-gray-900">{goals.length}</dd>
-                  </dl>
-                </div>
+      {/* Stats Cards - Mobile Optimized Grid */}
+      <div className="px-4 py-4 sm:px-6 sm:py-6">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
+          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+              <div className="p-2 sm:p-3 bg-indigo-100 rounded-lg mb-2 sm:mb-0 w-fit">
+                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
+              </div>
+              <div className="min-w-0">
+                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Goals</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{goals.length}</dd>
               </div>
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-shadow duration-200">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 p-3 bg-blue-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-blue-600" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Active</dt>
-                    <dd className="text-2xl font-bold text-gray-900">{activeGoals}</dd>
-                  </dl>
-                </div>
+          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+              <div className="p-2 sm:p-3 bg-blue-100 rounded-lg mb-2 sm:mb-0 w-fit">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              </div>
+              <div className="min-w-0">
+                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Active</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{activeGoals}</dd>
               </div>
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-shadow duration-200">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 p-3 bg-green-100 rounded-lg">
-                  <CheckCircle className="h-6 w-6 text-green-600" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Completed</dt>
-                    <dd className="text-2xl font-bold text-gray-900">{completedGoals}</dd>
-                  </dl>
-                </div>
+          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+              <div className="p-2 sm:p-3 bg-green-100 rounded-lg mb-2 sm:mb-0 w-fit">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Done</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{completedGoals}</dd>
               </div>
             </div>
           </div>
 
-          <div className="bg-white overflow-hidden shadow-lg rounded-xl hover:shadow-xl transition-shadow duration-200">
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0 p-3 bg-red-100 rounded-lg">
-                  <Clock className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">Overdue</dt>
-                    <dd className="text-2xl font-bold text-gray-900">{overdueGoals}</dd>
-                  </dl>
-                </div>
+          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+              <div className="p-2 sm:p-3 bg-red-100 rounded-lg mb-2 sm:mb-0 w-fit">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+              </div>
+              <div className="min-w-0">
+                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Overdue</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{overdueGoals}</dd>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Goals Grid */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Goals List - Mobile Optimized */}
+      <div className="px-4 pb-6 sm:px-6">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {goals.length === 0 ? (
-            <div className="col-span-full bg-white rounded-xl shadow-lg p-12 text-center">
-              <Target className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No goals yet</h3>
-              <p className="text-gray-500">Create your first goal to start tracking your progress!</p>
+            <div className="col-span-full bg-white rounded-xl shadow-lg p-8 sm:p-12 text-center">
+              <Target className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No goals yet</h3>
+              <p className="text-sm text-gray-500 mb-4">Create your first goal to start tracking!</p>
+              <button
+                onClick={() => setShowAddGoal(true)}
+                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Goal
+              </button>
             </div>
           ) : (
             goals.map((goal) => {
@@ -383,25 +356,25 @@ export const Dashboard = () => {
                 <div
                   key={goal.id}
                   onClick={() => handleGoalClick(goal)}
-                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer transform hover:-translate-y-1"
+                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <div className={`h-2 ${categoryStyle.bg} rounded-t-xl`}></div>
-                  <div className="p-6">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${categoryStyle.light} ${categoryStyle.text} mb-2`}>
+                  <div className="p-4 sm:p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0 mr-2">
+                        <div className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${categoryStyle.light} ${categoryStyle.text} mb-2`}>
                           {goal.category}
                         </div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-1">{goal.title}</h3>
+                        <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1 truncate">{goal.title}</h3>
                         {goal.description && (
-                          <p className="text-sm text-gray-500 line-clamp-2">{goal.description}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 line-clamp-2">{goal.description}</p>
                         )}
                       </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 ml-2" />
+                      <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex justify-between text-sm">
+                    <div className="space-y-2 sm:space-y-3">
+                      <div className="flex justify-between text-xs sm:text-sm">
                         <span className="text-gray-500">Progress</span>
                         <span className="font-medium text-gray-900">
                           {goal.currentValue} / {goal.targetValue} {goal.unit}
@@ -409,10 +382,10 @@ export const Dashboard = () => {
                       </div>
                       
                       <div className="relative">
-                        <div className="overflow-hidden h-3 text-xs flex rounded-full bg-gray-200">
+                        <div className="overflow-hidden h-2.5 sm:h-3 rounded-full bg-gray-200">
                           <div
                             style={{ width: `${progress}%`, backgroundColor: goal.color }}
-                            className="shadow-none flex flex-col text-center whitespace-nowrap text-white justify-center transition-all duration-500"
+                            className="h-full transition-all duration-500"
                           ></div>
                         </div>
                         <div className="flex justify-between mt-1">
@@ -426,20 +399,20 @@ export const Dashboard = () => {
 
                       {goal.endDate && (
                         <div className="flex items-center text-xs text-gray-500">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          Due: {new Date(goal.endDate).toLocaleDateString()}
+                          <Calendar className="h-3 w-3 mr-1 flex-shrink-0" />
+                          <span className="truncate">Due: {new Date(goal.endDate).toLocaleDateString()}</span>
                         </div>
                       )}
 
                       {status === 'completed' && (
                         <div className="flex items-center text-xs text-green-600 font-medium">
-                          <CheckCircle className="h-3 w-3 mr-1" />
+                          <CheckCircle className="h-3 w-3 mr-1 flex-shrink-0" />
                           Goal Completed!
                         </div>
                       )}
                       {status === 'overdue' && (
                         <div className="flex items-center text-xs text-red-600 font-medium">
-                          <Clock className="h-3 w-3 mr-1" />
+                          <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
                           Overdue
                         </div>
                       )}
@@ -452,107 +425,111 @@ export const Dashboard = () => {
         </div>
       </div>
 
-      {/* Add Goal Modal */}
+      {/* Add Goal Modal - Mobile Optimized */}
       {showAddGoal && (
-        <div className="fixed z-10 inset-0 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <form onSubmit={handleAddGoal}>
-                <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                  <div className="sm:flex sm:items-start">
-                    <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
-                      <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                        Create New Goal
-                      </h3>
-                      
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Goal Title *</label>
-                        <input
-                          type="text"
-                          value={newGoal.title}
-                          onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          placeholder="Learn a new skill"
-                          required
-                        />
-                      </div>
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex min-h-screen items-end justify-center sm:items-center p-0 sm:p-4">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowAddGoal(false)}></div>
+            
+            <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all">
+              <form onSubmit={handleAddGoal} className="max-h-[90vh] overflow-y-auto">
+                <div className="sticky top-0 bg-white px-4 py-4 border-b sm:px-6 z-10 rounded-t-2xl">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Create New Goal</h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddGoal(false)}
+                      className="text-gray-400 hover:text-gray-500"
+                    >
+                      <X className="h-6 w-6" />
+                    </button>
+                  </div>
+                </div>
 
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                        <textarea
-                          value={newGoal.description}
-                          onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          rows="2"
-                          placeholder="Describe your goal..."
-                        />
-                      </div>
+                <div className="px-4 py-4 space-y-4 sm:px-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Goal Title *</label>
+                    <input
+                      type="text"
+                      value={newGoal.title}
+                      onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                      placeholder="Learn a new skill"
+                      required
+                    />
+                  </div>
 
-                      <div className="mb-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                        <select
-                          value={newGoal.category}
-                          onChange={(e) => setNewGoal({ 
-                            ...newGoal, 
-                            category: e.target.value,
-                            color: categoryColors[e.target.value].hex
-                          })}
-                          className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                          required
-                        >
-                          <option value="personal">Personal</option>
-                          <option value="health">Health</option>
-                          <option value="career">Career</option>
-                          <option value="finance">Finance</option>
-                          <option value="education">Education</option>
-                          <option value="fitness">Fitness</option>
-                        </select>
-                      </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                    <textarea
+                      value={newGoal.description}
+                      onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                      rows="2"
+                      placeholder="Describe your goal..."
+                    />
+                  </div>
 
-                      <div className="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Target Value *</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={newGoal.targetValue}
-                            onChange={(e) => setNewGoal({ ...newGoal, targetValue: e.target.value })}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            placeholder="100"
-                            required
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
-                          <input
-                            type="text"
-                            value={newGoal.unit}
-                            onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                            placeholder="hours, kg, $, etc."
-                          />
-                        </div>
-                      </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                    <select
+                      value={newGoal.category}
+                      onChange={(e) => setNewGoal({ 
+                        ...newGoal, 
+                        category: e.target.value,
+                        color: categoryColors[e.target.value].hex
+                      })}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                      required
+                    >
+                      <option value="personal">Personal</option>
+                      <option value="health">Health</option>
+                      <option value="career">Career</option>
+                      <option value="finance">Finance</option>
+                      <option value="education">Education</option>
+                      <option value="fitness">Fitness</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Target Value *</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={newGoal.targetValue}
+                        onChange={(e) => setNewGoal({ ...newGoal, targetValue: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        placeholder="100"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                      <input
+                        type="text"
+                        value={newGoal.unit}
+                        onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        placeholder="hours, kg, $"
+                      />
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                  <button
-                    type="submit"
-                    className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-base font-medium text-white hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:ml-3 sm:w-auto sm:text-sm"
-                  >
-                    Create Goal
-                  </button>
+
+                <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 rounded-b-2xl">
                   <button
                     type="button"
                     onClick={() => setShowAddGoal(false)}
-                    className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                    className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                   >
                     Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 sm:ml-auto"
+                  >
+                    Create Goal
                   </button>
                 </div>
               </form>
@@ -563,7 +540,6 @@ export const Dashboard = () => {
     </div>
   );
 };
-
 // Main App Component - Now just shows landing page for signed out users
 const App = () => {
   return (
