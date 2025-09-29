@@ -23,7 +23,7 @@ const SignUpPage = () => {
           <Link to="/" className="flex items-center">
             <Target className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 mr-2 sm:mr-3" />
             <span className="text-lg sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-              Goal Tracker
+              GoalQuest
             </span>
           </Link>
           <div className="w-16 sm:w-24"></div>
@@ -54,7 +54,7 @@ const SignUpPage = () => {
 
             <div className="mt-12 p-6 bg-white/10 backdrop-blur rounded-lg">
               <p className="text-indigo-100 italic">
-                "Goal Tracker helped me achieve my fitness goals in just 3 months. The visual progress tracking kept me motivated every day!"
+                "GoalQuest helped me achieve my fitness goals in just 3 months. The visual progress tracking kept me motivated every day!"
               </p>
               <p className="text-white font-semibold mt-3">- Sarah Johnson</p>
             </div>
@@ -132,7 +132,7 @@ const SignUpPage = () => {
 
             {/* Mobile Benefits (shown only on small screens) */}
             <div className="lg:hidden mt-6 sm:mt-8 p-4 sm:p-6 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl">
-              <h3 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Why Goal Tracker?</h3>
+              <h3 className="font-semibold text-gray-900 mb-3 text-sm sm:text-base">Why GoalQuest?</h3>
               <ul className="space-y-2">
                 {benefits.map((benefit, index) => (
                   <li key={index} className="flex items-center text-xs sm:text-sm text-gray-700">
