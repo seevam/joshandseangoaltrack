@@ -7,13 +7,8 @@ import {
   User,
   Sparkles,
   TrendingUp,
-  CheckCircle,
-  Clock,
-  Zap,
-  MessageCircle,
   Lightbulb,
   Award,
-  Calendar,
   Settings,
   Key
 } from 'lucide-react';
@@ -30,7 +25,6 @@ const AIChatPage = () => {
 
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
 
-  // Load user goals
   useEffect(() => {
     if (user) {
       const userGoalsKey = `goaltracker-goals-${user.id}`;
@@ -41,7 +35,6 @@ const AIChatPage = () => {
     }
   }, [user]);
 
-  // Initialize with welcome message
   useEffect(() => {
     if (user && messages.length === 0) {
       const welcomeMessage = {
@@ -56,40 +49,36 @@ const AIChatPage = () => {
     }
   }, [user, messages.length, hasApiKey]);
 
-  // Auto scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Quick action suggestions
   const quickActions = [
     {
       icon: Target,
-      label: "Create New Goal",
+      label: "Create Goal",
       action: "Help me create a new goal"
     },
     {
       icon: TrendingUp,
       label: "Review Progress",
-      action: "Can you review my goal progress?"
+      action: "Review my goal progress"
     },
     {
       icon: Lightbulb,
-      label: "Get Motivation",
-      action: "I need some motivation to stay on track"
+      label: "Get Motivated",
+      action: "I need motivation"
     },
     {
       icon: Award,
-      label: "Celebrate Success",
-      action: "I want to celebrate a recent achievement"
+      label: "Celebrate",
+      action: "Celebrate my achievement"
     }
   ];
 
-  // Send message to OpenAI
   const sendMessage = async (messageContent) => {
     if (!messageContent.trim()) return;
 
-    // Check if API key is configured
     if (!hasApiKey) {
       setShowSetupGuide(true);
       return;
@@ -107,7 +96,6 @@ const AIChatPage = () => {
     setIsLoading(true);
 
     try {
-      // Prepare context about user's goals
       const goalsContext = goals.length > 0 
         ? `\n\nUser's current goals:\n${goals.map(goal => {
             const progress = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
@@ -115,23 +103,11 @@ const AIChatPage = () => {
           }).join('\n')}`
         : '\n\nUser has no goals set yet.';
 
-      const systemPrompt = `You are a helpful AI assistant specifically designed for goal tracking and personal development. You help users create, track, and achieve their goals. 
-
-Guidelines:
-- Be encouraging and motivational
-- Provide specific, actionable advice
-- Help break down large goals into smaller steps
-- Celebrate achievements and progress
-- Suggest realistic timelines and strategies
-- Be supportive when users face setbacks
-- Focus on goal-related topics only
-- Use emojis appropriately to make responses engaging
+      const systemPrompt = `You are a helpful AI assistant for goal tracking. Be encouraging and provide actionable advice. Keep responses concise (2-3 paragraphs max).
 
 User context:
 - User name: ${user?.firstName || 'User'}
-- Goals data: ${goalsContext}
-
-Keep responses concise but helpful (2-3 paragraphs max).`;
+- Goals data: ${goalsContext}`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -168,7 +144,7 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
       const errorMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment. In the meantime, feel free to explore your goals in the Dashboard! 🎯",
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment. 🎯",
         timestamp: new Date(),
         isError: true
       };
@@ -197,63 +173,58 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col">
-      {/* Header */}
+      {/* Mobile-First Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
-              <div className="relative">
+        <div className="px-4 py-3 sm:px-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center min-w-0 flex-1">
+              <div className="relative flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center shadow-lg">
                   <Bot className="h-6 w-6 text-white" />
                 </div>
-                <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+                <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
               </div>
-              <div className="ml-3">
-                <h1 className="text-xl font-bold text-gray-900">Goal Tracking AI</h1>
-                <p className="text-sm text-gray-500">Your personal achievement assistant</p>
+              <div className="ml-3 min-w-0">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Goal AI</h1>
+                <p className="text-xs sm:text-sm text-gray-500 truncate">Your assistant</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-yellow-500" />
-              <span className="text-sm font-medium text-gray-600">Smart Assistant</span>
-            </div>
+            <Sparkles className="h-5 w-5 text-yellow-500 flex-shrink-0" />
           </div>
         </div>
       </div>
 
-      {/* Chat Messages */}
+      {/* Chat Messages - Mobile Optimized */}
       <div className="flex-1 overflow-hidden">
-        <div className="max-w-4xl mx-auto h-full flex flex-col">
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="h-full flex flex-col">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex items-start gap-3 ${
+                className={`flex items-start gap-2 sm:gap-3 ${
                   message.type === 'user' ? 'flex-row-reverse' : 'flex-row'
                 }`}
               >
-                {/* Avatar */}
-                <div className={`flex-shrink-0 ${message.type === 'user' ? 'order-2' : 'order-1'}`}>
+                <div className="flex-shrink-0">
                   {message.type === 'user' ? (
-                    <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
-                      <User className="h-5 w-5 text-white" />
+                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                      <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </div>
                   ) : (
-                    <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                    <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center ${
                       message.isError 
                         ? 'bg-red-100' 
                         : 'bg-gradient-to-r from-green-400 to-blue-500'
                     }`}>
-                      <Bot className={`h-5 w-5 ${message.isError ? 'text-red-600' : 'text-white'}`} />
+                      <Bot className={`h-4 w-4 sm:h-5 sm:w-5 ${message.isError ? 'text-red-600' : 'text-white'}`} />
                     </div>
                   )}
                 </div>
 
-                {/* Message */}
-                <div className={`flex-1 max-w-xs sm:max-w-md lg:max-w-lg ${
-                  message.type === 'user' ? 'order-1' : 'order-2'
+                <div className={`flex-1 min-w-0 ${
+                  message.type === 'user' ? 'max-w-[85%]' : 'max-w-[85%]'
                 }`}>
-                  <div className={`p-3 rounded-2xl shadow-sm ${
+                  <div className={`p-3 rounded-2xl shadow-sm break-words ${
                     message.type === 'user'
                       ? 'bg-indigo-600 text-white ml-auto'
                       : message.isError
@@ -274,11 +245,10 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
               </div>
             ))}
 
-            {/* Loading indicator */}
             {isLoading && (
-              <div className="flex items-start gap-3">
-                <div className="h-8 w-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center">
-                  <Bot className="h-5 w-5 text-white" />
+              <div className="flex items-start gap-2 sm:gap-3">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center">
+                  <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
                 <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm">
                   <div className="flex items-center gap-2">
@@ -296,11 +266,10 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Actions */}
           {messages.length <= 1 && hasApiKey && (
-            <div className="p-4 border-t bg-white">
-              <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                <Zap className="h-4 w-4 text-yellow-500" />
+            <div className="p-3 sm:p-4 border-t bg-white">
+              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+                <span className="h-4 w-4 text-yellow-500">⚡</span>
                 Quick Actions
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -308,30 +277,29 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
                   <button
                     key={index}
                     onClick={() => handleQuickAction(action.action)}
-                    className="flex items-center gap-2 p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                    className="flex items-center gap-2 p-2.5 sm:p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm active:bg-gray-200"
                   >
                     <action.icon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-                    <span className="text-gray-700">{action.label}</span>
+                    <span className="text-gray-700 text-xs sm:text-sm">{action.label}</span>
                   </button>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Setup Required Notice */}
           {!hasApiKey && (
-            <div className="p-4 border-t bg-gradient-to-r from-indigo-50 to-purple-50">
+            <div className="p-3 sm:p-4 border-t bg-gradient-to-r from-indigo-50 to-purple-50">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mb-3">
                   <Key className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="font-semibold text-gray-900 mb-2">Setup Required</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Configure your OpenAI API key to start chatting with your Goal Tracking AI assistant.
+                <p className="text-sm text-gray-600 mb-4 px-4">
+                  Configure your OpenAI API key to start chatting.
                 </p>
                 <button
                   onClick={() => setShowSetupGuide(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors active:scale-95"
                 >
                   <Settings className="h-4 w-4" />
                   Setup AI Chat
@@ -340,15 +308,14 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
             </div>
           )}
 
-          {/* Input Area */}
-          <div className="p-4 bg-white border-t">
-            <form onSubmit={handleSubmit} className="flex items-end gap-3">
+          <div className="p-3 sm:p-4 bg-white border-t">
+            <form onSubmit={handleSubmit} className="flex items-end gap-2 sm:gap-3">
               <div className="flex-1">
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  placeholder={hasApiKey ? "Ask me anything about your goals..." : "Setup OpenAI API key to start chatting..."}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                  placeholder={hasApiKey ? "Ask about your goals..." : "Setup required..."}
+                  className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm disabled:bg-gray-100 disabled:text-gray-500"
                   rows="1"
                   style={{ minHeight: '44px', maxHeight: '120px' }}
                   onKeyDown={(e) => {
@@ -363,26 +330,25 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || isLoading || !hasApiKey}
-                className="flex-shrink-0 h-11 w-11 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors"
+                className="flex-shrink-0 h-11 w-11 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95"
               >
                 <Send className="h-5 w-5" />
               </button>
             </form>
             
-            {/* API Key Notice */}
             {!hasApiKey && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <Key className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-blue-800">
-                      <strong>Setup required:</strong> Configure your OpenAI API key to unlock AI-powered goal coaching.
+              <div className="mt-3 p-2.5 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-2 sm:gap-3">
+                  <Key className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm text-blue-800">
+                      <strong>Setup required:</strong> Configure OpenAI API key
                     </p>
                     <button
                       onClick={() => setShowSetupGuide(true)}
-                      className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-1 underline"
+                      className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium mt-1 underline"
                     >
-                      View setup instructions →
+                      View instructions →
                     </button>
                   </div>
                 </div>
@@ -392,7 +358,6 @@ Keep responses concise but helpful (2-3 paragraphs max).`;
         </div>
       </div>
 
-      {/* Setup Guide Modal */}
       {showSetupGuide && (
         <SetupGuide onClose={() => setShowSetupGuide(false)} />
       )}
