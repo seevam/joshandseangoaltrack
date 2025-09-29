@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { ClerkProvider, RedirectToSignIn, SignedIn, SignedOut } from '@clerk/clerk-react';
+import { ClerkProvider, RedirectToSignIn, SignedIn, SignedOut, useUser } from '@clerk/clerk-react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import App from './App';
 import { Dashboard } from './App';
@@ -10,6 +10,8 @@ import AIChatPage from './AIChatPage';
 import AuthenticatedLayout from './AuthenticatedLayout';
 import SignInPage from './SignInPage';
 import SignUpPage from './SignUpPage';
+import OnboardingPage from './OnboardingPage';
+import { Target } from 'lucide-react';
 
 // Get the Publishable Key from environment variables
 const clerkPubKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
@@ -63,22 +65,38 @@ if (!clerkPubKey) {
     );
   }
 
-  // Redirect component for signed-in users
+  // Redirect component for signed-in users with onboarding check
   function RedirectToHome() {
     const navigate = useNavigate();
+    const { user, isLoaded } = useUser();
     
     React.useEffect(() => {
-      navigate('/home');
-    }, [navigate]);
+      if (isLoaded && user) {
+        // Check if user has completed onboarding
+        const onboardingComplete = localStorage.getItem(`onboarding-complete-${user.id}`);
+        
+        if (!onboardingComplete) {
+          // First time user - redirect to onboarding
+          navigate('/onboarding');
+        } else {
+          // Returning user - redirect to home
+          navigate('/home');
+        }
+      }
+    }, [navigate, user, isLoaded]);
     
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
+      </div>
+    );
   }
 
   // Main App Router Component
   function AppRouter() {
     return (
       <Routes>
-        {/* Landing page route - shows landing page for signed out users, redirects signed in users to home */}
+        {/* Landing page route - shows landing page for signed out users, redirects signed in users */}
         <Route path="/" element={
           <>
             <SignedOut>
@@ -93,6 +111,16 @@ if (!clerkPubKey) {
         {/* Authentication routes */}
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
+        
+        {/* Onboarding route - MUST come before other protected routes */}
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
         
         {/* Protected app routes with AuthenticatedLayout wrapper */}
         <Route
@@ -117,7 +145,6 @@ if (!clerkPubKey) {
           }
         />
         
-        {/* AI Chat route - THIS WAS MISSING! */}
         <Route
           path="/chat"
           element={
@@ -147,9 +174,7 @@ if (!clerkPubKey) {
               <App />
             </SignedOut>
             <SignedIn>
-              <AuthenticatedLayout>
-                <Homepage />
-              </AuthenticatedLayout>
+              <RedirectToHome />
             </SignedIn>
           </>
         } />
@@ -165,8 +190,8 @@ if (!clerkPubKey) {
       <ClerkProvider
         publishableKey={clerkPubKey}
         navigate={(to) => navigate(to)}
-        afterSignInUrl="/home"
-        afterSignUpUrl="/home"
+        afterSignInUrl="/onboarding"
+        afterSignUpUrl="/onboarding"
       >
         <AppRouter />
       </ClerkProvider>
