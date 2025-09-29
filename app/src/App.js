@@ -36,7 +36,7 @@ const LandingPage = () => {
             <div className="flex items-center">
               <Target className="h-8 w-8 text-indigo-600 mr-3" />
               <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                Goal Tracker
+                GoalQuest
               </h1>
             </div>
             <div className="flex gap-4">
