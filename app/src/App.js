@@ -207,8 +207,7 @@ const categoryTemplates = {
   }
 };
 
-const [showAdvanced, setShowAdvanced] = useState(false);
-const [selectedExample, setSelectedExample] = useState(null);
+
 
 export const Dashboard = () => {
   const { user, isLoaded } = useUser();
