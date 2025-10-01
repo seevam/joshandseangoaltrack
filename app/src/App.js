@@ -132,6 +132,83 @@ const LandingPage = () => {
     </div>
   );
 };
+const categoryTemplates = {
+  personal: {
+    examples: ['Read 12 books', 'Learn a new language', 'Develop a new hobby', 'Build better habits'],
+    units: ['books', 'hours', 'days', 'times'],
+    suggestedTargets: [12, 50, 100, 365],
+    tips: 'Personal goals focus on self-improvement and growth',
+    placeholders: {
+      title: 'e.g., Read 12 books this year',
+      description: 'Why is this meaningful to you?',
+      target: '12',
+      unit: 'books'
+    }
+  },
+  health: {
+    examples: ['Drink 8 glasses of water daily', 'Sleep 8 hours nightly', 'Reduce stress', 'Regular checkups'],
+    units: ['glasses', 'hours', 'days', 'visits'],
+    suggestedTargets: [8, 30, 90, 180],
+    tips: 'Health goals improve your physical and mental wellbeing',
+    placeholders: {
+      title: 'e.g., Drink 8 glasses of water daily',
+      description: 'Track your hydration journey',
+      target: '8',
+      unit: 'glasses/day'
+    }
+  },
+  career: {
+    examples: ['Get a promotion', 'Learn new skills', 'Network with professionals', 'Complete certifications'],
+    units: ['certifications', 'connections', 'projects', 'skills'],
+    suggestedTargets: [1, 5, 10, 20],
+    tips: 'Career goals advance your professional development',
+    placeholders: {
+      title: 'e.g., Complete 3 professional certifications',
+      description: 'Advance your career with new skills',
+      target: '3',
+      unit: 'certifications'
+    }
+  },
+  finance: {
+    examples: ['Save $10,000', 'Pay off debt', 'Build emergency fund', 'Increase income'],
+    units: ['$', '€', '£', 'units'],
+    suggestedTargets: [1000, 5000, 10000, 50000],
+    tips: 'Finance goals secure your financial future',
+    placeholders: {
+      title: 'e.g., Save $10,000 for emergency fund',
+      description: 'Build financial security',
+      target: '10000',
+      unit: '$'
+    }
+  },
+  education: {
+    examples: ['Complete online courses', 'Learn programming', 'Master a subject', 'Get a degree'],
+    units: ['courses', 'hours', 'modules', 'credits'],
+    suggestedTargets: [5, 50, 100, 120],
+    tips: 'Education goals expand your knowledge and skills',
+    placeholders: {
+      title: 'e.g., Complete 5 online courses',
+      description: 'Invest in your education',
+      target: '5',
+      unit: 'courses'
+    }
+  },
+  fitness: {
+    examples: ['Run 500 km', 'Lose 10 kg', 'Workout 150 times', 'Run a marathon'],
+    units: ['km', 'kg', 'workouts', 'minutes'],
+    suggestedTargets: [100, 500, 1000, 5000],
+    tips: 'Fitness goals improve your strength and endurance',
+    placeholders: {
+      title: 'e.g., Run 500 km this year',
+      description: 'Build strength and endurance',
+      target: '500',
+      unit: 'km'
+    }
+  }
+};
+
+const [showAdvanced, setShowAdvanced] = useState(false);
+const [selectedExample, setSelectedExample] = useState(null);
 
 export const Dashboard = () => {
   const { user, isLoaded } = useUser();
@@ -142,6 +219,8 @@ export const Dashboard = () => {
   const [isGeneratingSubtasks, setIsGeneratingSubtasks] = useState(false);
   const [generatedSubtasks, setGeneratedSubtasks] = useState([]);
   const [editingGoal, setEditingGoal] = useState(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [selectedExample, setSelectedExample] = useState(null);
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -154,6 +233,18 @@ export const Dashboard = () => {
     color: '#3B82F6',
     subtasks: []
   });
+  const fillFromExample = (example, category) => {
+  const template = categoryTemplates[category];
+  setNewGoal({
+    ...newGoal,
+    title: example,
+    category: category,
+    targetValue: template.suggestedTargets[0].toString(),
+    unit: template.units[0],
+    color: categoryColors[category].hex
+  });
+  setSelectedExample(example);
+};
 
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
 
@@ -540,105 +631,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
       </div>
 
       {/* Add Goal Modal with AI Sub-tasks - CONTINUED IN NEXT PART */}
-      // Add this enhanced modal to your App.js file
-// Replace the existing "Add Goal Modal" section with this code
-
-// Smart suggestions based on category
-const categoryTemplates = {
-  personal: {
-    examples: ['Read 12 books', 'Learn a new language', 'Develop a new hobby', 'Build better habits'],
-    units: ['books', 'hours', 'days', 'times'],
-    suggestedTargets: [12, 50, 100, 365],
-    tips: 'Personal goals focus on self-improvement and growth',
-    placeholders: {
-      title: 'e.g., Read 12 books this year',
-      description: 'Why is this meaningful to you?',
-      target: '12',
-      unit: 'books'
-    }
-  },
-  health: {
-    examples: ['Drink 8 glasses of water daily', 'Sleep 8 hours nightly', 'Reduce stress', 'Regular checkups'],
-    units: ['glasses', 'hours', 'days', 'visits'],
-    suggestedTargets: [8, 30, 90, 180],
-    tips: 'Health goals improve your physical and mental wellbeing',
-    placeholders: {
-      title: 'e.g., Drink 8 glasses of water daily',
-      description: 'Track your hydration journey',
-      target: '8',
-      unit: 'glasses/day'
-    }
-  },
-  career: {
-    examples: ['Get a promotion', 'Learn new skills', 'Network with professionals', 'Complete certifications'],
-    units: ['certifications', 'connections', 'projects', 'skills'],
-    suggestedTargets: [1, 5, 10, 20],
-    tips: 'Career goals advance your professional development',
-    placeholders: {
-      title: 'e.g., Complete 3 professional certifications',
-      description: 'Advance your career with new skills',
-      target: '3',
-      unit: 'certifications'
-    }
-  },
-  finance: {
-    examples: ['Save $10,000', 'Pay off debt', 'Build emergency fund', 'Increase income'],
-    units: ['$', '€', '£', 'units'],
-    suggestedTargets: [1000, 5000, 10000, 50000],
-    tips: 'Finance goals secure your financial future',
-    placeholders: {
-      title: 'e.g., Save $10,000 for emergency fund',
-      description: 'Build financial security',
-      target: '10000',
-      unit: '$'
-    }
-  },
-  education: {
-    examples: ['Complete online courses', 'Learn programming', 'Master a subject', 'Get a degree'],
-    units: ['courses', 'hours', 'modules', 'credits'],
-    suggestedTargets: [5, 50, 100, 120],
-    tips: 'Education goals expand your knowledge and skills',
-    placeholders: {
-      title: 'e.g., Complete 5 online courses',
-      description: 'Invest in your education',
-      target: '5',
-      unit: 'courses'
-    }
-  },
-  fitness: {
-    examples: ['Run 500 km', 'Lose 10 kg', 'Workout 150 times', 'Run a marathon'],
-    units: ['km', 'kg', 'workouts', 'minutes'],
-    suggestedTargets: [100, 500, 1000, 5000],
-    tips: 'Fitness goals improve your strength and endurance',
-    placeholders: {
-      title: 'e.g., Run 500 km this year',
-      description: 'Build strength and endurance',
-      target: '500',
-      unit: 'km'
-    }
-  }
-};
-
-// Add this state at the beginning of your Dashboard component
-const [showAdvanced, setShowAdvanced] = useState(false);
-const [selectedExample, setSelectedExample] = useState(null);
-
-// Add this function to auto-fill from examples
-const fillFromExample = (example, category) => {
-  const template = categoryTemplates[category];
-  setNewGoal({
-    ...newGoal,
-    title: example,
-    category: category,
-    targetValue: template.suggestedTargets[0].toString(),
-    unit: template.units[0],
-    color: categoryColors[category].hex
-  });
-  setSelectedExample(example);
-};
-
-// Enhanced Modal JSX - Replace your existing modal
-{showAddGoal && (
+     {showAddGoal && (
   <div className="fixed inset-0 z-50 overflow-y-auto">
     <div className="flex min-h-screen items-end justify-center sm:items-center p-0 sm:p-4">
       <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
@@ -1026,73 +1019,6 @@ const fillFromExample = (example, category) => {
     </div>
   </div>
 )}
-                {/* AI Sub-tasks Section - THE NEW FEATURE */}
-                <div className="border-t pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="block text-sm font-medium text-gray-700">Sub-tasks</label>
-                    <button
-                      type="button"
-                      onClick={generateSubtasksWithAI}
-                      disabled={isGeneratingSubtasks || !newGoal.title}
-                      className="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      <Sparkles className="h-3 w-3 mr-1" />
-                      {isGeneratingSubtasks ? 'Generating...' : 'Generate with AI'}
-                    </button>
-                  </div>
-
-                  {!hasApiKey && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
-                      <p className="text-xs text-yellow-800">
-                        Configure your OpenAI API key to use AI sub-task generation. Visit the AI Chat page for setup instructions.
-                      </p>
-                    </div>
-                  )}
-
-                  {generatedSubtasks.length > 0 && (
-                    <div className="space-y-2 max-h-60 overflow-y-auto">
-                      {generatedSubtasks.map((subtask, index) => (
-                        <div key={index} className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-sm font-medium text-gray-900">{subtask.title}</h4>
-                              <p className="text-xs text-gray-600 mt-1">{subtask.description}</p>
-                              <div className="flex items-center mt-2 text-xs text-gray-500">
-                                <Calendar className="h-3 w-3 mr-1" />
-                                <span>Timeline: {subtask.daysFromStart} days from start</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 rounded-b-2xl">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddGoal(false);
-                    setGeneratedSubtasks([]);
-                  }}
-                  className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleAddGoal}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 sm:ml-auto"
-                >
-                  Create Goal
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Goal Details Modal with Sub-tasks Display */}
       {showGoalDetails && selectedGoal && (
