@@ -540,109 +540,492 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
       </div>
 
       {/* Add Goal Modal with AI Sub-tasks - CONTINUED IN NEXT PART */}
-      {showAddGoal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-end justify-center sm:items-center p-0 sm:p-4">
-            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
-              setShowAddGoal(false);
-              setGeneratedSubtasks([]);
-            }}></div>
-            
-            <div className="relative w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-white px-4 py-4 border-b sm:px-6 z-10 rounded-t-2xl">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Create New Goal</h3>
+      // Add this enhanced modal to your App.js file
+// Replace the existing "Add Goal Modal" section with this code
+
+// Smart suggestions based on category
+const categoryTemplates = {
+  personal: {
+    examples: ['Read 12 books', 'Learn a new language', 'Develop a new hobby', 'Build better habits'],
+    units: ['books', 'hours', 'days', 'times'],
+    suggestedTargets: [12, 50, 100, 365],
+    tips: 'Personal goals focus on self-improvement and growth',
+    placeholders: {
+      title: 'e.g., Read 12 books this year',
+      description: 'Why is this meaningful to you?',
+      target: '12',
+      unit: 'books'
+    }
+  },
+  health: {
+    examples: ['Drink 8 glasses of water daily', 'Sleep 8 hours nightly', 'Reduce stress', 'Regular checkups'],
+    units: ['glasses', 'hours', 'days', 'visits'],
+    suggestedTargets: [8, 30, 90, 180],
+    tips: 'Health goals improve your physical and mental wellbeing',
+    placeholders: {
+      title: 'e.g., Drink 8 glasses of water daily',
+      description: 'Track your hydration journey',
+      target: '8',
+      unit: 'glasses/day'
+    }
+  },
+  career: {
+    examples: ['Get a promotion', 'Learn new skills', 'Network with professionals', 'Complete certifications'],
+    units: ['certifications', 'connections', 'projects', 'skills'],
+    suggestedTargets: [1, 5, 10, 20],
+    tips: 'Career goals advance your professional development',
+    placeholders: {
+      title: 'e.g., Complete 3 professional certifications',
+      description: 'Advance your career with new skills',
+      target: '3',
+      unit: 'certifications'
+    }
+  },
+  finance: {
+    examples: ['Save $10,000', 'Pay off debt', 'Build emergency fund', 'Increase income'],
+    units: ['$', '€', '£', 'units'],
+    suggestedTargets: [1000, 5000, 10000, 50000],
+    tips: 'Finance goals secure your financial future',
+    placeholders: {
+      title: 'e.g., Save $10,000 for emergency fund',
+      description: 'Build financial security',
+      target: '10000',
+      unit: '$'
+    }
+  },
+  education: {
+    examples: ['Complete online courses', 'Learn programming', 'Master a subject', 'Get a degree'],
+    units: ['courses', 'hours', 'modules', 'credits'],
+    suggestedTargets: [5, 50, 100, 120],
+    tips: 'Education goals expand your knowledge and skills',
+    placeholders: {
+      title: 'e.g., Complete 5 online courses',
+      description: 'Invest in your education',
+      target: '5',
+      unit: 'courses'
+    }
+  },
+  fitness: {
+    examples: ['Run 500 km', 'Lose 10 kg', 'Workout 150 times', 'Run a marathon'],
+    units: ['km', 'kg', 'workouts', 'minutes'],
+    suggestedTargets: [100, 500, 1000, 5000],
+    tips: 'Fitness goals improve your strength and endurance',
+    placeholders: {
+      title: 'e.g., Run 500 km this year',
+      description: 'Build strength and endurance',
+      target: '500',
+      unit: 'km'
+    }
+  }
+};
+
+// Add this state at the beginning of your Dashboard component
+const [showAdvanced, setShowAdvanced] = useState(false);
+const [selectedExample, setSelectedExample] = useState(null);
+
+// Add this function to auto-fill from examples
+const fillFromExample = (example, category) => {
+  const template = categoryTemplates[category];
+  setNewGoal({
+    ...newGoal,
+    title: example,
+    category: category,
+    targetValue: template.suggestedTargets[0].toString(),
+    unit: template.units[0],
+    color: categoryColors[category].hex
+  });
+  setSelectedExample(example);
+};
+
+// Enhanced Modal JSX - Replace your existing modal
+{showAddGoal && (
+  <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="flex min-h-screen items-end justify-center sm:items-center p-0 sm:p-4">
+      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
+        setShowAddGoal(false);
+        setGeneratedSubtasks([]);
+        setShowAdvanced(false);
+        setSelectedExample(null);
+      }}></div>
+      
+      <div className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all max-h-[90vh] overflow-y-auto">
+        <form onSubmit={handleAddGoal}>
+          <div className="sticky top-0 bg-white px-4 py-4 border-b sm:px-6 z-10 rounded-t-2xl">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Create New Goal</h3>
+                <p className="text-xs text-gray-500 mt-1">Build your path to success step by step</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddGoal(false);
+                  setGeneratedSubtasks([]);
+                  setShowAdvanced(false);
+                  setSelectedExample(null);
+                }}
+                className="text-gray-400 hover:text-gray-500"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+          </div>
+
+          <div className="px-4 py-4 space-y-5 sm:px-6">
+            {/* Category Selection First */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Goal Category *
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {Object.keys(categoryColors).map((category) => (
                   <button
+                    key={category}
                     type="button"
                     onClick={() => {
-                      setShowAddGoal(false);
-                      setGeneratedSubtasks([]);
+                      setNewGoal({ 
+                        ...newGoal, 
+                        category,
+                        color: categoryColors[category].hex,
+                        // Clear previous selections when category changes
+                        title: '',
+                        description: '',
+                        targetValue: '',
+                        unit: ''
+                      });
+                      setSelectedExample(null);
                     }}
-                    className="text-gray-400 hover:text-gray-500"
+                    className={`p-3 rounded-xl border-2 transition-all text-sm capitalize ${
+                      newGoal.category === category
+                        ? `${categoryColors[category].bg} ${categoryColors[category].text} border-transparent text-white font-semibold shadow-md`
+                        : `border-gray-300 text-gray-700 hover:border-gray-400 hover:bg-gray-50`
+                    }`}
                   >
-                    <X className="h-6 w-6" />
+                    {category}
                   </button>
+                ))}
+              </div>
+              
+              {/* Category Tips */}
+              {newGoal.category && (
+                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-xs text-blue-800">
+                    💡 {categoryTemplates[newGoal.category].tips}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Examples */}
+            {newGoal.category && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Quick Start Examples
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {categoryTemplates[newGoal.category].examples.map((example, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => fillFromExample(example, newGoal.category)}
+                      className={`p-3 rounded-lg border text-left transition-all text-sm ${
+                        selectedExample === example
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
+                          : 'border-gray-300 hover:border-indigo-300 hover:bg-gray-50 text-gray-700'
+                      }`}
+                    >
+                      <div className="flex items-center">
+                        <Sparkles className="h-4 w-4 mr-2 flex-shrink-0 text-indigo-500" />
+                        <span className="truncate">{example}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
+            )}
 
-              <div className="px-4 py-4 space-y-4 sm:px-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Goal Title *</label>
+            {/* Goal Title */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center justify-between">
+                <span>Goal Title *</span>
+                {newGoal.title && (
+                  <span className="text-xs text-green-600 flex items-center">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Looks good!
+                  </span>
+                )}
+              </label>
+              <input
+                type="text"
+                value={newGoal.title}
+                onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                placeholder={categoryTemplates[newGoal.category]?.placeholders.title || "What do you want to achieve?"}
+                required
+              />
+            </div>
+
+            {/* Smart Target and Unit */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Target Value *
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newGoal.targetValue}
+                  onChange={(e) => setNewGoal({ ...newGoal, targetValue: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                  placeholder={categoryTemplates[newGoal.category]?.placeholders.target || "100"}
+                  required
+                />
+                {/* Quick suggestions */}
+                {newGoal.category && !newGoal.targetValue && (
+                  <div className="flex gap-1 mt-2">
+                    {categoryTemplates[newGoal.category].suggestedTargets.slice(0, 4).map((val, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setNewGoal({ ...newGoal, targetValue: val.toString() })}
+                        className="px-2 py-1 text-xs bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded transition-colors"
+                      >
+                        {val}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Unit *
+                </label>
+                <select
+                  value={newGoal.unit}
+                  onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                >
+                  <option value="">Select unit</option>
+                  {newGoal.category && categoryTemplates[newGoal.category].units.map((unit, idx) => (
+                    <option key={idx} value={unit}>{unit}</option>
+                  ))}
+                  <option value="custom">Custom...</option>
+                </select>
+                {newGoal.unit === 'custom' && (
                   <input
                     type="text"
-                    value={newGoal.title}
-                    onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                    placeholder="Learn a new skill"
+                    onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm mt-2"
+                    placeholder="Enter custom unit"
                   />
-                </div>
+                )}
+              </div>
+            </div>
 
+            {/* Advanced Options Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowAdvanced(!showAdvanced)}
+              className="w-full flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <span className="text-sm font-medium text-gray-700">
+                {showAdvanced ? 'Hide' : 'Show'} Advanced Options
+              </span>
+              <ChevronRight className={`h-5 w-5 text-gray-500 transition-transform ${showAdvanced ? 'rotate-90' : ''}`} />
+            </button>
+
+            {/* Advanced Options */}
+            {showAdvanced && (
+              <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
                   <textarea
                     value={newGoal.description}
                     onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                    rows="2"
-                    placeholder="Describe your goal..."
+                    rows="3"
+                    placeholder={categoryTemplates[newGoal.category]?.placeholders.description || "Why is this goal important to you?"}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Category *</label>
-                  <select
-                    value={newGoal.category}
-                    onChange={(e) => setNewGoal({ 
-                      ...newGoal, 
-                      category: e.target.value,
-                      color: categoryColors[e.target.value].hex
-                    })}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                  >
-                    <option value="personal">Personal</option>
-                    <option value="health">Health</option>
-                    <option value="career">Career</option>
-                    <option value="finance">Finance</option>
-                    <option value="education">Education</option>
-                    <option value="fitness">Fitness</option>
-                  </select>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Target Value *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date
+                    </label>
                     <input
-                      type="number"
-                      step="0.01"
-                      value={newGoal.targetValue}
-                      onChange={(e) => setNewGoal({ ...newGoal, targetValue: e.target.value })}
+                      type="date"
+                      value={newGoal.startDate}
+                      onChange={(e) => setNewGoal({ ...newGoal, startDate: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                      placeholder="100"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Target Date
+                    </label>
                     <input
-                      type="text"
-                      value={newGoal.unit}
-                      onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
+                      type="date"
+                      value={newGoal.endDate}
+                      onChange={(e) => setNewGoal({ ...newGoal, endDate: e.target.value })}
                       className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                      placeholder="hours, kg, $"
+                      min={newGoal.startDate || new Date().toISOString().split('T')[0]}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Target Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Starting Progress
+                  </label>
                   <input
-                    type="date"
-                    value={newGoal.endDate}
-                    onChange={(e) => setNewGoal({ ...newGoal, endDate: e.target.value })}
+                    type="number"
+                    step="0.01"
+                    value={newGoal.currentValue}
+                    onChange={(e) => setNewGoal({ ...newGoal, currentValue: e.target.value })}
                     className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
-                    min={new Date().toISOString().split('T')[0]}
+                    placeholder="0"
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    If you've already made progress, enter it here
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* AI Sub-tasks Section */}
+            {newGoal.title && newGoal.targetValue && (
+              <div className="border-t pt-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      AI-Powered Sub-tasks
+                    </label>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Let AI break down your goal into actionable steps
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={generateSubtasksWithAI}
+                    disabled={isGeneratingSubtasks}
+                    className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                  >
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    {isGeneratingSubtasks ? 'Generating...' : 'Generate'}
+                  </button>
                 </div>
 
+                {!hasApiKey && (
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-3">
+                    <div className="flex items-start">
+                      <Clock className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-yellow-800">API Key Required</p>
+                        <p className="text-xs text-yellow-700 mt-1">
+                          Configure your OpenAI API key to use AI sub-task generation. Visit the AI Chat page for setup instructions.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {isGeneratingSubtasks && (
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4 text-center">
+                    <div className="flex items-center justify-center space-x-2 mb-2">
+                      <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <p className="text-sm text-purple-700 font-medium">AI is creating your sub-tasks...</p>
+                  </div>
+                )}
+
+                {generatedSubtasks.length > 0 && (
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-sm font-medium text-gray-700">
+                        {generatedSubtasks.length} sub-tasks generated
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGeneratedSubtasks([]);
+                          setNewGoal({ ...newGoal, subtasks: [] });
+                        }}
+                        className="text-xs text-red-600 hover:text-red-700 font-medium"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                    {generatedSubtasks.map((subtask, index) => (
+                      <div key={index} className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                        <div className="flex items-start">
+                          <div className="flex-shrink-0 mt-0.5">
+                            <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold">
+                              {index + 1}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0 ml-3">
+                            <h4 className="text-sm font-medium text-gray-900">{subtask.title}</h4>
+                            <p className="text-xs text-gray-600 mt-1">{subtask.description}</p>
+                            <div className="flex items-center mt-2">
+                              <Calendar className="h-3 w-3 text-purple-600 mr-1" />
+                              <span className="text-xs text-purple-700 font-medium">
+                                Day {subtask.daysFromStart}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Footer with validation */}
+          <div className="sticky bottom-0 bg-gray-50 px-4 py-3 sm:px-6 border-t rounded-b-2xl">
+            {/* Progress indicator */}
+            {newGoal.title && newGoal.targetValue && newGoal.unit && (
+              <div className="mb-3 p-2 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-xs text-green-700 font-medium flex items-center">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Ready to create! {generatedSubtasks.length > 0 && `(${generatedSubtasks.length} sub-tasks included)`}
+                </p>
+              </div>
+            )}
+            
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddGoal(false);
+                  setGeneratedSubtasks([]);
+                  setShowAdvanced(false);
+                  setSelectedExample(null);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={!newGoal.title || !newGoal.targetValue || !newGoal.unit}
+                className="w-full sm:flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+              >
+                Create Goal
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+)}
                 {/* AI Sub-tasks Section - THE NEW FEATURE */}
                 <div className="border-t pt-4">
                   <div className="flex items-center justify-between mb-3">
