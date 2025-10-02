@@ -631,7 +631,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
 
       {/* Add Goal Modal with AI Sub-tasks - CONTINUED IN NEXT PART */}
      {showAddGoal && (
-  <div className="fixed inset-0 z-50 overflow-y-auto">
+  <div className="fixed inset-0 z-[60] overflow-y-auto">
     <div className="flex min-h-screen items-end justify-center sm:items-center p-0 sm:p-4">
       <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => {
         setShowAddGoal(false);
@@ -1021,11 +1021,12 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
 
       {/* Goal Details Modal with Sub-tasks Display */}
       {showGoalDetails && selectedGoal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
           <div className="flex min-h-screen items-end justify-center sm:items-center p-0 sm:p-4">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowGoalDetails(false)}></div>
             
-            <div className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all max-h-[90vh] overflow-y-auto">
+            <div className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all">
+              <div className="max-h-[calc(100vh-6rem)] sm:max-h-[90vh] overflow-hidden flex flex-col">
               <div className="sticky top-0 bg-white px-4 py-4 border-b sm:px-6 z-10 rounded-t-2xl">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Goal Details</h3>
