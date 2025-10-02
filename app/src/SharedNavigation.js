@@ -41,7 +41,7 @@ const SharedNavigation = () => {
 
   return (
     // UPDATED: Added safe-area support and consistent height
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg safe-area-bottom" style={{ zIndex: 50 }}>
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg" style={{ zIndex: 50 }}>
       <div className="max-w-md mx-auto px-4">
         <div className="flex items-center justify-around py-3">
           {navItems.map((item) => (
