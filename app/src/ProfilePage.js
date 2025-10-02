@@ -102,7 +102,7 @@ const ProfilePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="min-h-screen bg-gray-50 pb-32">
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 pt-12 pb-8">
         <div className="max-w-md mx-auto text-center">
