@@ -308,7 +308,7 @@ User context:
             </div>
           )}
 
-          <div className="p-3 sm:p-4 bg-white border-t">
+          <div className="p-3 sm:p-4 bg-white border-t pb-24">
             <form onSubmit={handleSubmit} className="flex items-end gap-2 sm:gap-3">
               <div className="flex-1">
                 <textarea
