@@ -61,7 +61,7 @@ const Homepage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 pb-32">
       {/* Header */}
       <div className="bg-white px-4 pt-12 pb-6 border-b border-gray-100">
         <div className="max-w-md mx-auto">
