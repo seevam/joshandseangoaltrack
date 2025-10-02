@@ -172,7 +172,7 @@ User context:
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col pb-20">
       {/* Mobile-First Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="px-4 py-3 sm:px-6">
