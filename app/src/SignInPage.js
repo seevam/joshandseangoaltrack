@@ -95,13 +95,13 @@ const SignInPage = () => {
           <div className="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-gray-600 px-2">
             <p>
               By signing in, you agree to our{' '}
-              <a href="#" className="text-indigo-600 hover:text-indigo-500">
+              <button type="button" className="text-indigo-600 hover:text-indigo-500 underline bg-transparent border-none p-0 cursor-pointer">
                 Terms of Service
-              </a>{' '}
+              </button>{' '}
               and{' '}
-              <a href="#" className="text-indigo-600 hover:text-indigo-500">
+              <button type="button" className="text-indigo-600 hover:text-indigo-500 underline bg-transparent border-none p-0 cursor-pointer">
                 Privacy Policy
-              </a>
+              </button>
             </p>
           </div>
         </div>

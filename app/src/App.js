@@ -1,30 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  SignedIn, 
+import {
   SignedOut,
-  UserButton,
-  useUser,
-  useClerk
+  useUser
 } from '@clerk/clerk-react';
-import { 
-  Target, 
+import {
+  Target,
   Plus,
   X,
   Calendar,
   TrendingUp,
-  Award,
   Clock,
   ChevronRight,
   Trash2,
   CheckCircle,
-  LogIn,
-  UserPlus,
   Shield,
   Sparkles,
-  Check,
   Circle,
-  Edit3,
   Save
 } from 'lucide-react';
 

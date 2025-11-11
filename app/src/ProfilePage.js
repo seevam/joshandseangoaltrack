@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useClerk } from '@clerk/clerk-react';
-import { 
+import {
   User,
   Settings,
   Target,
   TrendingUp,
-  Award,
   Calendar,
   Bell,
   Lock,
   HelpCircle,
   LogOut,
   ChevronRight,
-  CheckCircle,
   Edit3,
   Mail,
   Phone
@@ -23,7 +21,6 @@ const ProfilePage = () => {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const navigate = useNavigate();
-  const [goals, setGoals] = useState([]);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [userStats, setUserStats] = useState({
     totalGoals: 0,
@@ -39,7 +36,6 @@ const ProfilePage = () => {
       const savedGoals = localStorage.getItem(userGoalsKey);
       if (savedGoals) {
         const parsedGoals = JSON.parse(savedGoals);
-        setGoals(parsedGoals);
         
         // Calculate stats
         const completed = parsedGoals.filter(goal => {

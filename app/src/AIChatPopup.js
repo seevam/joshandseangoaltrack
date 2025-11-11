@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 
 const AIChatPopup = ({ isOpen, onClose }) => {
-  const { user, isLoaded } = useUser();
+  const { user } = useUser();
   const [messages, setMessages] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
