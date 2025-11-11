@@ -4,9 +4,7 @@ import { ClerkProvider, RedirectToSignIn, SignedIn, SignedOut, useUser } from '@
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import App from './App';
 import { Dashboard } from './App';
-import Homepage from './Homepage';
 import ProfilePage from './ProfilePage';
-import AIChatPage from './AIChatPage';
 import AuthenticatedLayout from './AuthenticatedLayout';
 import SignInPage from './SignInPage';
 import SignUpPage from './SignUpPage';
@@ -123,17 +121,18 @@ if (!clerkPubKey) {
         />
         
         {/* Protected app routes with AuthenticatedLayout wrapper */}
+        {/* Consolidated Home/Dashboard - both routes lead to Dashboard */}
         <Route
           path="/home"
           element={
             <ProtectedRoute>
               <AuthenticatedLayout>
-                <Homepage />
+                <Dashboard />
               </AuthenticatedLayout>
             </ProtectedRoute>
           }
         />
-        
+
         <Route
           path="/dashboard"
           element={
@@ -145,17 +144,8 @@ if (!clerkPubKey) {
           }
         />
         
-        <Route
-          path="/chat"
-          element={
-            <ProtectedRoute>
-              <AuthenticatedLayout>
-                <AIChatPage />
-              </AuthenticatedLayout>
-            </ProtectedRoute>
-          }
-        />
-        
+        {/* AI Chat is now a popup, no dedicated route needed */}
+
         <Route
           path="/profile"
           element={
