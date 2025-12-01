@@ -101,13 +101,13 @@ const LandingPage = () => {
   const navigate = useNavigate();
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
-      <nav className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] via-[#FEFFFE] to-[#E8F5E9]">
+      <nav className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Target className="h-8 w-8 text-indigo-600 mr-3" />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <Target className="h-8 w-8 text-[#58CC02] mr-3" />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent">
                 GoalQuest
               </h1>
             </div>
@@ -120,29 +120,29 @@ const LandingPage = () => {
           <div className="relative z-10 pb-8 bg-transparent sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
             <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
               <div className="sm:text-center lg:text-left">
-                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
+                <h1 className="text-4xl tracking-tight font-extrabold text-[#1a1a1a] sm:text-5xl md:text-6xl">
                   <span className="block">Achieve Your Goals</span>
-                  <span className="block bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                  <span className="block bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent">
                     Track Your Progress
                   </span>
                 </h1>
-                <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                  Set meaningful goals, track your progress with visual insights, and celebrate your achievements. 
+                <p className="mt-3 text-base text-[#4a4a4a] sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
+                  Set meaningful goals, track your progress with visual insights, and celebrate your achievements.
                   Join thousands of users who are turning their dreams into reality.
                 </p>
                 <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
                   <div className="rounded-md shadow">
-                    <button 
+                    <button
                       onClick={() => navigate('/sign-up')}
-                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 md:py-4 md:text-lg md:px-10"
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-gradient-to-r from-[#58CC02] to-[#2E8B00] hover:from-[#4CAD02] hover:to-[#267300] md:py-4 md:text-lg md:px-10"
                     >
                       Get Started Free
                     </button>
                   </div>
                   <div className="mt-3 sm:mt-0 sm:ml-3">
-                    <button 
+                    <button
                       onClick={() => navigate('/sign-in')}
-                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 md:py-4 md:text-lg md:px-10"
+                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-[#2E8B00] bg-[#D7FFB8] hover:bg-[#C5F39E] md:py-4 md:text-lg md:px-10"
                     >
                       Sign In
                     </button>
@@ -154,11 +154,11 @@ const LandingPage = () => {
         </div>
       </div>
 
-      <div className="py-12 bg-white">
+      <div className="py-12 bg-[#FEFFFE]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
-            <h2 className="text-base text-indigo-600 font-semibold tracking-wide uppercase">Features</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+            <h2 className="text-base text-[#58CC02] font-semibold tracking-wide uppercase">Features</h2>
+            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-[#1a1a1a] sm:text-4xl">
               Everything you need to succeed
             </p>
           </div>
@@ -166,31 +166,31 @@ const LandingPage = () => {
           <div className="mt-10">
             <div className="space-y-10 md:space-y-0 md:grid md:grid-cols-3 md:gap-x-8 md:gap-y-10">
               <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white">
                   <Target className="h-6 w-6" />
                 </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Goal Setting</p>
-                <p className="mt-2 ml-16 text-base text-gray-500">
+                <p className="ml-16 text-lg leading-6 font-medium text-[#1a1a1a]">Goal Setting</p>
+                <p className="mt-2 ml-16 text-base text-[#4a4a4a]">
                   Create SMART goals with categories, deadlines, and measurable targets.
                 </p>
               </div>
 
               <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white">
                   <TrendingUp className="h-6 w-6" />
                 </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Progress Tracking</p>
-                <p className="mt-2 ml-16 text-base text-gray-500">
+                <p className="ml-16 text-lg leading-6 font-medium text-[#1a1a1a]">Progress Tracking</p>
+                <p className="mt-2 ml-16 text-base text-[#4a4a4a]">
                   Visual progress bars and analytics to keep you motivated.
                 </p>
               </div>
 
               <div className="relative">
-                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-gradient-to-r from-indigo-500 to-purple-500 text-white">
+                <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white">
                   <Shield className="h-6 w-6" />
                 </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Secure & Private</p>
-                <p className="mt-2 ml-16 text-base text-gray-500">
+                <p className="ml-16 text-lg leading-6 font-medium text-[#1a1a1a]">Secure & Private</p>
+                <p className="mt-2 ml-16 text-base text-[#4a4a4a]">
                   Your goals and progress are securely stored and private to you.
                 </p>
               </div>
@@ -229,12 +229,12 @@ export const Dashboard = () => {
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
 
   const categoryColors = {
-    personal: { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-700', hex: '#3B82F6' },
-    health: { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-700', hex: '#10B981' },
-    career: { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-700', hex: '#8B5CF6' },
-    finance: { bg: 'bg-yellow-500', light: 'bg-yellow-100', text: 'text-yellow-700', hex: '#F59E0B' },
-    education: { bg: 'bg-indigo-500', light: 'bg-indigo-100', text: 'text-indigo-700', hex: '#6366F1' },
-    fitness: { bg: 'bg-red-500', light: 'bg-red-100', text: 'text-red-700', hex: '#EF4444' }
+    personal: { bg: 'bg-[#58CC02]', light: 'bg-[#D7FFB8]', text: 'text-[#2E8B00]', hex: '#58CC02' },
+    health: { bg: 'bg-[#00CD4B]', light: 'bg-[#CCFFDD]', text: 'text-[#00A03E]', hex: '#00CD4B' },
+    career: { bg: 'bg-[#7E3AF2]', light: 'bg-[#E9D5FF]', text: 'text-[#5B21B6]', hex: '#7E3AF2' },
+    finance: { bg: 'bg-[#FBBF24]', light: 'bg-[#FEF3C7]', text: 'text-[#B45309]', hex: '#FBBF24' },
+    education: { bg: 'bg-[#3B82F6]', light: 'bg-[#DBEAFE]', text: 'text-[#1E40AF]', hex: '#3B82F6' },
+    fitness: { bg: 'bg-[#FF4B4B]', light: 'bg-[#FECACA]', text: 'text-[#DC2626]', hex: '#FF4B4B' }
   };
 
   useEffect(() => {
@@ -256,8 +256,8 @@ export const Dashboard = () => {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F7FFF4]">
+        <Target className="h-8 w-8 text-[#58CC02] animate-spin" />
       </div>
     );
   }
@@ -447,20 +447,20 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   const overdueGoals = goals.filter(g => getGoalStatus(g) === 'overdue').length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 lg:pb-8">
+    <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] pb-24 lg:pb-8">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
+      <header className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0] sticky top-0 z-10">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0">
-              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-indigo-600 mr-2 sm:mr-3 flex-shrink-0" />
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent truncate">
+              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-[#58CC02] mr-2 sm:mr-3 flex-shrink-0" />
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent truncate">
                 Dashboard
               </h1>
             </div>
             <button
               onClick={() => setShowAddGoal(true)}
-              className="inline-flex items-center px-3 py-2 sm:px-4 text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 transition-all active:scale-95"
+              className="inline-flex items-center px-3 py-2 sm:px-4 text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-[#58CC02] to-[#2E8B00] hover:from-[#4CAD02] hover:to-[#267300] transition-all active:scale-95"
             >
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">New Goal</span>
@@ -472,50 +472,50 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
       {/* Stats Cards */}
       <div className="px-4 py-4 sm:px-6 sm:py-6">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
-              <div className="p-2 sm:p-3 bg-indigo-100 rounded-lg mb-2 sm:mb-0 w-fit">
-                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-indigo-600" />
+              <div className="p-2 sm:p-3 bg-[#D7FFB8] rounded-lg mb-2 sm:mb-0 w-fit">
+                <Target className="h-4 w-4 sm:h-5 sm:w-5 text-[#58CC02]" />
               </div>
               <div className="min-w-0">
-                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Total Goals</dt>
-                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{goals.length}</dd>
+                <dt className="text-xs sm:text-sm font-medium text-[#4a4a4a] truncate">Total Goals</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-[#1a1a1a]">{goals.length}</dd>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
-              <div className="p-2 sm:p-3 bg-blue-100 rounded-lg mb-2 sm:mb-0 w-fit">
-                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" />
+              <div className="p-2 sm:p-3 bg-[#DBEAFE] rounded-lg mb-2 sm:mb-0 w-fit">
+                <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
               </div>
               <div className="min-w-0">
-                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Active</dt>
-                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{activeGoals}</dd>
+                <dt className="text-xs sm:text-sm font-medium text-[#4a4a4a] truncate">Active</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-[#1a1a1a]">{activeGoals}</dd>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
-              <div className="p-2 sm:p-3 bg-green-100 rounded-lg mb-2 sm:mb-0 w-fit">
-                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+              <div className="p-2 sm:p-3 bg-[#CCFFDD] rounded-lg mb-2 sm:mb-0 w-fit">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#00CD4B]" />
               </div>
               <div className="min-w-0">
-                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Done</dt>
-                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{completedGoals}</dd>
+                <dt className="text-xs sm:text-sm font-medium text-[#4a4a4a] truncate">Done</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-[#1a1a1a]">{completedGoals}</dd>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
-              <div className="p-2 sm:p-3 bg-red-100 rounded-lg mb-2 sm:mb-0 w-fit">
-                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
+              <div className="p-2 sm:p-3 bg-[#FECACA] rounded-lg mb-2 sm:mb-0 w-fit">
+                <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-[#FF4B4B]" />
               </div>
               <div className="min-w-0">
-                <dt className="text-xs sm:text-sm font-medium text-gray-500 truncate">Overdue</dt>
-                <dd className="text-xl sm:text-2xl font-bold text-gray-900">{overdueGoals}</dd>
+                <dt className="text-xs sm:text-sm font-medium text-[#4a4a4a] truncate">Overdue</dt>
+                <dd className="text-xl sm:text-2xl font-bold text-[#1a1a1a]">{overdueGoals}</dd>
               </div>
             </div>
           </div>
@@ -526,13 +526,13 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
       <div className="px-4 pb-8 sm:px-6 mb-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {goals.length === 0 ? (
-            <div className="col-span-full bg-white rounded-xl shadow-lg p-8 sm:p-12 text-center">
-              <Target className="h-12 w-12 sm:h-16 sm:w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2">No goals yet</h3>
-              <p className="text-sm text-gray-500 mb-4">Create your first goal to start tracking!</p>
+            <div className="col-span-full bg-[#FEFFFE] rounded-xl shadow-lg p-8 sm:p-12 text-center">
+              <Target className="h-12 w-12 sm:h-16 sm:w-16 text-[#D7FFB8] mx-auto mb-4" />
+              <h3 className="text-base sm:text-lg font-medium text-[#1a1a1a] mb-2">No goals yet</h3>
+              <p className="text-sm text-[#4a4a4a] mb-4">Create your first goal to start tracking!</p>
               <button
                 onClick={() => setShowAddGoal(true)}
-                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+                className="inline-flex items-center px-4 py-2 bg-[#58CC02] text-white rounded-lg hover:bg-[#4CAD02] text-sm font-medium"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Goal
@@ -550,7 +550,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                 <div
                   key={goal.id}
                   onClick={() => handleGoalClick(goal)}
-                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
+                  className="bg-[#FEFFFE] rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <div className={`h-2 ${categoryStyle.bg} rounded-t-xl`}></div>
                   <div className="p-4 sm:p-5">
@@ -606,13 +606,13 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                       )}
 
                       {status === 'completed' && (
-                        <div className="flex items-center text-xs text-green-600 font-medium">
+                        <div className="flex items-center text-xs text-[#00CD4B] font-medium">
                           <CheckCircle className="h-3 w-3 mr-1 flex-shrink-0" />
                           Goal Completed!
                         </div>
                       )}
                       {status === 'overdue' && (
-                        <div className="flex items-center text-xs text-red-600 font-medium">
+                        <div className="flex items-center text-xs text-[#FF4B4B] font-medium">
                           <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
                           Overdue
                         </div>
@@ -702,8 +702,8 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                       </div>
                       
                       {newGoal.category && (
-                        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <p className="text-xs text-blue-800">
+                        <div className="mt-3 p-3 bg-[#F7FFF4] border border-[#C5F39E] rounded-lg">
+                          <p className="text-xs text-[#2E8B00]">
                             💡 {categoryTemplates[newGoal.category].tips}
                           </p>
                         </div>
@@ -724,12 +724,12 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                               onClick={() => fillFromExample(example, newGoal.category)}
                               className={`p-3 rounded-lg border text-left transition-all text-sm ${
                                 selectedExample === example
-                                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-medium'
-                                  : 'border-gray-300 hover:border-indigo-300 hover:bg-gray-50 text-gray-700'
+                                  ? 'border-[#58CC02] bg-[#D7FFB8] text-[#2E8B00] font-medium'
+                                  : 'border-gray-300 hover:border-[#C5F39E] hover:bg-gray-50 text-gray-700'
                               }`}
                             >
                               <div className="flex items-center">
-                                <Sparkles className="h-4 w-4 mr-2 flex-shrink-0 text-indigo-500" />
+                                <Sparkles className="h-4 w-4 mr-2 flex-shrink-0 text-[#58CC02]" />
                                 <span className="truncate">{example}</span>
                               </div>
                             </button>
@@ -753,7 +753,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                         type="text"
                         value={newGoal.title}
                         onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
-                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                         placeholder={categoryTemplates[newGoal.category]?.placeholders.title || "What do you want to achieve?"}
                         required
                       />
@@ -770,7 +770,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                           step="0.01"
                           value={newGoal.targetValue}
                           onChange={(e) => setNewGoal({ ...newGoal, targetValue: e.target.value })}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                           placeholder={categoryTemplates[newGoal.category]?.placeholders.target || "100"}
                           required
                         />
@@ -802,7 +802,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                               setNewGoal({ ...newGoal, unit: e.target.value });
                             }
                           }}
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                         >
                           <option value="">Select unit</option>
                           {newGoal.category && categoryTemplates[newGoal.category].units.map((unit, idx) => (
@@ -815,7 +815,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                             type="text"
                             value={categoryTemplates[newGoal.category]?.units.includes(newGoal.unit) ? '' : newGoal.unit}
                             onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm mt-2"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm mt-2"
                             placeholder="Enter custom unit (e.g., pages, workouts, steps)"
                             required
                           />
@@ -845,7 +845,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                           <textarea
                             value={newGoal.description}
                             onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                             rows="3"
                             placeholder={categoryTemplates[newGoal.category]?.placeholders.description || "Why is this goal important to you?"}
                           />
@@ -860,7 +860,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                               type="date"
                               value={newGoal.startDate}
                               onChange={(e) => setNewGoal({ ...newGoal, startDate: e.target.value })}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                             />
                           </div>
                           <div>
@@ -871,7 +871,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                               type="date"
                               value={newGoal.endDate}
                               onChange={(e) => setNewGoal({ ...newGoal, endDate: e.target.value })}
-                              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                               min={newGoal.startDate || new Date().toISOString().split('T')[0]}
                             />
                           </div>
@@ -886,7 +886,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                             step="0.01"
                             value={newGoal.currentValue}
                             onChange={(e) => setNewGoal({ ...newGoal, currentValue: e.target.value })}
-                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
+                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                             placeholder="0"
                           />
                           <p className="text-xs text-gray-500 mt-1">
@@ -899,16 +899,16 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                     {/* AI Sub-tasks Section - More Prominent */}
                     {newGoal.title && newGoal.targetValue && (
                       <div className="border-t pt-4">
-                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 mb-3">
+                        <div className="bg-gradient-to-r from-[#F7FFF4] to-[#E8F5E9] border-2 border-[#58CC02] rounded-xl p-4 mb-3">
                           <div className="flex items-start justify-between mb-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <Sparkles className="h-5 w-5 text-purple-600" />
-                                <label className="block text-base font-semibold text-gray-900">
+                                <Sparkles className="h-5 w-5 text-[#58CC02]" />
+                                <label className="block text-base font-semibold text-[#1a1a1a]">
                                   AI-Powered Sub-tasks
                                 </label>
                               </div>
-                              <p className="text-sm text-gray-600">
+                              <p className="text-sm text-[#4a4a4a]">
                                 ✨ Let AI automatically break down your goal into actionable steps
                               </p>
                             </div>
@@ -917,7 +917,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                             type="button"
                             onClick={generateSubtasksWithAI}
                             disabled={isGeneratingSubtasks}
-                            className="w-full mt-3 inline-flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
+                            className="w-full mt-3 inline-flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white hover:from-[#4CAD02] hover:to-[#267300] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
                           >
                             <Sparkles className="h-5 w-5 mr-2" />
                             {isGeneratingSubtasks ? 'Generating AI Sub-tasks...' : 'Generate AI Sub-tasks'}
@@ -939,13 +939,13 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                         )}
 
                         {isGeneratingSubtasks && (
-                          <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-4 text-center">
+                          <div className="bg-gradient-to-r from-[#F7FFF4] to-[#E8F5E9] border border-[#C5F39E] rounded-lg p-4 text-center">
                             <div className="flex items-center justify-center space-x-2 mb-2">
-                              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce"></div>
-                              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                              <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                              <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                              <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                             </div>
-                            <p className="text-sm text-purple-700 font-medium">AI is creating your sub-tasks...</p>
+                            <p className="text-sm text-[#2E8B00] font-medium">AI is creating your sub-tasks...</p>
                           </div>
                         )}
 
@@ -967,19 +967,19 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                               </button>
                             </div>
                             {generatedSubtasks.map((subtask, index) => (
-                              <div key={index} className="bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+                              <div key={index} className="bg-gradient-to-r from-[#F7FFF4] to-[#E8F5E9] border border-[#C5F39E] rounded-lg p-3 hover:shadow-md transition-shadow">
                                 <div className="flex items-start">
                                   <div className="flex-shrink-0 mt-0.5">
-                                    <div className="w-6 h-6 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs font-bold">
+                                    <div className="w-6 h-6 rounded-full bg-[#58CC02] text-white flex items-center justify-center text-xs font-bold">
                                       {index + 1}
                                     </div>
                                   </div>
                                   <div className="flex-1 min-w-0 ml-3">
-                                    <h4 className="text-sm font-medium text-gray-900">{subtask.title}</h4>
-                                    <p className="text-xs text-gray-600 mt-1">{subtask.description}</p>
+                                    <h4 className="text-sm font-medium text-[#1a1a1a]">{subtask.title}</h4>
+                                    <p className="text-xs text-[#4a4a4a] mt-1">{subtask.description}</p>
                                     <div className="flex items-center mt-2">
-                                      <Calendar className="h-3 w-3 text-purple-600 mr-1" />
-                                      <span className="text-xs text-purple-700 font-medium">
+                                      <Calendar className="h-3 w-3 text-[#58CC02] mr-1" />
+                                      <span className="text-xs text-[#2E8B00] font-medium">
                                         Day {subtask.daysFromStart}
                                       </span>
                                     </div>
@@ -1020,7 +1020,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                       <button
                         type="submit"
                         disabled={!newGoal.title || !newGoal.targetValue || !newGoal.unit}
-                        className="w-full sm:flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                        className="w-full sm:flex-1 px-4 py-2.5 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-[#58CC02] to-[#2E8B00] hover:from-[#4CAD02] hover:to-[#267300] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
                       >
                         Create Goal
                       </button>
@@ -1076,7 +1076,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                         step="0.01"
                         value={editingGoal?.id === selectedGoal.id ? editingGoal.currentValue : selectedGoal.currentValue}
                         onChange={(e) => setEditingGoal({ id: selectedGoal.id, currentValue: e.target.value })}
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#58CC02]"
                       />
                       <span className="text-gray-500">/ {selectedGoal.targetValue} {selectedGoal.unit}</span>
                       <button
@@ -1086,7 +1086,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                             setEditingGoal(null);
                           }
                         }}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium"
+                        className="px-4 py-2 bg-[#58CC02] text-white rounded-lg hover:bg-[#4CAD02] text-sm font-medium"
                       >
                         <Save className="h-4 w-4" />
                       </button>
@@ -1110,8 +1110,8 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                   {/* Sub-tasks */}
                   {selectedGoal.subtasks && selectedGoal.subtasks.length > 0 && (
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center">
-                        <CheckCircle className="h-5 w-5 mr-2 text-indigo-600" />
+                      <h3 className="text-lg font-semibold text-[#1a1a1a] mb-3 flex items-center">
+                        <CheckCircle className="h-5 w-5 mr-2 text-[#58CC02]" />
                         Sub-tasks
                       </h3>
                       <div className="space-y-2">
@@ -1125,8 +1125,8 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                               onClick={() => toggleSubtask(selectedGoal.id, index)}
                               className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                                 subtask.completed
-                                  ? 'bg-green-50 border-green-200'
-                                  : 'bg-white border-gray-200 hover:border-indigo-300'
+                                  ? 'bg-[#CCFFDD] border-[#00CD4B]'
+                                  : 'bg-[#FEFFFE] border-gray-200 hover:border-[#C5F39E]'
                               }`}
                             >
                               <div className="flex items-start">
@@ -1189,7 +1189,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                     </button>
                     <button
                       onClick={() => setShowGoalDetails(false)}
-                      className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700"
+                      className="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white bg-[#58CC02] hover:bg-[#4CAD02]"
                     >
                       Close
                     </button>

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/clerk-react';
-import { 
+import {
   Send,
   Target,
   Bot,
@@ -10,7 +10,8 @@ import {
   Lightbulb,
   Award,
   Settings,
-  Key
+  Key,
+  RotateCcw
 } from 'lucide-react';
 import SetupGuide from './SetupGuide';
 
@@ -103,11 +104,29 @@ const AIChatPage = () => {
           }).join('\n')}`
         : '\n\nUser has no goals set yet.';
 
-      const systemPrompt = `You are a helpful AI assistant for goal tracking. Be encouraging and provide actionable advice. Keep responses concise (2-3 paragraphs max).
+      const systemPrompt = `You are a SMART Goal Creation AI Assistant. Your primary role is to help users create Specific, Measurable, Achievable, Relevant, and Time-bound goals.
+
+IMPORTANT: When a user wants to create a goal, respond ONLY with a structured goal using this EXACT format:
+
+**Goal Title:** [concise, action-oriented title]
+**Category:** [personal/health/career/finance/education/fitness]
+**Target:** [number] [unit]
+**Deadline:** [YYYY-MM-DD]
+**Why:** [1-2 sentence motivation]
+**Sub-tasks:**
+1. [First actionable step]
+2. [Second actionable step]
+3. [Third actionable step]
+4. [Fourth actionable step - if needed]
+5. [Fifth actionable step - if needed]
+
+For other questions (motivation, progress review, achievements), provide brief, encouraging responses (2-3 sentences max).
 
 User context:
 - User name: ${user?.firstName || 'User'}
-- Goals data: ${goalsContext}`;
+- Current goals: ${goalsContext}
+
+Always focus on goal creation and tracking. Keep users accountable and motivated.`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -163,33 +182,48 @@ User context:
     sendMessage(action);
   };
 
+  const startNewChat = () => {
+    if (window.confirm('Start a new chat? This will clear your current conversation.')) {
+      setMessages([]);
+      setInputMessage('');
+    }
+  };
+
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F7FFF4]">
+        <Target className="h-8 w-8 text-[#58CC02] animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex flex-col pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] via-[#FEFFFE] to-[#E8F5E9] flex flex-col pb-20">
       {/* Mobile-First Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0]">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0 flex-1">
               <div className="relative flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center shadow-lg">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center shadow-lg">
                   <Bot className="h-6 w-6 text-white" />
                 </div>
-                <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-green-400 rounded-full border-2 border-white animate-pulse"></div>
+                <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-[#00CD4B] rounded-full border-2 border-white animate-pulse"></div>
               </div>
               <div className="ml-3 min-w-0">
-                <h1 className="text-lg sm:text-xl font-bold text-gray-900 truncate">Goal AI</h1>
-                <p className="text-xs sm:text-sm text-gray-500 truncate">Your assistant</p>
+                <h1 className="text-lg sm:text-xl font-bold text-[#1a1a1a] truncate">Goal AI</h1>
+                <p className="text-xs sm:text-sm text-[#4a4a4a] truncate">Your assistant</p>
               </div>
             </div>
-            <Sparkles className="h-5 w-5 text-yellow-500 flex-shrink-0" />
+            {messages.length > 1 && (
+              <button
+                onClick={startNewChat}
+                className="flex-shrink-0 p-2 rounded-lg hover:bg-gray-100 transition-colors ml-2"
+                title="Start New Chat"
+              >
+                <RotateCcw className="h-5 w-5 text-[#58CC02]" />
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -207,14 +241,14 @@ User context:
               >
                 <div className="flex-shrink-0">
                   {message.type === 'user' ? (
-                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                    <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-[#58CC02] flex items-center justify-center">
                       <User className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                     </div>
                   ) : (
                     <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center ${
-                      message.isError 
-                        ? 'bg-red-100' 
-                        : 'bg-gradient-to-r from-green-400 to-blue-500'
+                      message.isError
+                        ? 'bg-red-100'
+                        : 'bg-gradient-to-r from-[#58CC02] to-[#00CD4B]'
                     }`}>
                       <Bot className={`h-4 w-4 sm:h-5 sm:w-5 ${message.isError ? 'text-red-600' : 'text-white'}`} />
                     </div>
@@ -226,10 +260,10 @@ User context:
                 }`}>
                   <div className={`p-3 rounded-2xl shadow-sm break-words ${
                     message.type === 'user'
-                      ? 'bg-indigo-600 text-white ml-auto'
+                      ? 'bg-[#58CC02] text-white ml-auto'
                       : message.isError
                       ? 'bg-red-50 text-red-800 border border-red-200'
-                      : 'bg-white text-gray-800 border border-gray-200'
+                      : 'bg-[#FEFFFE] text-[#1a1a1a] border border-gray-200'
                   }`}>
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
@@ -247,17 +281,17 @@ User context:
 
             {isLoading && (
               <div className="flex items-start gap-2 sm:gap-3">
-                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center">
                   <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="bg-white border border-gray-200 rounded-2xl p-3 shadow-sm">
+                <div className="bg-[#FEFFFE] border border-gray-200 rounded-2xl p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
-                    <span className="text-sm text-gray-500">Thinking...</span>
+                    <span className="text-sm text-[#4a4a4a]">Thinking...</span>
                   </div>
                 </div>
               </div>
@@ -267,9 +301,9 @@ User context:
           </div>
 
           {messages.length <= 1 && hasApiKey && (
-            <div className="p-3 sm:p-4 border-t bg-white">
-              <h3 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
-                <span className="h-4 w-4 text-yellow-500">⚡</span>
+            <div className="p-3 sm:p-4 border-t bg-[#FEFFFE]">
+              <h3 className="text-sm font-medium text-[#1a1a1a] mb-2 flex items-center gap-2">
+                <span className="h-4 w-4 text-[#FBBF24]">⚡</span>
                 Quick Actions
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -277,10 +311,10 @@ User context:
                   <button
                     key={index}
                     onClick={() => handleQuickAction(action.action)}
-                    className="flex items-center gap-2 p-2.5 sm:p-3 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-sm active:bg-gray-200"
+                    className="flex items-center gap-2 p-2.5 sm:p-3 text-left bg-gray-50 hover:bg-[#F7FFF4] rounded-lg transition-colors text-sm active:bg-[#E8F5E9]"
                   >
-                    <action.icon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
-                    <span className="text-gray-700 text-xs sm:text-sm">{action.label}</span>
+                    <action.icon className="h-4 w-4 text-[#58CC02] flex-shrink-0" />
+                    <span className="text-[#1a1a1a] text-xs sm:text-sm">{action.label}</span>
                   </button>
                 ))}
               </div>
@@ -288,18 +322,18 @@ User context:
           )}
 
           {!hasApiKey && (
-            <div className="p-3 sm:p-4 border-t bg-gradient-to-r from-indigo-50 to-purple-50">
+            <div className="p-3 sm:p-4 border-t bg-gradient-to-r from-[#F7FFF4] to-[#E8F5E9]">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mb-3">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] rounded-full mb-3">
                   <Key className="h-6 w-6 text-white" />
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Setup Required</h3>
-                <p className="text-sm text-gray-600 mb-4 px-4">
+                <h3 className="font-semibold text-[#1a1a1a] mb-2">Setup Required</h3>
+                <p className="text-sm text-[#4a4a4a] mb-4 px-4">
                   Configure your OpenAI API key to start chatting.
                 </p>
                 <button
                   onClick={() => setShowSetupGuide(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-colors active:scale-95"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white rounded-lg hover:from-[#4CAD02] hover:to-[#267300] transition-colors active:scale-95"
                 >
                   <Settings className="h-4 w-4" />
                   Setup AI Chat
@@ -308,14 +342,14 @@ User context:
             </div>
           )}
 
-          <div className="p-3 sm:p-4 bg-white border-t pb-24">
+          <div className="p-3 sm:p-4 bg-[#FEFFFE] border-t pb-24">
             <form onSubmit={handleSubmit} className="flex items-end gap-2 sm:gap-3">
               <div className="flex-1">
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder={hasApiKey ? "Ask about your goals..." : "Setup required..."}
-                  className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                  className="w-full px-3 py-2.5 sm:px-4 sm:py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] resize-none text-sm disabled:bg-gray-100 disabled:text-gray-500"
                   rows="1"
                   style={{ minHeight: '44px', maxHeight: '120px' }}
                   onKeyDown={(e) => {
@@ -330,23 +364,23 @@ User context:
               <button
                 type="submit"
                 disabled={!inputMessage.trim() || isLoading || !hasApiKey}
-                className="flex-shrink-0 h-11 w-11 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95"
+                className="flex-shrink-0 h-11 w-11 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors active:scale-95"
               >
                 <Send className="h-5 w-5" />
               </button>
             </form>
             
             {!hasApiKey && (
-              <div className="mt-3 p-2.5 sm:p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mt-3 p-2.5 sm:p-3 bg-[#F7FFF4] border border-[#C5F39E] rounded-lg">
                 <div className="flex items-start gap-2 sm:gap-3">
-                  <Key className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <Key className="h-4 w-4 sm:h-5 sm:w-5 text-[#58CC02] flex-shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs sm:text-sm text-blue-800">
+                    <p className="text-xs sm:text-sm text-[#2E8B00]">
                       <strong>Setup required:</strong> Configure OpenAI API key
                     </p>
                     <button
                       onClick={() => setShowSetupGuide(true)}
-                      className="text-xs sm:text-sm text-blue-600 hover:text-blue-700 font-medium mt-1 underline"
+                      className="text-xs sm:text-sm text-[#58CC02] hover:text-[#4CAD02] font-medium mt-1 underline"
                     >
                       View instructions →
                     </button>
