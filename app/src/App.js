@@ -1,30 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { 
-  SignedIn, 
+import {
   SignedOut,
-  UserButton,
-  useUser,
-  useClerk
+  useUser
 } from '@clerk/clerk-react';
-import { 
-  Target, 
+import {
+  Target,
   Plus,
   X,
   Calendar,
   TrendingUp,
-  Award,
   Clock,
   ChevronRight,
   Trash2,
   CheckCircle,
-  LogIn,
-  UserPlus,
   Shield,
   Sparkles,
-  Check,
   Circle,
-  Edit3,
   Save
 } from 'lucide-react';
 
@@ -455,7 +447,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   const overdueGoals = goals.filter(g => getGoalStatus(g) === 'overdue').length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 lg:pb-8">
       {/* Header */}
       <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-10">
         <div className="px-4 py-3 sm:px-6">
@@ -802,22 +794,30 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                           Unit *
                         </label>
                         <select
-                          value={newGoal.unit}
-                          onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
+                          value={newGoal.unit === '' || categoryTemplates[newGoal.category]?.units.includes(newGoal.unit) ? newGoal.unit : 'custom'}
+                          onChange={(e) => {
+                            if (e.target.value === 'custom') {
+                              setNewGoal({ ...newGoal, unit: '' });
+                            } else {
+                              setNewGoal({ ...newGoal, unit: e.target.value });
+                            }
+                          }}
                           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm"
                         >
                           <option value="">Select unit</option>
                           {newGoal.category && categoryTemplates[newGoal.category].units.map((unit, idx) => (
                             <option key={idx} value={unit}>{unit}</option>
                           ))}
-                          <option value="custom">Custom...</option>
+                          <option value="custom">✨ Custom unit...</option>
                         </select>
-                        {newGoal.unit === 'custom' && (
+                        {(newGoal.unit === '' || (newGoal.unit && !categoryTemplates[newGoal.category]?.units.includes(newGoal.unit))) && newGoal.category && (
                           <input
                             type="text"
+                            value={categoryTemplates[newGoal.category]?.units.includes(newGoal.unit) ? '' : newGoal.unit}
                             onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm mt-2"
-                            placeholder="Enter custom unit"
+                            placeholder="Enter custom unit (e.g., pages, workouts, steps)"
+                            required
                           />
                         )}
                       </div>
@@ -879,7 +879,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
 
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Starting Progress
+                            Current Progress (optional)
                           </label>
                           <input
                             type="number"
@@ -890,32 +890,37 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                             placeholder="0"
                           />
                           <p className="text-xs text-gray-500 mt-1">
-                            If you've already made progress, enter it here
+                            💡 Already started? Enter your current progress here (defaults to 0)
                           </p>
                         </div>
                       </div>
                     )}
 
-                    {/* AI Sub-tasks Section */}
+                    {/* AI Sub-tasks Section - More Prominent */}
                     {newGoal.title && newGoal.targetValue && (
                       <div className="border-t pt-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700">
-                              AI-Powered Sub-tasks
-                            </label>
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              Let AI break down your goal into actionable steps
-                            </p>
+                        <div className="bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-xl p-4 mb-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Sparkles className="h-5 w-5 text-purple-600" />
+                                <label className="block text-base font-semibold text-gray-900">
+                                  AI-Powered Sub-tasks
+                                </label>
+                              </div>
+                              <p className="text-sm text-gray-600">
+                                ✨ Let AI automatically break down your goal into actionable steps
+                              </p>
+                            </div>
                           </div>
                           <button
                             type="button"
                             onClick={generateSubtasksWithAI}
                             disabled={isGeneratingSubtasks}
-                            className="inline-flex items-center px-4 py-2 text-sm font-medium rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg"
+                            className="w-full mt-3 inline-flex items-center justify-center px-4 py-3 text-sm font-semibold rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white hover:from-purple-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md hover:shadow-lg active:scale-95"
                           >
-                            <Sparkles className="h-4 w-4 mr-2" />
-                            {isGeneratingSubtasks ? 'Generating...' : 'Generate'}
+                            <Sparkles className="h-5 w-5 mr-2" />
+                            {isGeneratingSubtasks ? 'Generating AI Sub-tasks...' : 'Generate AI Sub-tasks'}
                           </button>
                         </div>
 

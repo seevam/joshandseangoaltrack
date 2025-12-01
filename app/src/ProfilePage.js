@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser, useClerk } from '@clerk/clerk-react';
-import { 
+import {
   User,
   Settings,
   Target,
   TrendingUp,
-  Award,
   Calendar,
   Bell,
   Lock,
   HelpCircle,
   LogOut,
   ChevronRight,
-  CheckCircle,
   Edit3,
   Mail,
   Phone
@@ -23,7 +21,6 @@ const ProfilePage = () => {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const navigate = useNavigate();
-  const [goals, setGoals] = useState([]);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [userStats, setUserStats] = useState({
     totalGoals: 0,
@@ -39,7 +36,6 @@ const ProfilePage = () => {
       const savedGoals = localStorage.getItem(userGoalsKey);
       if (savedGoals) {
         const parsedGoals = JSON.parse(savedGoals);
-        setGoals(parsedGoals);
         
         // Calculate stats
         const completed = parsedGoals.filter(goal => {
@@ -102,7 +98,7 @@ const ProfilePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
+    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-8">
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 pt-12 pb-8">
         <div className="max-w-md mx-auto text-center">
@@ -178,17 +174,17 @@ const ProfilePage = () => {
       <div className="max-w-md mx-auto px-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
           <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow flex items-center justify-center"
+            onClick={() => navigate('/home')}
+            className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
           >
-            <Target className="h-6 w-6 text-indigo-600 mr-2" />
+            <Target className="h-6 w-6 text-indigo-600 mr-2 group-hover:scale-110 transition-transform" />
             <span className="font-medium text-gray-900">My Goals</span>
           </button>
           <button
-            onClick={() => navigate('/dashboard')}
-            className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg transition-shadow flex items-center justify-center"
+            onClick={() => navigate('/home')}
+            className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
           >
-            <TrendingUp className="h-6 w-6 text-green-600 mr-2" />
+            <TrendingUp className="h-6 w-6 text-green-600 mr-2 group-hover:scale-110 transition-transform" />
             <span className="font-medium text-gray-900">Analytics</span>
           </button>
         </div>
@@ -201,16 +197,16 @@ const ProfilePage = () => {
             <button
               key={index}
               onClick={item.action}
-              className="w-full flex items-center p-4 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+              className="w-full flex items-center p-4 hover:bg-indigo-50 active:bg-indigo-100 transition-all border-b border-gray-100 last:border-b-0 group"
             >
-              <div className="flex-shrink-0 w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center mr-4">
-                <item.icon className="h-5 w-5 text-gray-600" />
+              <div className="flex-shrink-0 w-10 h-10 bg-gray-100 group-hover:bg-indigo-100 rounded-lg flex items-center justify-center mr-4 transition-colors">
+                <item.icon className="h-5 w-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
               </div>
               <div className="flex-1 text-left">
-                <h3 className="font-medium text-gray-900">{item.title}</h3>
+                <h3 className="font-medium text-gray-900 group-hover:text-indigo-900">{item.title}</h3>
                 <p className="text-sm text-gray-500">{item.description}</p>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-400" />
+              <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
             </button>
           ))}
         </div>

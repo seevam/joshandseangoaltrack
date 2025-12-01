@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { 
+import {
   Target,
   Sparkles,
   TrendingUp,
@@ -11,25 +11,8 @@ import {
   CheckCircle
 } from 'lucide-react';
 
-const OnboardingPage = () => {
-  const { user } = useUser();
-  const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState(1);
-  const [quote, setQuote] = useState(null);
-  const [newGoal, setNewGoal] = useState({
-    title: '',
-    description: '',
-    category: 'personal',
-    targetValue: '',
-    currentValue: 0,
-    unit: '',
-    startDate: new Date().toISOString().split('T')[0],
-    endDate: '',
-    color: '#3B82F6'
-  });
-
-  // Motivational quotes from famous personalities
-  const motivationalQuotes = [
+// Motivational quotes from famous personalities
+const motivationalQuotes = [
     {
       quote: "The only way to do great work is to love what you do.",
       author: "Steve Jobs"
@@ -80,14 +63,31 @@ const OnboardingPage = () => {
     }
   ];
 
-  const categoryColors = {
-    personal: { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-700', hex: '#3B82F6' },
-    health: { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-700', hex: '#10B981' },
-    career: { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-700', hex: '#8B5CF6' },
-    finance: { bg: 'bg-yellow-500', light: 'bg-yellow-100', text: 'text-yellow-700', hex: '#F59E0B' },
-    education: { bg: 'bg-indigo-500', light: 'bg-indigo-100', text: 'text-indigo-700', hex: '#6366F1' },
-    fitness: { bg: 'bg-red-500', light: 'bg-red-100', text: 'text-red-700', hex: '#EF4444' }
-  };
+const categoryColors = {
+  personal: { bg: 'bg-blue-500', light: 'bg-blue-100', text: 'text-blue-700', hex: '#3B82F6' },
+  health: { bg: 'bg-green-500', light: 'bg-green-100', text: 'text-green-700', hex: '#10B981' },
+  career: { bg: 'bg-purple-500', light: 'bg-purple-100', text: 'text-purple-700', hex: '#8B5CF6' },
+  finance: { bg: 'bg-yellow-500', light: 'bg-yellow-100', text: 'text-yellow-700', hex: '#F59E0B' },
+  education: { bg: 'bg-indigo-500', light: 'bg-indigo-100', text: 'text-indigo-700', hex: '#6366F1' },
+  fitness: { bg: 'bg-red-500', light: 'bg-red-100', text: 'text-red-700', hex: '#EF4444' }
+};
+
+const OnboardingPage = () => {
+  const { user } = useUser();
+  const navigate = useNavigate();
+  const [currentStep, setCurrentStep] = useState(1);
+  const [quote, setQuote] = useState(null);
+  const [newGoal, setNewGoal] = useState({
+    title: '',
+    description: '',
+    category: 'personal',
+    targetValue: '',
+    currentValue: 0,
+    unit: '',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+    color: '#3B82F6'
+  });
 
   // Set random quote on mount
   useEffect(() => {
