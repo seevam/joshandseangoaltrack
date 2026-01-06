@@ -64,8 +64,8 @@ const ProfilePage = () => {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-[#F7FFF4]">
+        <Target className="h-8 w-8 text-[#58CC02] animate-spin" />
       </div>
     );
   }
@@ -98,9 +98,9 @@ const ProfilePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-24 lg:pb-8">
+    <div className="min-h-screen bg-[#F7FFF4] pb-24 lg:pb-8">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-4 pt-12 pb-8">
+      <div className="bg-gradient-to-r from-[#58CC02] to-[#2E8B00] px-4 pt-12 pb-8">
         <div className="max-w-md mx-auto text-center">
           {/* Profile Picture */}
           <div className="relative inline-block mb-4">
@@ -132,17 +132,17 @@ const ProfilePage = () => {
               : user?.username || 'User'
             }
           </h1>
-          <p className="text-indigo-100 mb-4">
+          <p className="text-[#D7FFB8] mb-4">
             {user?.primaryEmailAddress?.emailAddress}
           </p>
 
           {/* Join Date */}
           <div className="inline-flex items-center bg-white/20 rounded-full px-3 py-1">
-            <Calendar className="h-4 w-4 text-indigo-200 mr-2" />
-            <span className="text-indigo-100 text-sm">
-              Member since {userStats.joinDate ? new Date(userStats.joinDate).toLocaleDateString('en-US', { 
-                month: 'long', 
-                year: 'numeric' 
+            <Calendar className="h-4 w-4 text-[#D7FFB8] mr-2" />
+            <span className="text-[#D7FFB8] text-sm">
+              Member since {userStats.joinDate ? new Date(userStats.joinDate).toLocaleDateString('en-US', {
+                month: 'long',
+                year: 'numeric'
               }) : 'Recently'}
             </span>
           </div>
@@ -151,20 +151,20 @@ const ProfilePage = () => {
 
       {/* Stats Section */}
       <div className="max-w-md mx-auto px-4 -mt-6 mb-6">
-        <div className="bg-white rounded-xl shadow-lg p-4">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 text-center">Your Progress</h2>
+        <div className="bg-[#FEFFFE] rounded-xl shadow-lg p-4">
+          <h2 className="text-lg font-semibold text-[#1a1a1a] mb-4 text-center">Your Progress</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <div className="text-2xl font-bold text-indigo-600">{userStats.totalGoals}</div>
-              <div className="text-sm text-gray-500">Total Goals</div>
+              <div className="text-2xl font-bold text-[#58CC02]">{userStats.totalGoals}</div>
+              <div className="text-sm text-[#4a4a4a]">Total Goals</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{userStats.completedGoals}</div>
-              <div className="text-sm text-gray-500">Completed</div>
+              <div className="text-2xl font-bold text-[#00CD4B]">{userStats.completedGoals}</div>
+              <div className="text-sm text-[#4a4a4a]">Completed</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">{userStats.activeGoals}</div>
-              <div className="text-sm text-gray-500">Active</div>
+              <div className="text-2xl font-bold text-[#3B82F6]">{userStats.activeGoals}</div>
+              <div className="text-sm text-[#4a4a4a]">Active</div>
             </div>
           </div>
         </div>
@@ -175,38 +175,38 @@ const ProfilePage = () => {
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => navigate('/home')}
-            className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
+            className="bg-[#FEFFFE] rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
           >
-            <Target className="h-6 w-6 text-indigo-600 mr-2 group-hover:scale-110 transition-transform" />
-            <span className="font-medium text-gray-900">My Goals</span>
+            <Target className="h-6 w-6 text-[#58CC02] mr-2 group-hover:scale-110 transition-transform" />
+            <span className="font-medium text-[#1a1a1a]">My Goals</span>
           </button>
           <button
             onClick={() => navigate('/home')}
-            className="bg-white rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
+            className="bg-[#FEFFFE] rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
           >
-            <TrendingUp className="h-6 w-6 text-green-600 mr-2 group-hover:scale-110 transition-transform" />
-            <span className="font-medium text-gray-900">Analytics</span>
+            <TrendingUp className="h-6 w-6 text-[#00CD4B] mr-2 group-hover:scale-110 transition-transform" />
+            <span className="font-medium text-[#1a1a1a]">Analytics</span>
           </button>
         </div>
       </div>
 
       {/* Menu Section */}
       <div className="max-w-md mx-auto px-4 mb-6">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-[#FEFFFE] rounded-xl shadow-lg overflow-hidden">
           {menuItems.map((item, index) => (
             <button
               key={index}
               onClick={item.action}
-              className="w-full flex items-center p-4 hover:bg-indigo-50 active:bg-indigo-100 transition-all border-b border-gray-100 last:border-b-0 group"
+              className="w-full flex items-center p-4 hover:bg-[#F7FFF4] active:bg-[#E8F5E9] transition-all border-b border-gray-100 last:border-b-0 group"
             >
-              <div className="flex-shrink-0 w-10 h-10 bg-gray-100 group-hover:bg-indigo-100 rounded-lg flex items-center justify-center mr-4 transition-colors">
-                <item.icon className="h-5 w-5 text-gray-600 group-hover:text-indigo-600 transition-colors" />
+              <div className="flex-shrink-0 w-10 h-10 bg-gray-100 group-hover:bg-[#D7FFB8] rounded-lg flex items-center justify-center mr-4 transition-colors">
+                <item.icon className="h-5 w-5 text-gray-600 group-hover:text-[#58CC02] transition-colors" />
               </div>
               <div className="flex-1 text-left">
-                <h3 className="font-medium text-gray-900 group-hover:text-indigo-900">{item.title}</h3>
-                <p className="text-sm text-gray-500">{item.description}</p>
+                <h3 className="font-medium text-[#1a1a1a] group-hover:text-[#2E8B00]">{item.title}</h3>
+                <p className="text-sm text-[#4a4a4a]">{item.description}</p>
               </div>
-              <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+              <ChevronRight className="h-5 w-5 text-gray-400 group-hover:text-[#58CC02] group-hover:translate-x-1 transition-all" />
             </button>
           ))}
         </div>
