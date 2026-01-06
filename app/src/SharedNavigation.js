@@ -49,21 +49,21 @@ const SharedNavigation = () => {
               key={item.id}
               onClick={() => handleNavigation(item.path, item.id)}
               className={`flex flex-col items-center py-2 px-6 transition-all duration-200 rounded-lg ${
-                item.active 
-                  ? 'text-indigo-600 bg-indigo-50' 
+                item.active
+                  ? 'text-[#58CC02] bg-[#F7FFF4]'
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
               }`}
             >
               {item.special ? (
                 <div className="relative">
-                  <div className="h-7 w-7 mb-1 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center shadow-md">
+                  <div className="h-7 w-7 mb-1 rounded-full bg-gradient-to-r from-[#58CC02] to-[#2E8B00] flex items-center justify-center shadow-md">
                     <item.icon className="h-4 w-4 text-white" />
                   </div>
                 </div>
               ) : (
-                <item.icon className={`h-6 w-6 mb-1 ${item.active ? 'text-indigo-600' : ''}`} />
+                <item.icon className={`h-6 w-6 mb-1 ${item.active ? 'text-[#58CC02]' : ''}`} />
               )}
-              <span className={`text-xs font-medium ${item.active ? 'text-indigo-600' : ''}`}>
+              <span className={`text-xs font-medium ${item.active ? 'text-[#58CC02]' : ''}`}>
                 {item.label}
               </span>
             </button>
