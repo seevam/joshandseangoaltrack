@@ -106,9 +106,27 @@ if (!clerkPubKey) {
           </>
         } />
         
-        {/* Authentication routes */}
-        <Route path="/sign-in/*" element={<SignInPage />} />
-        <Route path="/sign-up/*" element={<SignUpPage />} />
+        {/* Authentication routes - redirect if already signed in */}
+        <Route path="/sign-in/*" element={
+          <>
+            <SignedOut>
+              <SignInPage />
+            </SignedOut>
+            <SignedIn>
+              <RedirectToHome />
+            </SignedIn>
+          </>
+        } />
+        <Route path="/sign-up/*" element={
+          <>
+            <SignedOut>
+              <SignUpPage />
+            </SignedOut>
+            <SignedIn>
+              <RedirectToHome />
+            </SignedIn>
+          </>
+        } />
         
         {/* Onboarding route - MUST come before other protected routes */}
         <Route
