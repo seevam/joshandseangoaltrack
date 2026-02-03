@@ -228,6 +228,54 @@ export const Dashboard = () => {
 
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
 
+  // Smart unit suggestions based on goal title keywords
+  const getSmartUnitSuggestions = (title) => {
+    const lowerTitle = title.toLowerCase();
+
+    // Running/Distance keywords
+    if (lowerTitle.match(/\b(run|jog|walk|marathon|sprint|race|distance)\b/)) {
+      return ['km', 'miles', 'meters', 'steps'];
+    }
+    // Reading keywords
+    if (lowerTitle.match(/\b(read|book|novel|article|page)\b/)) {
+      return ['books', 'pages', 'chapters', 'articles'];
+    }
+    // Money/Finance keywords
+    if (lowerTitle.match(/\b(save|earn|invest|money|dollar|budget)\b/)) {
+      return ['$', '€', '£', 'dollars'];
+    }
+    // Workout/Exercise keywords
+    if (lowerTitle.match(/\b(workout|exercise|train|gym|fitness|lift)\b/)) {
+      return ['workouts', 'sessions', 'days', 'hours'];
+    }
+    // Writing keywords
+    if (lowerTitle.match(/\b(write|blog|post|essay|story)\b/)) {
+      return ['words', 'articles', 'posts', 'pages'];
+    }
+    // Weight/Health keywords
+    if (lowerTitle.match(/\b(lose|gain|weight|kg|lb|pound)\b/)) {
+      return ['kg', 'lbs', 'pounds', 'stone'];
+    }
+    // Water/Hydration keywords
+    if (lowerTitle.match(/\b(drink|water|hydrat|glass)\b/)) {
+      return ['glasses', 'liters', 'bottles', 'oz'];
+    }
+    // Sleep keywords
+    if (lowerTitle.match(/\b(sleep|rest|nap)\b/)) {
+      return ['hours', 'nights', 'days'];
+    }
+    // Learning/Course keywords
+    if (lowerTitle.match(/\b(learn|course|lesson|study|certif)\b/)) {
+      return ['courses', 'hours', 'lessons', 'certifications'];
+    }
+    // Generic time-based
+    if (lowerTitle.match(/\b(meditat|practice|habit|daily)\b/)) {
+      return ['days', 'times', 'hours', 'sessions'];
+    }
+
+    return null; // Return null to use category defaults
+  };
+
   const categoryColors = {
     personal: { bg: 'bg-[#58CC02]', light: 'bg-[#D7FFB8]', text: 'text-[#2E8B00]', hex: '#58CC02' },
     health: { bg: 'bg-[#00CD4B]', light: 'bg-[#CCFFDD]', text: 'text-[#00A03E]', hex: '#00CD4B' },
@@ -781,7 +829,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                                 key={idx}
                                 type="button"
                                 onClick={() => setNewGoal({ ...newGoal, targetValue: val.toString() })}
-                                className="px-2 py-1 text-xs bg-gray-100 hover:bg-indigo-100 text-gray-700 hover:text-indigo-700 rounded transition-colors"
+                                className="px-2 py-1 text-xs bg-gray-100 hover:bg-[#F7FFF4] text-gray-700 hover:text-[#2E8B00] rounded transition-colors"
                               >
                                 {val}
                               </button>
@@ -792,9 +840,14 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
                           Unit *
+                          {newGoal.title && getSmartUnitSuggestions(newGoal.title) && (
+                            <span className="ml-2 text-xs text-[#58CC02] font-normal">
+                              💡 Smart suggestions
+                            </span>
+                          )}
                         </label>
                         <select
-                          value={newGoal.unit === '' || categoryTemplates[newGoal.category]?.units.includes(newGoal.unit) ? newGoal.unit : 'custom'}
+                          value={newGoal.unit === '' || (getSmartUnitSuggestions(newGoal.title) || categoryTemplates[newGoal.category]?.units || []).includes(newGoal.unit) ? newGoal.unit : 'custom'}
                           onChange={(e) => {
                             if (e.target.value === 'custom') {
                               setNewGoal({ ...newGoal, unit: '' });
@@ -805,15 +858,30 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                           className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
                         >
                           <option value="">Select unit</option>
-                          {newGoal.category && categoryTemplates[newGoal.category].units.map((unit, idx) => (
-                            <option key={idx} value={unit}>{unit}</option>
-                          ))}
+                          {/* Smart suggestions based on goal title */}
+                          {newGoal.title && getSmartUnitSuggestions(newGoal.title) && (
+                            <>
+                              <optgroup label="💡 Suggested for your goal">
+                                {getSmartUnitSuggestions(newGoal.title).map((unit, idx) => (
+                                  <option key={`smart-${idx}`} value={unit}>{unit}</option>
+                                ))}
+                              </optgroup>
+                            </>
+                          )}
+                          {/* Category defaults */}
+                          {newGoal.category && (
+                            <optgroup label="Category defaults">
+                              {categoryTemplates[newGoal.category].units.map((unit, idx) => (
+                                <option key={idx} value={unit}>{unit}</option>
+                              ))}
+                            </optgroup>
+                          )}
                           <option value="custom">✨ Custom unit...</option>
                         </select>
-                        {(newGoal.unit === '' || (newGoal.unit && !categoryTemplates[newGoal.category]?.units.includes(newGoal.unit))) && newGoal.category && (
+                        {(newGoal.unit === '' || (newGoal.unit && !(getSmartUnitSuggestions(newGoal.title) || categoryTemplates[newGoal.category]?.units || []).includes(newGoal.unit))) && newGoal.category && (
                           <input
                             type="text"
-                            value={categoryTemplates[newGoal.category]?.units.includes(newGoal.unit) ? '' : newGoal.unit}
+                            value={(getSmartUnitSuggestions(newGoal.title) || categoryTemplates[newGoal.category]?.units || []).includes(newGoal.unit) ? '' : newGoal.unit}
                             onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
                             className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm mt-2"
                             placeholder="Enter custom unit (e.g., pages, workouts, steps)"
