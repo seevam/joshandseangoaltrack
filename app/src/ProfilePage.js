@@ -249,9 +249,9 @@ const ProfilePage = () => {
                   </span>
                 </div>
               </div>
-              
-              <div className="bg-blue-50 p-3 rounded-lg">
-                <p className="text-sm text-blue-700">
+
+              <div className="bg-[#F7FFF4] border border-[#C5F39E] p-3 rounded-lg">
+                <p className="text-sm text-[#2E8B00]">
                   To update your profile information, please use your account settings in the Clerk dashboard.
                 </p>
               </div>
@@ -266,7 +266,7 @@ const ProfilePage = () => {
               </button>
               <button
                 onClick={() => window.open('https://accounts.clerk.com', '_blank')}
-                className="flex-1 py-2 px-4 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                className="flex-1 py-2 px-4 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white rounded-lg hover:from-[#4CAD02] hover:to-[#267300]"
               >
                 Manage Account
               </button>
