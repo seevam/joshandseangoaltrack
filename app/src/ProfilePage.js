@@ -22,6 +22,14 @@ const ProfilePage = () => {
   const { signOut } = useClerk();
   const navigate = useNavigate();
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
+  const [settings, setSettings] = useState({
+    theme: localStorage.getItem('theme') || 'light',
+    notificationsEnabled: localStorage.getItem('notifications') !== 'false',
+    emailNotifications: localStorage.getItem('emailNotifications') !== 'false',
+    notificationFrequency: localStorage.getItem('notificationFrequency') || 'daily'
+  });
   const [userStats, setUserStats] = useState({
     totalGoals: 0,
     completedGoals: 0,
@@ -70,6 +78,17 @@ const ProfilePage = () => {
     );
   }
 
+  const handleSettingChange = (key, value) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    localStorage.setItem(key, value);
+
+    // Apply theme change immediately
+    if (key === 'theme') {
+      document.documentElement.classList.toggle('dark', value === 'dark');
+    }
+  };
+
   const menuItems = [
     {
       icon: Settings,
@@ -79,21 +98,21 @@ const ProfilePage = () => {
     },
     {
       icon: Bell,
-      title: 'Notifications',
-      description: 'Goal reminders and updates',
-      action: () => {}
+      title: 'App Settings',
+      description: 'Notifications, theme, and preferences',
+      action: () => setShowSettings(true)
     },
     {
       icon: Lock,
       title: 'Privacy & Security',
       description: 'Password and privacy settings',
-      action: () => {}
+      action: () => setShowEditProfile(true)
     },
     {
       icon: HelpCircle,
       title: 'Help & Support',
       description: 'Get help and contact support',
-      action: () => {}
+      action: () => setShowHelp(true)
     }
   ];
 
@@ -227,8 +246,8 @@ const ProfilePage = () => {
       {showEditProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-sm">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Profile</h3>
-            
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Settings</h3>
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -239,7 +258,7 @@ const ProfilePage = () => {
                   </span>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                 <div className="flex items-center p-3 bg-gray-50 rounded-lg">
@@ -252,7 +271,7 @@ const ProfilePage = () => {
 
               <div className="bg-[#F7FFF4] border border-[#C5F39E] p-3 rounded-lg">
                 <p className="text-sm text-[#2E8B00]">
-                  To update your profile information, please use your account settings in the Clerk dashboard.
+                  To update your profile information and security settings, please use your Clerk account dashboard.
                 </p>
               </div>
             </div>
@@ -269,6 +288,168 @@ const ProfilePage = () => {
                 className="flex-1 py-2 px-4 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white rounded-lg hover:from-[#4CAD02] hover:to-[#267300]"
               >
                 Manage Account
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* App Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">App Settings</h3>
+
+            <div className="space-y-6">
+              {/* Theme Setting */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Theme</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleSettingChange('theme', 'light')}
+                    className={`flex-1 py-2 px-4 rounded-lg border-2 transition-all ${
+                      settings.theme === 'light'
+                        ? 'border-[#58CC02] bg-[#F7FFF4] text-[#2E8B00]'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    ☀️ Light
+                  </button>
+                  <button
+                    onClick={() => handleSettingChange('theme', 'dark')}
+                    className={`flex-1 py-2 px-4 rounded-lg border-2 transition-all ${
+                      settings.theme === 'dark'
+                        ? 'border-[#58CC02] bg-[#F7FFF4] text-[#2E8B00]'
+                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                    }`}
+                  >
+                    🌙 Dark
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">Dark mode coming soon!</p>
+              </div>
+
+              {/* Notifications */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">In-App Notifications</label>
+                  <button
+                    onClick={() => handleSettingChange('notificationsEnabled', !settings.notificationsEnabled)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      settings.notificationsEnabled ? 'bg-[#58CC02]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        settings.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">Get reminded about your goals</p>
+              </div>
+
+              {/* Email Notifications */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-sm font-medium text-gray-700">Email Notifications</label>
+                  <button
+                    onClick={() => handleSettingChange('emailNotifications', !settings.emailNotifications)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      settings.emailNotifications ? 'bg-[#58CC02]' : 'bg-gray-300'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        settings.emailNotifications ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500">Receive updates via email</p>
+              </div>
+
+              {/* Notification Frequency */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Notification Frequency</label>
+                <select
+                  value={settings.notificationFrequency}
+                  onChange={(e) => handleSettingChange('notificationFrequency', e.target.value)}
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02]"
+                  disabled={!settings.notificationsEnabled}
+                >
+                  <option value="realtime">Real-time</option>
+                  <option value="daily">Daily Summary</option>
+                  <option value="weekly">Weekly Summary</option>
+                  <option value="never">Never</option>
+                </select>
+              </div>
+
+              <div className="bg-[#F7FFF4] border border-[#C5F39E] p-3 rounded-lg">
+                <p className="text-xs text-[#2E8B00]">
+                  💡 Your preferences are saved automatically
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={() => setShowSettings(false)}
+                className="w-full py-2 px-4 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white rounded-lg hover:from-[#4CAD02] hover:to-[#267300]"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Help & Support Modal */}
+      {showHelp && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Help & Support</h3>
+
+            <div className="space-y-4">
+              <div className="bg-[#F7FFF4] border border-[#C5F39E] rounded-lg p-4">
+                <h4 className="font-medium text-[#2E8B00] mb-2">Getting Started</h4>
+                <ul className="space-y-2 text-sm text-gray-700">
+                  <li>• Create goals using the Dashboard</li>
+                  <li>• Track progress by updating values</li>
+                  <li>• Use AI Chat for goal suggestions</li>
+                  <li>• Set deadlines to stay motivated</li>
+                </ul>
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-2">Contact Support</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center text-gray-700">
+                    <Mail className="h-4 w-4 mr-2 text-[#58CC02]" />
+                    <a href="mailto:support@goalquest.app" className="text-[#58CC02] hover:text-[#4CAD02]">
+                      support@goalquest.app
+                    </a>
+                  </div>
+                  <div className="flex items-center text-gray-700">
+                    <HelpCircle className="h-4 w-4 mr-2 text-[#58CC02]" />
+                    <span>Response time: 24-48 hours</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-center">
+                <p className="text-xs text-gray-500">
+                  GoalQuest v0.2.0 • Made with 💚 for goal achievers
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={() => setShowHelp(false)}
+                className="w-full py-2 px-4 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white rounded-lg hover:from-[#4CAD02] hover:to-[#267300]"
+              >
+                Close
               </button>
             </div>
           </div>
