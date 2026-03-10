@@ -208,66 +208,77 @@ User context:
 
 Always be encouraging and action-oriented!`;
 
+      // Detect if user wants to create a goal
+      const goalKeywords = /\b(want|wanna|going to|plan|planning|goal|achieve|do|start|begin|learn|improve|get|become|run|read|save|work out|exercise|study)\b/i;
+      const isGoalIntent = goalKeywords.test(messageContent);
+
+      const apiPayload = {
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: messageContent }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      };
+
+      // Only add functions for goal-related messages
+      if (isGoalIntent) {
+        apiPayload.functions = [
+          {
+            name: 'create_goal',
+            description: 'Create a new trackable goal for the user when they express wanting to do, achieve, or improve something',
+            parameters: {
+              type: 'object',
+              properties: {
+                title: {
+                  type: 'string',
+                  description: 'Clear, action-oriented goal title (e.g., "Complete Marathon Training")'
+                },
+                category: {
+                  type: 'string',
+                  enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'],
+                  description: 'Goal category'
+                },
+                targetValue: {
+                  type: 'number',
+                  description: 'Numeric target to achieve (e.g., 42 for 42km)'
+                },
+                unit: {
+                  type: 'string',
+                  description: 'Unit of measurement (e.g., km, books, hours, days, dollars)'
+                },
+                deadline: {
+                  type: 'string',
+                  description: 'Deadline date in YYYY-MM-DD format'
+                },
+                why: {
+                  type: 'string',
+                  description: 'Motivational reason for this goal (1-2 sentences)'
+                },
+                subtasks: {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  },
+                  description: 'List of 3-5 actionable sub-tasks to achieve the goal'
+                }
+              },
+              required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
+            }
+          }
+        ];
+        // FORCE function call for goal-related messages
+        apiPayload.function_call = { name: 'create_goal' };
+      }
+
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
         },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: messageContent }
-          ],
-          functions: [
-            {
-              name: 'create_goal',
-              description: 'Create a new trackable goal for the user when they express wanting to do, achieve, or improve something',
-              parameters: {
-                type: 'object',
-                properties: {
-                  title: {
-                    type: 'string',
-                    description: 'Clear, action-oriented goal title (e.g., "Complete Marathon Training")'
-                  },
-                  category: {
-                    type: 'string',
-                    enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'],
-                    description: 'Goal category'
-                  },
-                  targetValue: {
-                    type: 'number',
-                    description: 'Numeric target to achieve (e.g., 42 for 42km)'
-                  },
-                  unit: {
-                    type: 'string',
-                    description: 'Unit of measurement (e.g., km, books, hours, days, dollars)'
-                  },
-                  deadline: {
-                    type: 'string',
-                    description: 'Deadline date in YYYY-MM-DD format'
-                  },
-                  why: {
-                    type: 'string',
-                    description: 'Motivational reason for this goal (1-2 sentences)'
-                  },
-                  subtasks: {
-                    type: 'array',
-                    items: {
-                      type: 'string'
-                    },
-                    description: 'List of 3-5 actionable sub-tasks to achieve the goal'
-                  }
-                },
-                required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
-              }
-            }
-          ],
-          function_call: 'auto',
-          max_tokens: 500,
-          temperature: 0.7
-        })
+        body: JSON.stringify(apiPayload)
       });
 
       if (!response.ok) {
