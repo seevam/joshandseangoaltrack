@@ -189,61 +189,24 @@ const AIChatPage = () => {
           }).join('\n')}`
         : '\n\nUser has no goals set yet.';
 
-      const systemPrompt = `You are a SMART Goal Creation AI Assistant. Your PRIMARY role is to CREATE concrete, actionable goals in a STRICT format.
+      const systemPrompt = `You are a SMART Goal Creation AI Assistant. Your PRIMARY role is to help users CREATE concrete, actionable goals.
 
 CRITICAL RULES:
-1. When a user mentions wanting to do ANYTHING - IMMEDIATELY respond ONLY with the goal format below
-2. DO NOT give advice, tips, or have conversations - ONLY output the structured goal format
-3. NEVER start with explanations - go STRAIGHT to the format
+1. When a user mentions wanting to do, achieve, or improve something - IMMEDIATELY use the create_goal function
+2. For motivation/progress questions about existing goals - provide a brief encouraging response
+3. Be proactive - even vague desires should trigger goal creation
 
-MANDATORY FORMAT (you MUST use this EXACT structure with ** asterisks):
+When creating goals:
+- Choose appropriate category: fitness, health, personal, career, finance, or education
+- Set realistic deadlines based on the goal type
+- Create 3-5 specific, actionable sub-tasks
+- Make targets measurable with appropriate units (km, books, hours, days, workouts, etc.)
 
-**Goal Title:** [Clear, specific title]
-**Category:** [ONE of: fitness/health/personal/career/finance/education]
-**Target:** [number] [unit]
-**Deadline:** [YYYY-MM-DD]
-**Why:** [1 motivational sentence]
-**Sub-tasks:**
-1. [First action step]
-2. [Second action step]
-3. [Third action step]
+User context:
+- Name: ${user?.firstName || 'User'}
+- Current goals: ${goalsContext}
 
-EXAMPLES - Copy this style EXACTLY:
-
-User: "I want to run a marathon in 30 days"
-You respond:
-**Goal Title:** Complete Marathon Training
-**Category:** fitness
-**Target:** 42 km
-**Deadline:** ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-**Why:** Build endurance and achieve a major fitness milestone
-**Sub-tasks:**
-1. Complete first 5km run this week
-2. Increase distance by 20% each week
-3. Complete 30km practice run before race day
-
-User: "I should read more books"
-You respond:
-**Goal Title:** Read More Books
-**Category:** education
-**Target:** 12 books
-**Deadline:** ${new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-**Why:** Expand knowledge and develop consistent reading habit
-**Sub-tasks:**
-1. Choose first book and read 20 pages daily
-2. Join a book club for accountability
-3. Track progress weekly in reading journal
-
-IMPORTANT:
-- For motivation/progress questions: Give 1 sentence then ask "Want to create a new goal?"
-- ALWAYS use the ** format exactly as shown
-- ALWAYS include all fields
-- Categories MUST be one of: fitness/health/personal/career/finance/education
-
-User: ${user?.firstName || 'User'}
-Current goals: ${goalsContext}
-
-Now respond to user requests with ONLY the structured format above.`;
+Always be encouraging and action-oriented!`;
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -257,6 +220,51 @@ Now respond to user requests with ONLY the structured format above.`;
             { role: 'system', content: systemPrompt },
             { role: 'user', content: messageContent }
           ],
+          functions: [
+            {
+              name: 'create_goal',
+              description: 'Create a new trackable goal for the user when they express wanting to do, achieve, or improve something',
+              parameters: {
+                type: 'object',
+                properties: {
+                  title: {
+                    type: 'string',
+                    description: 'Clear, action-oriented goal title (e.g., "Complete Marathon Training")'
+                  },
+                  category: {
+                    type: 'string',
+                    enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'],
+                    description: 'Goal category'
+                  },
+                  targetValue: {
+                    type: 'number',
+                    description: 'Numeric target to achieve (e.g., 42 for 42km)'
+                  },
+                  unit: {
+                    type: 'string',
+                    description: 'Unit of measurement (e.g., km, books, hours, days, dollars)'
+                  },
+                  deadline: {
+                    type: 'string',
+                    description: 'Deadline date in YYYY-MM-DD format'
+                  },
+                  why: {
+                    type: 'string',
+                    description: 'Motivational reason for this goal (1-2 sentences)'
+                  },
+                  subtasks: {
+                    type: 'array',
+                    items: {
+                      type: 'string'
+                    },
+                    description: 'List of 3-5 actionable sub-tasks to achieve the goal'
+                  }
+                },
+                required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
+              }
+            }
+          ],
+          function_call: 'auto',
           max_tokens: 500,
           temperature: 0.7
         })
@@ -267,14 +275,53 @@ Now respond to user requests with ONLY the structured format above.`;
       }
 
       const data = await response.json();
-      const aiResponseContent = data.choices[0].message.content;
+      const message = data.choices[0].message;
 
-      // Try to parse goal from AI response
-      const parsedGoal = parseGoalFromAIResponse(aiResponseContent);
       let goalCreated = null;
+      let aiResponseContent = '';
 
-      if (parsedGoal) {
-        goalCreated = createGoalFromParsedData(parsedGoal);
+      // Check if AI wants to call the create_goal function
+      if (message.function_call && message.function_call.name === 'create_goal') {
+        try {
+          const functionArgs = JSON.parse(message.function_call.arguments);
+
+          // Process subtasks
+          const subtasks = functionArgs.subtasks.map((taskText, index) => ({
+            id: Date.now() + index,
+            title: taskText,
+            description: taskText,
+            daysFromStart: (index + 1) * 7,
+            completed: false
+          }));
+
+          // Create goal from function call data
+          const goalData = {
+            title: functionArgs.title,
+            category: functionArgs.category,
+            targetValue: functionArgs.targetValue,
+            unit: functionArgs.unit,
+            endDate: functionArgs.deadline,
+            description: functionArgs.why,
+            subtasks
+          };
+
+          goalCreated = createGoalFromParsedData(goalData);
+
+          // Generate a friendly confirmation message
+          aiResponseContent = `Perfect! I've created your goal: "${functionArgs.title}" 🎯\n\nTarget: ${functionArgs.targetValue} ${functionArgs.unit}\nDeadline: ${functionArgs.deadline}\n\n${functionArgs.why}\n\nYour goal has been saved and you can track it on your dashboard!`;
+        } catch (error) {
+          console.error('Error processing function call:', error);
+          aiResponseContent = "I created a goal structure but had trouble saving it. Please try again!";
+        }
+      } else {
+        // Normal text response (for motivation, progress checks, etc.)
+        aiResponseContent = message.content || "I'm here to help you create goals! What would you like to achieve?";
+
+        // Also try to parse from text format as fallback
+        const parsedGoal = parseGoalFromAIResponse(aiResponseContent);
+        if (parsedGoal) {
+          goalCreated = createGoalFromParsedData(parsedGoal);
+        }
       }
 
       const aiMessage = {
