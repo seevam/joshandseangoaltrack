@@ -172,7 +172,7 @@ const OnboardingPage = () => {
         <div className="w-full max-w-2xl">
           {/* Welcome Step */}
           {currentStep === 1 && (
-            <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 animate-fade-in">
+            <div className="bg-[#cfcfcf] rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 animate-fade-in">
               {/* Header */}
               <div className="text-center mb-8">
                 <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mb-4 animate-bounce-slow">
@@ -238,7 +238,7 @@ const OnboardingPage = () => {
 
           {/* Goal Creation Step */}
           {currentStep === 2 && (
-            <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 animate-fade-in">
+            <div className="bg-[#cfcfcf] rounded-2xl shadow-2xl p-6 sm:p-8 animate-fade-in">
               <div className="text-center mb-6">
                 <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mb-4">
                   <Target className="h-8 w-8 text-white" />
@@ -376,7 +376,7 @@ const OnboardingPage = () => {
 
           {/* Success Step */}
           {currentStep === 3 && (
-            <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center animate-fade-in">
+            <div className="bg-[#cfcfcf] rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center animate-fade-in">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6 animate-bounce">
                 <CheckCircle className="h-12 w-12 text-green-600" />
               </div>

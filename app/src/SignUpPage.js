@@ -52,7 +52,7 @@ const SignUpPage = () => {
               ))}
             </div>
 
-            <div className="mt-12 p-6 bg-white/10 backdrop-blur rounded-lg">
+            <div className="mt-12 p-6 bg-[#cfcfcf]/10 backdrop-blur rounded-lg">
               <p className="text-[#D7FFB8] italic">
                 "GoalQuest helped me achieve my fitness goals in just 3 months. The visual progress tracking kept me motivated every day!"
               </p>
@@ -81,11 +81,13 @@ const SignUpPage = () => {
             </div>
 
             {/* Clerk SignUp Component - FIXED CENTERING */}
-            <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
-              <SignUp 
+            <div className="bg-[#cfcfcf] p-6 sm:p-8 rounded-xl shadow-lg">
+              <SignUp
                 path="/sign-up"
                 routing="path"
                 signInUrl="/sign-in"
+                fallbackRedirectUrl="/home"
+                signInFallbackRedirectUrl="/sign-in"
                 appearance={{
                   elements: {
                     rootBox: 'w-full',

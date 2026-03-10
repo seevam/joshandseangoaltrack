@@ -39,7 +39,7 @@ if (!clerkPubKey) {
   const root = ReactDOM.createRoot(document.getElementById('root'));
   root.render(
     <div className="min-h-screen flex items-center justify-center bg-red-50">
-      <div className="max-w-lg p-6 bg-white rounded-lg shadow-lg">
+      <div className="max-w-lg p-6 bg-[#cfcfcf] rounded-lg shadow-lg">
         <h1 className="text-xl font-bold text-red-600 mb-4">Configuration Error</h1>
         <pre className="text-sm text-gray-700 whitespace-pre-wrap">{errorMessage}</pre>
         <button 

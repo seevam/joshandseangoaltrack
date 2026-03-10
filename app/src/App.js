@@ -102,7 +102,7 @@ const LandingPage = () => {
   
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] via-[#FEFFFE] to-[#E8F5E9]">
-      <nav className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0]">
+      <nav className="bg-[#cfcfcf] shadow-sm border-b border-[#E0E0E0]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
@@ -154,7 +154,7 @@ const LandingPage = () => {
         </div>
       </div>
 
-      <div className="py-12 bg-[#FEFFFE]">
+      <div className="py-12 bg-[#cfcfcf]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
             <h2 className="text-base text-[#58CC02] font-semibold tracking-wide uppercase">Features</h2>
@@ -497,7 +497,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] pb-24 lg:pb-8">
       {/* Header */}
-      <header className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0] sticky top-0 z-10">
+      <header className="bg-[#cfcfcf] shadow-sm border-b border-[#E0E0E0] sticky top-0 z-10">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0">
@@ -520,7 +520,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
       {/* Stats Cards */}
       <div className="px-4 py-4 sm:px-6 sm:py-6">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#cfcfcf] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
               <div className="p-2 sm:p-3 bg-[#D7FFB8] rounded-lg mb-2 sm:mb-0 w-fit">
                 <Target className="h-4 w-4 sm:h-5 sm:w-5 text-[#58CC02]" />
@@ -532,7 +532,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
             </div>
           </div>
 
-          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#cfcfcf] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
               <div className="p-2 sm:p-3 bg-[#DBEAFE] rounded-lg mb-2 sm:mb-0 w-fit">
                 <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#3B82F6]" />
@@ -544,7 +544,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
             </div>
           </div>
 
-          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#cfcfcf] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
               <div className="p-2 sm:p-3 bg-[#CCFFDD] rounded-lg mb-2 sm:mb-0 w-fit">
                 <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-[#00CD4B]" />
@@ -556,7 +556,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
             </div>
           </div>
 
-          <div className="bg-[#FEFFFE] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
+          <div className="bg-[#cfcfcf] rounded-xl shadow-md p-3 sm:p-4 hover:shadow-lg transition-shadow">
             <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
               <div className="p-2 sm:p-3 bg-[#FECACA] rounded-lg mb-2 sm:mb-0 w-fit">
                 <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-[#FF4B4B]" />
@@ -574,7 +574,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
       <div className="px-4 pb-8 sm:px-6 mb-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {goals.length === 0 ? (
-            <div className="col-span-full bg-[#FEFFFE] rounded-xl shadow-lg p-8 sm:p-12 text-center">
+            <div className="col-span-full bg-[#cfcfcf] rounded-xl shadow-lg p-8 sm:p-12 text-center">
               <Target className="h-12 w-12 sm:h-16 sm:w-16 text-[#D7FFB8] mx-auto mb-4" />
               <h3 className="text-base sm:text-lg font-medium text-[#1a1a1a] mb-2">No goals yet</h3>
               <p className="text-sm text-[#4a4a4a] mb-4">Create your first goal to start tracking!</p>
@@ -598,7 +598,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                 <div
                   key={goal.id}
                   onClick={() => handleGoalClick(goal)}
-                  className="bg-[#FEFFFE] rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
+                  className="bg-[#cfcfcf] rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
                 >
                   <div className={`h-2 ${categoryStyle.bg} rounded-t-xl`}></div>
                   <div className="p-4 sm:p-5">
@@ -688,11 +688,11 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
               }}
             ></div>
             
-            <div className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all">
+            <div className="relative w-full sm:max-w-2xl bg-[#cfcfcf] rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all">
               <div className="max-h-[calc(100vh-6rem)] sm:max-h-[90vh] overflow-hidden flex flex-col">
                 <form onSubmit={handleAddGoal} className="flex flex-col h-full">
                   {/* Header - Fixed at top */}
-                  <div className="flex-shrink-0 bg-white px-4 py-4 border-b sm:px-6 rounded-t-2xl">
+                  <div className="flex-shrink-0 bg-[#cfcfcf] px-4 py-4 border-b sm:px-6 rounded-t-2xl">
                     <div className="flex items-center justify-between">
                       <div>
                         <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Create New Goal</h3>
@@ -1081,7 +1081,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                           setShowAdvanced(false);
                           setSelectedExample(null);
                         }}
-                        className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                        className="w-full sm:w-auto px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-[#cfcfcf] hover:bg-gray-50 transition-colors"
                       >
                         Cancel
                       </button>
@@ -1107,10 +1107,10 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
           <div className="flex min-h-screen items-end justify-center sm:items-center p-0 sm:p-4">
             <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowGoalDetails(false)}></div>
             
-            <div className="relative w-full sm:max-w-2xl bg-white rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all">
+            <div className="relative w-full sm:max-w-2xl bg-[#cfcfcf] rounded-t-2xl sm:rounded-2xl shadow-xl transform transition-all">
               <div className="max-h-[calc(100vh-6rem)] sm:max-h-[90vh] overflow-hidden flex flex-col">
                 {/* Header - Fixed */}
-                <div className="flex-shrink-0 bg-white px-4 py-4 border-b sm:px-6 rounded-t-2xl">
+                <div className="flex-shrink-0 bg-[#cfcfcf] px-4 py-4 border-b sm:px-6 rounded-t-2xl">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Goal Details</h3>
                     <button
@@ -1194,7 +1194,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                               className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
                                 subtask.completed
                                   ? 'bg-[#CCFFDD] border-[#00CD4B]'
-                                  : 'bg-[#FEFFFE] border-gray-200 hover:border-[#C5F39E]'
+                                  : 'bg-[#cfcfcf] border-gray-200 hover:border-[#C5F39E]'
                               }`}
                             >
                               <div className="flex items-start">
@@ -1250,7 +1250,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                           deleteGoal(selectedGoal.id);
                         }
                       }}
-                      className="px-4 py-2 border border-red-300 rounded-lg text-sm font-medium text-red-600 bg-white hover:bg-red-50"
+                      className="px-4 py-2 border border-red-300 rounded-lg text-sm font-medium text-red-600 bg-[#cfcfcf] hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4 inline mr-2" />
                       Delete

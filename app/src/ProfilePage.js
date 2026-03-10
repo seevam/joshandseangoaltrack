@@ -123,7 +123,7 @@ const ProfilePage = () => {
         <div className="max-w-md mx-auto text-center">
           {/* Profile Picture */}
           <div className="relative inline-block mb-4">
-            <div className="w-24 h-24 rounded-full bg-white p-1 shadow-lg">
+            <div className="w-24 h-24 rounded-full bg-[#cfcfcf] p-1 shadow-lg">
               {user?.imageUrl ? (
                 <img
                   src={user.imageUrl}
@@ -138,7 +138,7 @@ const ProfilePage = () => {
             </div>
             <button
               onClick={() => setShowEditProfile(true)}
-              className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-shadow"
+              className="absolute bottom-0 right-0 bg-[#cfcfcf] rounded-full p-2 shadow-md hover:shadow-lg transition-shadow"
             >
               <Edit3 className="h-4 w-4 text-gray-600" />
             </button>
@@ -156,7 +156,7 @@ const ProfilePage = () => {
           </p>
 
           {/* Join Date */}
-          <div className="inline-flex items-center bg-white/20 rounded-full px-3 py-1">
+          <div className="inline-flex items-center bg-[#cfcfcf]/20 rounded-full px-3 py-1">
             <Calendar className="h-4 w-4 text-[#D7FFB8] mr-2" />
             <span className="text-[#D7FFB8] text-sm">
               Member since {userStats.joinDate ? new Date(userStats.joinDate).toLocaleDateString('en-US', {
@@ -170,7 +170,7 @@ const ProfilePage = () => {
 
       {/* Stats Section */}
       <div className="max-w-md mx-auto px-4 -mt-6 mb-6">
-        <div className="bg-[#FEFFFE] rounded-xl shadow-lg p-4">
+        <div className="bg-[#cfcfcf] rounded-xl shadow-lg p-4">
           <h2 className="text-lg font-semibold text-[#1a1a1a] mb-4 text-center">Your Progress</h2>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
@@ -194,14 +194,14 @@ const ProfilePage = () => {
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => navigate('/home')}
-            className="bg-[#FEFFFE] rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
+            className="bg-[#cfcfcf] rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
           >
             <Target className="h-6 w-6 text-[#58CC02] mr-2 group-hover:scale-110 transition-transform" />
             <span className="font-medium text-[#1a1a1a]">My Goals</span>
           </button>
           <button
             onClick={() => navigate('/home')}
-            className="bg-[#FEFFFE] rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
+            className="bg-[#cfcfcf] rounded-xl p-4 shadow-md hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
           >
             <TrendingUp className="h-6 w-6 text-[#00CD4B] mr-2 group-hover:scale-110 transition-transform" />
             <span className="font-medium text-[#1a1a1a]">Analytics</span>
@@ -211,7 +211,7 @@ const ProfilePage = () => {
 
       {/* Menu Section */}
       <div className="max-w-md mx-auto px-4 mb-6">
-        <div className="bg-[#FEFFFE] rounded-xl shadow-lg overflow-hidden">
+        <div className="bg-[#cfcfcf] rounded-xl shadow-lg overflow-hidden">
           {menuItems.map((item, index) => (
             <button
               key={index}
@@ -245,7 +245,7 @@ const ProfilePage = () => {
       {/* Edit Profile Modal */}
       {showEditProfile && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-sm">
+          <div className="bg-[#cfcfcf] rounded-xl p-6 w-full max-w-sm">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Settings</h3>
 
             <div className="space-y-4">
@@ -297,7 +297,7 @@ const ProfilePage = () => {
       {/* App Settings Modal */}
       {showSettings && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#cfcfcf] rounded-xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">App Settings</h3>
 
             <div className="space-y-6">
@@ -340,7 +340,7 @@ const ProfilePage = () => {
                     }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      className={`inline-block h-4 w-4 transform rounded-full bg-[#cfcfcf] transition-transform ${
                         settings.notificationsEnabled ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
@@ -360,7 +360,7 @@ const ProfilePage = () => {
                     }`}
                   >
                     <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      className={`inline-block h-4 w-4 transform rounded-full bg-[#cfcfcf] transition-transform ${
                         settings.emailNotifications ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
@@ -407,7 +407,7 @@ const ProfilePage = () => {
       {/* Help & Support Modal */}
       {showHelp && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl p-6 w-full max-w-md">
+          <div className="bg-[#cfcfcf] rounded-xl p-6 w-full max-w-md">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Help & Support</h3>
 
             <div className="space-y-4">

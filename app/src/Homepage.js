@@ -63,7 +63,7 @@ const Homepage = () => {
   return (
     <div className="min-h-screen bg-[#F7FFF4] pb-32">
       {/* Header */}
-      <div className="bg-[#FEFFFE] px-4 pt-12 pb-6 border-b border-[#E0E0E0]">
+      <div className="bg-[#cfcfcf] px-4 pt-12 pb-6 border-b border-[#E0E0E0]">
         <div className="max-w-md mx-auto">
           <h1 className="text-2xl font-bold text-[#1a1a1a]">
             Welcome Back, <span className="text-[#58CC02]">{user?.firstName || 'User'}</span>
@@ -89,7 +89,7 @@ const Homepage = () => {
           {/* Goals List */}
           <div className="space-y-3">
             {recentGoals.length === 0 ? (
-              <div className="bg-white rounded-xl p-6 text-center border border-gray-100">
+              <div className="bg-[#cfcfcf] rounded-xl p-6 text-center border border-gray-100">
                 <Target className="h-12 w-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 mb-3">No goals yet</p>
                 <button
@@ -109,7 +109,7 @@ const Homepage = () => {
                   <div
                     key={goal.id}
                     onClick={() => navigate('/dashboard')}
-                    className="bg-white rounded-xl p-4 border border-gray-100 hover:border-gray-200 transition-all cursor-pointer"
+                    className="bg-[#cfcfcf] rounded-xl p-4 border border-gray-100 hover:border-gray-200 transition-all cursor-pointer"
                   >
                     <div className="flex items-center justify-between mb-3">
                       <h3 className="font-semibold text-gray-900 truncate flex-1">
@@ -161,17 +161,17 @@ const Homepage = () => {
 
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-[#FEFFFE] rounded-xl p-4 text-center border border-gray-100">
+          <div className="bg-[#cfcfcf] rounded-xl p-4 text-center border border-gray-100">
             <div className="text-2xl font-bold text-[#58CC02]">{goals.length}</div>
             <div className="text-sm text-[#4a4a4a]">Total Goals</div>
           </div>
-          <div className="bg-[#FEFFFE] rounded-xl p-4 text-center border border-gray-100">
+          <div className="bg-[#cfcfcf] rounded-xl p-4 text-center border border-gray-100">
             <div className="text-2xl font-bold text-[#00CD4B]">
               {goals.filter(g => getGoalStatus(g) === 'completed').length}
             </div>
             <div className="text-sm text-[#4a4a4a]">Completed</div>
           </div>
-          <div className="bg-[#FEFFFE] rounded-xl p-4 text-center border border-gray-100">
+          <div className="bg-[#cfcfcf] rounded-xl p-4 text-center border border-gray-100">
             <div className="text-2xl font-bold text-[#3B82F6]">
               {goals.filter(g => getGoalStatus(g) === 'in-progress').length}
             </div>
@@ -190,7 +190,7 @@ const Homepage = () => {
           </button>
           <button
             onClick={() => navigate('/dashboard')}
-            className="w-full bg-[#FEFFFE] text-[#1a1a1a] border border-gray-300 rounded-xl py-3 font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
+            className="w-full bg-[#cfcfcf] text-[#1a1a1a] border border-gray-300 rounded-xl py-3 font-medium hover:bg-gray-50 transition-colors flex items-center justify-center"
           >
             <TrendingUp className="h-5 w-5 mr-2" />
             View Analytics

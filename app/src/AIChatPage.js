@@ -22,6 +22,7 @@ const AIChatPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [goals, setGoals] = useState([]);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [showGoalCreatedAlert, setShowGoalCreatedAlert] = useState(false);
   const messagesEndRef = useRef(null);
 
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
@@ -53,6 +54,90 @@ const AIChatPage = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const parseGoalFromAIResponse = (content) => {
+    // Extract goal details from AI-formatted response
+    const titleMatch = content.match(/\*\*Goal Title:\*\*\s*(.+)/i);
+    const categoryMatch = content.match(/\*\*Category:\*\*\s*(\w+)/i);
+    const targetMatch = content.match(/\*\*Target:\*\*\s*(\d+)\s*(\w+)/i);
+    const deadlineMatch = content.match(/\*\*Deadline:\*\*\s*(\d{4}-\d{2}-\d{2})/i);
+    const whyMatch = content.match(/\*\*Why:\*\*\s*(.+?)(?=\*\*|$)/is);
+    const subtasksMatch = content.match(/\*\*Sub-tasks:\*\*\s*([\s\S]+?)(?=\n\n|$)/i);
+
+    if (!titleMatch || !categoryMatch || !targetMatch || !deadlineMatch) {
+      return null; // Not a valid goal structure
+    }
+
+    const subtasks = [];
+    if (subtasksMatch) {
+      const subtaskLines = subtasksMatch[1].split('\n').filter(line => line.trim());
+      subtaskLines.forEach((line, index) => {
+        const taskText = line.replace(/^\d+\.\s*/, '').trim();
+        if (taskText) {
+          subtasks.push({
+            id: Date.now() + index,
+            title: taskText,
+            description: taskText,
+            daysFromStart: (index + 1) * 7, // Default spacing
+            completed: false
+          });
+        }
+      });
+    }
+
+    return {
+      title: titleMatch[1].trim(),
+      category: categoryMatch[1].toLowerCase(),
+      targetValue: parseInt(targetMatch[1]),
+      unit: targetMatch[2].trim(),
+      endDate: deadlineMatch[1],
+      description: whyMatch ? whyMatch[1].trim() : '',
+      subtasks
+    };
+  };
+
+  const createGoalFromParsedData = (goalData) => {
+    const validCategories = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
+    const category = validCategories.includes(goalData.category) ? goalData.category : 'personal';
+
+    const categoryColors = {
+      personal: '#58CC02',
+      health: '#FF6B6B',
+      career: '#4ECDC4',
+      finance: '#95E1D3',
+      education: '#A78BFA',
+      fitness: '#F472B6'
+    };
+
+    const newGoal = {
+      id: Date.now(),
+      userId: user.id,
+      title: goalData.title,
+      description: goalData.description,
+      category: category,
+      targetValue: goalData.targetValue,
+      currentValue: 0,
+      unit: goalData.unit,
+      startDate: new Date().toISOString(),
+      endDate: new Date(goalData.endDate).toISOString(),
+      color: categoryColors[category],
+      subtasks: goalData.subtasks,
+      createdAt: new Date().toISOString(),
+      milestones: []
+    };
+
+    // Save to localStorage
+    const userGoalsKey = `goaltracker-goals-${user.id}`;
+    const updatedGoals = [...goals, newGoal];
+    localStorage.setItem(userGoalsKey, JSON.stringify(updatedGoals));
+    setGoals(updatedGoals);
+
+    // Show success alert
+    setShowGoalCreatedAlert(true);
+    setTimeout(() => setShowGoalCreatedAlert(false), 5000);
+
+    return newGoal;
+  };
 
   const quickActions = [
     {
@@ -104,39 +189,88 @@ const AIChatPage = () => {
           }).join('\n')}`
         : '\n\nUser has no goals set yet.';
 
-      const systemPrompt = `You are a SMART Goal Creation AI Assistant. Your PRIMARY and MAIN role is to help users CREATE concrete, actionable goals.
+      const systemPrompt = `You are a SMART Goal Creation AI Assistant. Your PRIMARY role is to help users CREATE concrete, actionable goals.
 
 CRITICAL RULES:
-1. When a user mentions wanting to do something, achieve something, or improve something - IMMEDIATELY create a goal for them
-2. DO NOT have general conversations - focus ONLY on goal creation and tracking
-3. Always be direct and action-oriented
+1. When a user mentions wanting to do, achieve, or improve something - IMMEDIATELY use the create_goal function
+2. For motivation/progress questions about existing goals - provide a brief encouraging response
+3. Be proactive - even vague desires should trigger goal creation
 
-REQUIRED FORMAT for goal creation (use this for EVERY goal-related request):
-
-**Goal Title:** [Clear, action-oriented title - be specific]
-**Category:** [Choose ONE: personal/health/career/finance/education/fitness]
-**Target:** [specific number] [unit - be creative: km, books, hours, days, workouts, etc]
-**Deadline:** [YYYY-MM-DD - suggest realistic deadline based on goal]
-**Why:** [Motivational reason in 1-2 sentences]
-**Sub-tasks:**
-1. [Concrete first step with timeframe]
-2. [Second actionable step]
-3. [Third milestone]
-4. [Fourth checkpoint - if needed]
-5. [Final preparation - if needed]
-
-EXAMPLES:
-- User says "I want to get fit" → Create a fitness goal with specific targets
-- User says "I should read more" → Create a reading goal with book count
-- User says "need to save money" → Create a finance goal with $ amount
-
-For progress reviews or motivation requests: Keep response to 2 sentences max, then ask if they want to create a new goal.
+When creating goals:
+- Choose appropriate category: fitness, health, personal, career, finance, or education
+- Set realistic deadlines based on the goal type
+- Create 3-5 specific, actionable sub-tasks
+- Make targets measurable with appropriate units (km, books, hours, days, workouts, etc.)
 
 User context:
-- User name: ${user?.firstName || 'User'}
+- Name: ${user?.firstName || 'User'}
 - Current goals: ${goalsContext}
 
-BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more action!`;
+Always be encouraging and action-oriented!`;
+
+      // Detect if user wants to create a goal
+      const goalKeywords = /\b(want|wanna|going to|plan|planning|goal|achieve|do|start|begin|learn|improve|get|become|run|read|save|work out|exercise|study)\b/i;
+      const isGoalIntent = goalKeywords.test(messageContent);
+
+      const apiPayload = {
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: messageContent }
+        ],
+        max_tokens: 500,
+        temperature: 0.7
+      };
+
+      // Only add functions for goal-related messages
+      if (isGoalIntent) {
+        apiPayload.functions = [
+          {
+            name: 'create_goal',
+            description: 'Create a new trackable goal for the user when they express wanting to do, achieve, or improve something',
+            parameters: {
+              type: 'object',
+              properties: {
+                title: {
+                  type: 'string',
+                  description: 'Clear, action-oriented goal title (e.g., "Complete Marathon Training")'
+                },
+                category: {
+                  type: 'string',
+                  enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'],
+                  description: 'Goal category'
+                },
+                targetValue: {
+                  type: 'number',
+                  description: 'Numeric target to achieve (e.g., 42 for 42km)'
+                },
+                unit: {
+                  type: 'string',
+                  description: 'Unit of measurement (e.g., km, books, hours, days, dollars)'
+                },
+                deadline: {
+                  type: 'string',
+                  description: 'Deadline date in YYYY-MM-DD format'
+                },
+                why: {
+                  type: 'string',
+                  description: 'Motivational reason for this goal (1-2 sentences)'
+                },
+                subtasks: {
+                  type: 'array',
+                  items: {
+                    type: 'string'
+                  },
+                  description: 'List of 3-5 actionable sub-tasks to achieve the goal'
+                }
+              },
+              required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
+            }
+          }
+        ];
+        // FORCE function call for goal-related messages
+        apiPayload.function_call = { name: 'create_goal' };
+      }
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -144,15 +278,7 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
         },
-        body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: messageContent }
-          ],
-          max_tokens: 500,
-          temperature: 0.7
-        })
+        body: JSON.stringify(apiPayload)
       });
 
       if (!response.ok) {
@@ -160,11 +286,61 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
       }
 
       const data = await response.json();
+      const message = data.choices[0].message;
+
+      let goalCreated = null;
+      let aiResponseContent = '';
+
+      // Check if AI wants to call the create_goal function
+      if (message.function_call && message.function_call.name === 'create_goal') {
+        try {
+          const functionArgs = JSON.parse(message.function_call.arguments);
+
+          // Process subtasks
+          const subtasks = functionArgs.subtasks.map((taskText, index) => ({
+            id: Date.now() + index,
+            title: taskText,
+            description: taskText,
+            daysFromStart: (index + 1) * 7,
+            completed: false
+          }));
+
+          // Create goal from function call data
+          const goalData = {
+            title: functionArgs.title,
+            category: functionArgs.category,
+            targetValue: functionArgs.targetValue,
+            unit: functionArgs.unit,
+            endDate: functionArgs.deadline,
+            description: functionArgs.why,
+            subtasks
+          };
+
+          goalCreated = createGoalFromParsedData(goalData);
+
+          // Generate a friendly confirmation message
+          aiResponseContent = `Perfect! I've created your goal: "${functionArgs.title}" 🎯\n\nTarget: ${functionArgs.targetValue} ${functionArgs.unit}\nDeadline: ${functionArgs.deadline}\n\n${functionArgs.why}\n\nYour goal has been saved and you can track it on your dashboard!`;
+        } catch (error) {
+          console.error('Error processing function call:', error);
+          aiResponseContent = "I created a goal structure but had trouble saving it. Please try again!";
+        }
+      } else {
+        // Normal text response (for motivation, progress checks, etc.)
+        aiResponseContent = message.content || "I'm here to help you create goals! What would you like to achieve?";
+
+        // Also try to parse from text format as fallback
+        const parsedGoal = parseGoalFromAIResponse(aiResponseContent);
+        if (parsedGoal) {
+          goalCreated = createGoalFromParsedData(parsedGoal);
+        }
+      }
+
       const aiMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: data.choices[0].message.content,
-        timestamp: new Date()
+        content: aiResponseContent,
+        timestamp: new Date(),
+        goalCreated: goalCreated ? true : false
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -209,8 +385,18 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] via-[#FEFFFE] to-[#E8F5E9] flex flex-col pb-20">
+      {/* Goal Created Success Alert */}
+      {showGoalCreatedAlert && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+            <Target className="h-5 w-5" />
+            <span className="font-semibold">Goal Created Successfully! 🎉</span>
+          </div>
+        </div>
+      )}
+
       {/* Mobile-First Header */}
-      <div className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0]">
+      <div className="bg-[#cfcfcf] shadow-sm border-b border-[#E0E0E0]">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0 flex-1">
@@ -273,8 +459,16 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
                       ? 'bg-[#58CC02] text-white ml-auto'
                       : message.isError
                       ? 'bg-red-50 text-red-800 border border-red-200'
-                      : 'bg-[#FEFFFE] text-[#1a1a1a] border border-gray-200'
+                      : message.goalCreated
+                      ? 'bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] text-[#1a1a1a] border-2 border-[#58CC02]'
+                      : 'bg-[#cfcfcf] text-[#1a1a1a] border border-gray-200'
                   }`}>
+                    {message.goalCreated && (
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#58CC02]">
+                        <Target className="h-4 w-4 text-[#58CC02]" />
+                        <span className="text-xs font-semibold text-[#58CC02]">Goal Created</span>
+                      </div>
+                    )}
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                   <p className={`text-xs text-gray-500 mt-1 ${
@@ -294,7 +488,7 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
                 <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center">
                   <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="bg-[#FEFFFE] border border-gray-200 rounded-2xl p-3 shadow-sm">
+                <div className="bg-[#cfcfcf] border border-gray-200 rounded-2xl p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce"></div>
@@ -311,7 +505,7 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
           </div>
 
           {messages.length <= 1 && hasApiKey && (
-            <div className="p-3 sm:p-4 border-t bg-[#FEFFFE]">
+            <div className="p-3 sm:p-4 border-t bg-[#cfcfcf]">
               <h3 className="text-sm font-medium text-[#1a1a1a] mb-2 flex items-center gap-2">
                 <span className="h-4 w-4 text-[#FBBF24]">⚡</span>
                 Quick Actions
@@ -352,7 +546,7 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
             </div>
           )}
 
-          <div className="p-3 sm:p-4 bg-[#FEFFFE] border-t pb-24">
+          <div className="p-3 sm:p-4 bg-[#cfcfcf] border-t pb-24">
             <form onSubmit={handleSubmit} className="flex items-end gap-2 sm:gap-3">
               <div className="flex-1">
                 <textarea

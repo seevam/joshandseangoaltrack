@@ -48,7 +48,7 @@ const ResponsiveNavigation = ({ onNewGoal, onToggleChat }) => {
     <>
       {/* Mobile Navigation - Apple Pill Style */}
       <div className="lg:hidden fixed bottom-6 left-0 right-0 flex justify-center px-4 pointer-events-none" style={{ zIndex: 50 }}>
-        <div className="bg-white/90 backdrop-blur-xl rounded-full shadow-2xl border border-gray-200/50 pointer-events-auto">
+        <div className="bg-[#cfcfcf]/90 backdrop-blur-xl rounded-full shadow-2xl border border-gray-200/50 pointer-events-auto">
           <div className="flex items-center justify-around px-2 py-2 gap-1">
             {navItems.map((item) => (
               <button
@@ -80,7 +80,7 @@ const ResponsiveNavigation = ({ onNewGoal, onToggleChat }) => {
 
       {/* Desktop Navigation - Left Sidebar */}
       <div className="hidden lg:flex lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col" style={{ zIndex: 40 }}>
-        <div className="flex flex-col flex-1 bg-white border-r border-gray-200">
+        <div className="flex flex-col flex-1 bg-[#cfcfcf] border-r border-gray-200">
           {/* Logo Section */}
           <div className="flex items-center justify-center h-20 px-6 border-b border-gray-200">
             <Target className="h-8 w-8 text-indigo-600 mr-3" />

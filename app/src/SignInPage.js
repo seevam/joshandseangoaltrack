@@ -43,7 +43,7 @@ const SignInPage = () => {
           </div>
 
           {/* Clerk SignIn Component - FIXED CENTERING */}
-          <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
+          <div className="bg-[#cfcfcf] p-6 sm:p-8 rounded-xl shadow-lg">
             <SignIn 
               path="/sign-in"
               routing="path"
