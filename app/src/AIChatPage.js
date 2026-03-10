@@ -22,6 +22,7 @@ const AIChatPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [goals, setGoals] = useState([]);
   const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [showGoalCreatedAlert, setShowGoalCreatedAlert] = useState(false);
   const messagesEndRef = useRef(null);
 
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
@@ -53,6 +54,90 @@ const AIChatPage = () => {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  const parseGoalFromAIResponse = (content) => {
+    // Extract goal details from AI-formatted response
+    const titleMatch = content.match(/\*\*Goal Title:\*\*\s*(.+)/i);
+    const categoryMatch = content.match(/\*\*Category:\*\*\s*(\w+)/i);
+    const targetMatch = content.match(/\*\*Target:\*\*\s*(\d+)\s*(\w+)/i);
+    const deadlineMatch = content.match(/\*\*Deadline:\*\*\s*(\d{4}-\d{2}-\d{2})/i);
+    const whyMatch = content.match(/\*\*Why:\*\*\s*(.+?)(?=\*\*|$)/is);
+    const subtasksMatch = content.match(/\*\*Sub-tasks:\*\*\s*([\s\S]+?)(?=\n\n|$)/i);
+
+    if (!titleMatch || !categoryMatch || !targetMatch || !deadlineMatch) {
+      return null; // Not a valid goal structure
+    }
+
+    const subtasks = [];
+    if (subtasksMatch) {
+      const subtaskLines = subtasksMatch[1].split('\n').filter(line => line.trim());
+      subtaskLines.forEach((line, index) => {
+        const taskText = line.replace(/^\d+\.\s*/, '').trim();
+        if (taskText) {
+          subtasks.push({
+            id: Date.now() + index,
+            title: taskText,
+            description: taskText,
+            daysFromStart: (index + 1) * 7, // Default spacing
+            completed: false
+          });
+        }
+      });
+    }
+
+    return {
+      title: titleMatch[1].trim(),
+      category: categoryMatch[1].toLowerCase(),
+      targetValue: parseInt(targetMatch[1]),
+      unit: targetMatch[2].trim(),
+      endDate: deadlineMatch[1],
+      description: whyMatch ? whyMatch[1].trim() : '',
+      subtasks
+    };
+  };
+
+  const createGoalFromParsedData = (goalData) => {
+    const validCategories = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
+    const category = validCategories.includes(goalData.category) ? goalData.category : 'personal';
+
+    const categoryColors = {
+      personal: '#58CC02',
+      health: '#FF6B6B',
+      career: '#4ECDC4',
+      finance: '#95E1D3',
+      education: '#A78BFA',
+      fitness: '#F472B6'
+    };
+
+    const newGoal = {
+      id: Date.now(),
+      userId: user.id,
+      title: goalData.title,
+      description: goalData.description,
+      category: category,
+      targetValue: goalData.targetValue,
+      currentValue: 0,
+      unit: goalData.unit,
+      startDate: new Date().toISOString(),
+      endDate: new Date(goalData.endDate).toISOString(),
+      color: categoryColors[category],
+      subtasks: goalData.subtasks,
+      createdAt: new Date().toISOString(),
+      milestones: []
+    };
+
+    // Save to localStorage
+    const userGoalsKey = `goaltracker-goals-${user.id}`;
+    const updatedGoals = [...goals, newGoal];
+    localStorage.setItem(userGoalsKey, JSON.stringify(updatedGoals));
+    setGoals(updatedGoals);
+
+    // Show success alert
+    setShowGoalCreatedAlert(true);
+    setTimeout(() => setShowGoalCreatedAlert(false), 5000);
+
+    return newGoal;
+  };
 
   const quickActions = [
     {
@@ -160,11 +245,22 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
       }
 
       const data = await response.json();
+      const aiResponseContent = data.choices[0].message.content;
+
+      // Try to parse goal from AI response
+      const parsedGoal = parseGoalFromAIResponse(aiResponseContent);
+      let goalCreated = null;
+
+      if (parsedGoal) {
+        goalCreated = createGoalFromParsedData(parsedGoal);
+      }
+
       const aiMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: data.choices[0].message.content,
-        timestamp: new Date()
+        content: aiResponseContent,
+        timestamp: new Date(),
+        goalCreated: goalCreated ? true : false
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -209,6 +305,16 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] via-[#FEFFFE] to-[#E8F5E9] flex flex-col pb-20">
+      {/* Goal Created Success Alert */}
+      {showGoalCreatedAlert && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
+          <div className="bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+            <Target className="h-5 w-5" />
+            <span className="font-semibold">Goal Created Successfully! 🎉</span>
+          </div>
+        </div>
+      )}
+
       {/* Mobile-First Header */}
       <div className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0]">
         <div className="px-4 py-3 sm:px-6">
@@ -273,8 +379,16 @@ BE PROACTIVE: Turn every user desire into a trackable goal. Less talk, more acti
                       ? 'bg-[#58CC02] text-white ml-auto'
                       : message.isError
                       ? 'bg-red-50 text-red-800 border border-red-200'
+                      : message.goalCreated
+                      ? 'bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] text-[#1a1a1a] border-2 border-[#58CC02]'
                       : 'bg-[#FEFFFE] text-[#1a1a1a] border border-gray-200'
                   }`}>
+                    {message.goalCreated && (
+                      <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#58CC02]">
+                        <Target className="h-4 w-4 text-[#58CC02]" />
+                        <span className="text-xs font-semibold text-[#58CC02]">Goal Created</span>
+                      </div>
+                    )}
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                   </div>
                   <p className={`text-xs text-gray-500 mt-1 ${

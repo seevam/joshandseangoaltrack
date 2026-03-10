@@ -82,10 +82,12 @@ const SignUpPage = () => {
 
             {/* Clerk SignUp Component - FIXED CENTERING */}
             <div className="bg-white p-6 sm:p-8 rounded-xl shadow-lg">
-              <SignUp 
+              <SignUp
                 path="/sign-up"
                 routing="path"
                 signInUrl="/sign-in"
+                fallbackRedirectUrl="/home"
+                signInFallbackRedirectUrl="/sign-in"
                 appearance={{
                   elements: {
                     rootBox: 'w-full',
