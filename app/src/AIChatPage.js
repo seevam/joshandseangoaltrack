@@ -385,7 +385,7 @@ Always be encouraging and action-oriented!`;
       )}
 
       {/* Mobile-First Header */}
-      <div className="bg-[#FEFFFE] shadow-sm border-b border-[#E0E0E0]">
+      <div className="bg-[#cfcfcf] shadow-sm border-b border-[#E0E0E0]">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0 flex-1">
@@ -450,7 +450,7 @@ Always be encouraging and action-oriented!`;
                       ? 'bg-red-50 text-red-800 border border-red-200'
                       : message.goalCreated
                       ? 'bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] text-[#1a1a1a] border-2 border-[#58CC02]'
-                      : 'bg-[#FEFFFE] text-[#1a1a1a] border border-gray-200'
+                      : 'bg-[#cfcfcf] text-[#1a1a1a] border border-gray-200'
                   }`}>
                     {message.goalCreated && (
                       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#58CC02]">
@@ -477,7 +477,7 @@ Always be encouraging and action-oriented!`;
                 <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center">
                   <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="bg-[#FEFFFE] border border-gray-200 rounded-2xl p-3 shadow-sm">
+                <div className="bg-[#cfcfcf] border border-gray-200 rounded-2xl p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce"></div>
@@ -494,7 +494,7 @@ Always be encouraging and action-oriented!`;
           </div>
 
           {messages.length <= 1 && hasApiKey && (
-            <div className="p-3 sm:p-4 border-t bg-[#FEFFFE]">
+            <div className="p-3 sm:p-4 border-t bg-[#cfcfcf]">
               <h3 className="text-sm font-medium text-[#1a1a1a] mb-2 flex items-center gap-2">
                 <span className="h-4 w-4 text-[#FBBF24]">⚡</span>
                 Quick Actions
@@ -535,7 +535,7 @@ Always be encouraging and action-oriented!`;
             </div>
           )}
 
-          <div className="p-3 sm:p-4 bg-[#FEFFFE] border-t pb-24">
+          <div className="p-3 sm:p-4 bg-[#cfcfcf] border-t pb-24">
             <form onSubmit={handleSubmit} className="flex items-end gap-2 sm:gap-3">
               <div className="flex-1">
                 <textarea

@@ -8,9 +8,9 @@ const TestNavigation = () => {
     >
       <h3 className="font-bold">TEST NAVIGATION - This should be visible!</h3>
       <div className="flex justify-center gap-4 mt-2">
-        <button className="bg-white text-red-500 px-4 py-2 rounded">Home</button>
-        <button className="bg-white text-red-500 px-4 py-2 rounded">Profile</button>
-        <button className="bg-white text-red-500 px-4 py-2 rounded">Dashboard</button>
+        <button className="bg-[#cfcfcf] text-red-500 px-4 py-2 rounded">Home</button>
+        <button className="bg-[#cfcfcf] text-red-500 px-4 py-2 rounded">Profile</button>
+        <button className="bg-[#cfcfcf] text-red-500 px-4 py-2 rounded">Dashboard</button>
       </div>
     </div>
   );
