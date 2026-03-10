@@ -1,5 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import './index.css';
 import { ClerkProvider, RedirectToSignIn, SignedIn, SignedOut, useUser } from '@clerk/clerk-react';
 import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import App from './App';
@@ -85,7 +86,7 @@ if (!clerkPubKey) {
     
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <Target className="h-8 w-8 text-indigo-600 animate-spin" />
+        <Target className="h-8 w-8 text-[#58CC02] animate-spin" />
       </div>
     );
   }
