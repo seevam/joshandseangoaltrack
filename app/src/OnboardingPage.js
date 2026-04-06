@@ -168,14 +168,14 @@ const OnboardingPage = () => {
         }
       `}</style>
 
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] via-[#FEFFFE] to-[#E8F5E9] flex items-center justify-center p-4">
         <div className="w-full max-w-2xl">
           {/* Welcome Step */}
           {currentStep === 1 && (
-            <div className="bg-[#cfcfcf] rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 animate-fade-in">
+            <div className="bg-[#F0F0F0] rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 animate-fade-in">
               {/* Header */}
               <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mb-4 animate-bounce-slow">
+                <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-[#58CC02] rounded-full mb-4 animate-bounce-slow">
                   <Sparkles className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                 </div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2">
@@ -188,12 +188,12 @@ const OnboardingPage = () => {
 
               {/* Motivational Quote */}
               {quote && (
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-6 sm:p-8 mb-8 border-l-4 border-indigo-600">
-                  <Quote className="h-8 w-8 text-indigo-600 mb-4" />
+                <div className="bg-[#F7FFF4] rounded-xl p-6 sm:p-8 mb-8 border-l-4 border-[#58CC02]">
+                  <Quote className="h-8 w-8 text-[#58CC02] mb-4" />
                   <p className="text-base sm:text-lg lg:text-xl text-gray-800 italic mb-4 leading-relaxed">
                     "{quote.quote}"
                   </p>
-                  <p className="text-sm sm:text-base text-indigo-600 font-semibold">
+                  <p className="text-sm sm:text-base text-[#58CC02] font-semibold">
                     — {quote.author}
                   </p>
                 </div>
@@ -202,7 +202,7 @@ const OnboardingPage = () => {
               {/* Features Preview */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 <div className="text-center p-4 bg-gray-50 rounded-xl">
-                  <Target className="h-8 w-8 text-indigo-600 mx-auto mb-2" />
+                  <Target className="h-8 w-8 text-[#58CC02] mx-auto mb-2" />
                   <p className="text-sm font-medium text-gray-900">Set Goals</p>
                   <p className="text-xs text-gray-500 mt-1">Track your progress</p>
                 </div>
@@ -221,7 +221,7 @@ const OnboardingPage = () => {
               {/* CTA Button */}
               <button
                 onClick={() => setCurrentStep(2)}
-                className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 sm:py-4 px-6 rounded-xl font-semibold text-base sm:text-lg hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-2"
+                className="w-full bg-[#58CC02] text-white py-3 sm:py-4 px-6 rounded-xl font-semibold text-base sm:text-lg hover:bg-[#4CAD02] transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-2"
               >
                 Create Your First Goal
                 <ArrowRight className="h-5 w-5" />
@@ -238,9 +238,9 @@ const OnboardingPage = () => {
 
           {/* Goal Creation Step */}
           {currentStep === 2 && (
-            <div className="bg-[#cfcfcf] rounded-2xl shadow-2xl p-6 sm:p-8 animate-fade-in">
+            <div className="bg-[#F0F0F0] rounded-2xl shadow-2xl p-6 sm:p-8 animate-fade-in">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full mb-4">
+                <div className="inline-flex items-center justify-center w-16 h-16 bg-[#58CC02] rounded-full mb-4">
                   <Target className="h-8 w-8 text-white" />
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
@@ -261,7 +261,7 @@ const OnboardingPage = () => {
                     type="text"
                     value={newGoal.title}
                     onChange={(e) => setNewGoal({ ...newGoal, title: e.target.value })}
-                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base transition-all"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm sm:text-base transition-all"
                     placeholder="e.g., Learn Spanish, Run a marathon, Save $5000"
                     required
                   />
@@ -275,7 +275,7 @@ const OnboardingPage = () => {
                   <textarea
                     value={newGoal.description}
                     onChange={(e) => setNewGoal({ ...newGoal, description: e.target.value })}
-                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base transition-all"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm sm:text-base transition-all"
                     rows="2"
                     placeholder="Describe your motivation..."
                   />
@@ -319,7 +319,7 @@ const OnboardingPage = () => {
                       step="0.01"
                       value={newGoal.targetValue}
                       onChange={(e) => setNewGoal({ ...newGoal, targetValue: e.target.value })}
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
+                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm sm:text-base"
                       placeholder="100"
                       required
                     />
@@ -332,7 +332,7 @@ const OnboardingPage = () => {
                       type="text"
                       value={newGoal.unit}
                       onChange={(e) => setNewGoal({ ...newGoal, unit: e.target.value })}
-                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
+                      className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm sm:text-base"
                       placeholder="hours, kg, $"
                     />
                   </div>
@@ -348,7 +348,7 @@ const OnboardingPage = () => {
                     type="date"
                     value={newGoal.endDate}
                     onChange={(e) => setNewGoal({ ...newGoal, endDate: e.target.value })}
-                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm sm:text-base"
+                    className="w-full border-2 border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm sm:text-base"
                     min={new Date().toISOString().split('T')[0]}
                   />
                 </div>
@@ -364,7 +364,7 @@ const OnboardingPage = () => {
                   </button>
                   <button
                     type="submit"
-                    className="w-full sm:flex-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-3 px-6 rounded-xl font-semibold text-base hover:from-indigo-700 hover:to-purple-700 transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-2"
+                    className="w-full sm:flex-1 bg-[#58CC02] text-white py-3 px-6 rounded-xl font-semibold text-base hover:bg-[#4CAD02] transition-all transform hover:scale-105 active:scale-95 shadow-lg flex items-center justify-center gap-2"
                   >
                     Create Goal & Get Started
                     <ArrowRight className="h-5 w-5" />
@@ -376,7 +376,7 @@ const OnboardingPage = () => {
 
           {/* Success Step */}
           {currentStep === 3 && (
-            <div className="bg-[#cfcfcf] rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center animate-fade-in">
+            <div className="bg-[#F0F0F0] rounded-2xl shadow-2xl p-6 sm:p-8 lg:p-12 text-center animate-fade-in">
               <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6 animate-bounce">
                 <CheckCircle className="h-12 w-12 text-green-600" />
               </div>

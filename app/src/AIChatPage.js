@@ -213,12 +213,12 @@ Always be encouraging and action-oriented!`;
       const isGoalIntent = goalKeywords.test(messageContent);
 
       const apiPayload = {
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: messageContent }
         ],
-        max_tokens: 500,
+        max_tokens: 800,
         temperature: 0.7
       };
 
@@ -388,7 +388,7 @@ Always be encouraging and action-oriented!`;
       {/* Goal Created Success Alert */}
       {showGoalCreatedAlert && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
-          <div className="bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+          <div className="bg-[#58CC02] text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
             <Target className="h-5 w-5" />
             <span className="font-semibold">Goal Created Successfully! 🎉</span>
           </div>
@@ -396,12 +396,12 @@ Always be encouraging and action-oriented!`;
       )}
 
       {/* Mobile-First Header */}
-      <div className="bg-[#cfcfcf] shadow-sm border-b border-[#E0E0E0]">
+      <div className="bg-[#F0F0F0] shadow-sm border-b border-[#E0E0E0]">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0 flex-1">
               <div className="relative flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center shadow-lg">
+                <div className="h-10 w-10 rounded-full bg-[#58CC02] flex items-center justify-center shadow-lg">
                   <Bot className="h-6 w-6 text-white" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-[#00CD4B] rounded-full border-2 border-white animate-pulse"></div>
@@ -444,7 +444,7 @@ Always be encouraging and action-oriented!`;
                     <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center ${
                       message.isError
                         ? 'bg-red-100'
-                        : 'bg-gradient-to-r from-[#58CC02] to-[#00CD4B]'
+                        : 'bg-[#58CC02]'
                     }`}>
                       <Bot className={`h-4 w-4 sm:h-5 sm:w-5 ${message.isError ? 'text-red-600' : 'text-white'}`} />
                     </div>
@@ -461,7 +461,7 @@ Always be encouraging and action-oriented!`;
                       ? 'bg-red-50 text-red-800 border border-red-200'
                       : message.goalCreated
                       ? 'bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] text-[#1a1a1a] border-2 border-[#58CC02]'
-                      : 'bg-[#cfcfcf] text-[#1a1a1a] border border-gray-200'
+                      : 'bg-[#F0F0F0] text-[#1a1a1a] border border-gray-200'
                   }`}>
                     {message.goalCreated && (
                       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#58CC02]">
@@ -485,10 +485,10 @@ Always be encouraging and action-oriented!`;
 
             {isLoading && (
               <div className="flex items-start gap-2 sm:gap-3">
-                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-[#58CC02] flex items-center justify-center">
                   <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="bg-[#cfcfcf] border border-gray-200 rounded-2xl p-3 shadow-sm">
+                <div className="bg-[#F0F0F0] border border-gray-200 rounded-2xl p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce"></div>
@@ -505,7 +505,7 @@ Always be encouraging and action-oriented!`;
           </div>
 
           {messages.length <= 1 && hasApiKey && (
-            <div className="p-3 sm:p-4 border-t bg-[#cfcfcf]">
+            <div className="p-3 sm:p-4 border-t bg-[#F0F0F0]">
               <h3 className="text-sm font-medium text-[#1a1a1a] mb-2 flex items-center gap-2">
                 <span className="h-4 w-4 text-[#FBBF24]">⚡</span>
                 Quick Actions
@@ -528,7 +528,7 @@ Always be encouraging and action-oriented!`;
           {!hasApiKey && (
             <div className="p-3 sm:p-4 border-t bg-gradient-to-r from-[#F7FFF4] to-[#E8F5E9]">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] rounded-full mb-3">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-[#58CC02] rounded-full mb-3">
                   <Key className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="font-semibold text-[#1a1a1a] mb-2">Setup Required</h3>
@@ -537,7 +537,7 @@ Always be encouraging and action-oriented!`;
                 </p>
                 <button
                   onClick={() => setShowSetupGuide(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white rounded-lg hover:from-[#4CAD02] hover:to-[#267300] transition-colors active:scale-95"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#58CC02] text-white rounded-lg hover:bg-[#4CAD02] transition-colors active:scale-95"
                 >
                   <Settings className="h-4 w-4" />
                   Setup AI Chat
@@ -546,7 +546,7 @@ Always be encouraging and action-oriented!`;
             </div>
           )}
 
-          <div className="p-3 sm:p-4 bg-[#cfcfcf] border-t pb-24">
+          <div className="p-3 sm:p-4 bg-[#F0F0F0] border-t pb-24">
             <form onSubmit={handleSubmit} className="flex items-end gap-2 sm:gap-3">
               <div className="flex-1">
                 <textarea

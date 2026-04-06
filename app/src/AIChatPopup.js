@@ -22,6 +22,8 @@ const AIChatPopup = ({ isOpen, onClose }) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const messagesEndRef = useRef(null);
 
+  const assistantName = localStorage.getItem('ai-assistant-name') || 'My Assistant';
+
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
 
   useEffect(() => {
@@ -40,7 +42,7 @@ const AIChatPopup = ({ isOpen, onClose }) => {
         id: Date.now(),
         type: 'ai',
         content: hasApiKey
-          ? `Hi ${user.firstName || 'there'}! 👋 I'm your Goal Tracking AI assistant. How can I help you today?`
+          ? `Hi ${user.firstName || 'there'}! 👋 I'm ${assistantName}, your goal tracking assistant. How can I help you today?`
           : `Hi ${user.firstName || 'there'}! 👋 To use AI chat, please configure your OpenAI API key in the settings.`,
         timestamp: new Date()
       };
@@ -110,7 +112,7 @@ User context:
           'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
         },
         body: JSON.stringify({
-          model: 'gpt-3.5-turbo',
+          model: 'gpt-4o',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: messageContent }
@@ -167,33 +169,33 @@ User context:
 
       {/* Chat Panel */}
       <div
-        className={`fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-[#cfcfcf] shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-[#F0F0F0] shadow-2xl z-[60] transform transition-transform duration-300 ease-in-out flex flex-col ${
           isOpen ? 'translate-x-0' : 'translate-x-full'
         } ${isMinimized ? 'lg:w-16' : 'lg:w-96'}`}
       >
         {/* Header */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-green-400 to-blue-500 px-4 py-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-[#58CC02] px-4 py-4 flex items-center justify-between">
           {!isMinimized && (
             <>
               <div className="flex items-center">
-                <div className="h-10 w-10 rounded-full bg-[#cfcfcf]/20 backdrop-blur-sm flex items-center justify-center mr-3">
+                <div className="h-10 w-10 rounded-full bg-[#F0F0F0]/20 backdrop-blur-sm flex items-center justify-center mr-3">
                   <Bot className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-white font-semibold">AI Assistant</h2>
+                  <h2 className="text-white font-semibold">{assistantName}</h2>
                   <p className="text-white/80 text-xs">Always here to help</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsMinimized(true)}
-                  className="hidden lg:block p-2 hover:bg-[#cfcfcf]/20 rounded-lg transition-colors"
+                  className="hidden lg:block p-2 hover:bg-[#F0F0F0]/20 rounded-lg transition-colors"
                 >
                   <Minimize2 className="h-5 w-5 text-white" />
                 </button>
                 <button
                   onClick={onClose}
-                  className="p-2 hover:bg-[#cfcfcf]/20 rounded-lg transition-colors"
+                  className="p-2 hover:bg-[#F0F0F0]/20 rounded-lg transition-colors"
                 >
                   <X className="h-5 w-5 text-white" />
                 </button>
@@ -223,14 +225,14 @@ User context:
                 >
                   <div className="flex-shrink-0">
                     {message.type === 'user' ? (
-                      <div className="h-8 w-8 rounded-full bg-indigo-600 flex items-center justify-center">
+                      <div className="h-8 w-8 rounded-full bg-[#58CC02] flex items-center justify-center">
                         <User className="h-5 w-5 text-white" />
                       </div>
                     ) : (
                       <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
                         message.isError
                           ? 'bg-red-100'
-                          : 'bg-gradient-to-r from-green-400 to-blue-500'
+                          : 'bg-[#58CC02]'
                       }`}>
                         <Bot className={`h-5 w-5 ${message.isError ? 'text-red-600' : 'text-white'}`} />
                       </div>
@@ -240,10 +242,10 @@ User context:
                   <div className={`flex-1 max-w-[75%]`}>
                     <div className={`p-3 rounded-2xl shadow-sm break-words ${
                       message.type === 'user'
-                        ? 'bg-indigo-600 text-white ml-auto'
+                        ? 'bg-[#58CC02] text-white ml-auto'
                         : message.isError
                         ? 'bg-red-50 text-red-800 border border-red-200'
-                        : 'bg-[#cfcfcf] text-gray-800'
+                        : 'bg-[#F0F0F0] text-gray-800'
                     }`}>
                       <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                     </div>
@@ -261,10 +263,10 @@ User context:
 
               {isLoading && (
                 <div className="flex items-start gap-2">
-                  <div className="h-8 w-8 rounded-full bg-gradient-to-r from-green-400 to-blue-500 flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-full bg-[#58CC02] flex items-center justify-center">
                     <Bot className="h-5 w-5 text-white" />
                   </div>
-                  <div className="bg-[#cfcfcf] rounded-2xl p-3 shadow-sm">
+                  <div className="bg-[#F0F0F0] rounded-2xl p-3 shadow-sm">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -279,7 +281,7 @@ User context:
 
             {/* Quick Actions */}
             {messages.length <= 1 && hasApiKey && (
-              <div className="flex-shrink-0 p-4 border-t bg-[#cfcfcf]">
+              <div className="flex-shrink-0 p-4 border-t bg-[#F0F0F0]">
                 <h3 className="text-sm font-medium text-gray-700 mb-2">Quick Actions</h3>
                 <div className="grid grid-cols-2 gap-2">
                   {quickActions.map((action, index) => (
@@ -288,7 +290,7 @@ User context:
                       onClick={() => handleQuickAction(action.action)}
                       className="flex items-center gap-2 p-2 text-left bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors text-xs"
                     >
-                      <action.icon className="h-4 w-4 text-indigo-600 flex-shrink-0" />
+                      <action.icon className="h-4 w-4 text-[#58CC02] flex-shrink-0" />
                       <span className="text-gray-700">{action.label}</span>
                     </button>
                   ))}
@@ -297,13 +299,13 @@ User context:
             )}
 
             {/* Input */}
-            <div className="flex-shrink-0 p-4 bg-[#cfcfcf] border-t">
+            <div className="flex-shrink-0 p-4 bg-[#F0F0F0] border-t">
               <form onSubmit={handleSubmit} className="flex items-end gap-2">
                 <textarea
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
                   placeholder={hasApiKey ? "Ask about your goals..." : "Setup required..."}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none text-sm disabled:bg-gray-100"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] resize-none text-sm disabled:bg-gray-100"
                   rows="1"
                   style={{ minHeight: '40px', maxHeight: '100px' }}
                   onKeyDown={(e) => {
@@ -317,7 +319,7 @@ User context:
                 <button
                   type="submit"
                   disabled={!inputMessage.trim() || isLoading || !hasApiKey}
-                  className="flex-shrink-0 h-10 w-10 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors"
+                  className="flex-shrink-0 h-10 w-10 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center transition-colors"
                 >
                   <Send className="h-5 w-5" />
                 </button>
