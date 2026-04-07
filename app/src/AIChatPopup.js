@@ -16,10 +16,12 @@ import {
 const AIChatPopup = ({ isOpen, onClose }) => {
   const { user } = useUser();
   const [messages, setMessages] = useState([]);
+  const [conversationHistory, setConversationHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [goals, setGoals] = useState([]);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [showGoalCreatedAlert, setShowGoalCreatedAlert] = useState(false);
   const messagesEndRef = useRef(null);
 
   const assistantName = localStorage.getItem('ai-assistant-name') || 'My Assistant';
@@ -77,6 +79,35 @@ const AIChatPopup = ({ isOpen, onClose }) => {
     }
   ];
 
+  const createGoal = (args) => {
+    const validCategories = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
+    const category = validCategories.includes(args.category) ? args.category : 'personal';
+    const categoryColors = {
+      personal: '#58CC02', health: '#FF6B6B', career: '#4ECDC4',
+      finance: '#95E1D3', education: '#A78BFA', fitness: '#F472B6'
+    };
+    const subtasks = (args.subtasks || []).map((text, i) => ({
+      id: Date.now() + i, title: text, description: text,
+      daysFromStart: (i + 1) * 7, completed: false
+    }));
+    const newGoal = {
+      id: Date.now(), userId: user.id, title: args.title,
+      description: args.why, category, targetValue: args.targetValue,
+      currentValue: 0, unit: args.unit,
+      startDate: new Date().toISOString(),
+      endDate: new Date(args.deadline).toISOString(),
+      color: categoryColors[category], subtasks,
+      createdAt: new Date().toISOString(), milestones: []
+    };
+    const key = `goaltracker-goals-${user.id}`;
+    const updated = [...goals, newGoal];
+    localStorage.setItem(key, JSON.stringify(updated));
+    setGoals(updated);
+    setShowGoalCreatedAlert(true);
+    setTimeout(() => setShowGoalCreatedAlert(false), 4000);
+    return newGoal;
+  };
+
   const sendMessage = async (messageContent) => {
     if (!messageContent.trim() || !hasApiKey) return;
 
@@ -91,19 +122,65 @@ const AIChatPopup = ({ isOpen, onClose }) => {
     setInputMessage('');
     setIsLoading(true);
 
+    const updatedHistory = [...conversationHistory, { role: 'user', content: messageContent }];
+
     try {
       const goalsContext = goals.length > 0
-        ? `\n\nUser's current goals:\n${goals.map(goal => {
+        ? `User's current goals:\n${goals.map(goal => {
             const progress = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
-            return `- ${goal.title} (${goal.category}): ${progress.toFixed(1)}% complete (${goal.currentValue}/${goal.targetValue} ${goal.unit})`;
+            return `- ${goal.title} (${goal.category}): ${progress.toFixed(1)}% complete`;
           }).join('\n')}`
-        : '\n\nUser has no goals set yet.';
+        : 'User has no goals yet.';
 
-      const systemPrompt = `You are a helpful AI assistant for goal tracking. Be encouraging and provide actionable advice. Keep responses concise (2-3 paragraphs max).
+      const systemPrompt = `You are a Goal Coach AI. You help users create trackable goals by asking short questions then saving the goal.
 
-User context:
-- User name: ${user?.firstName || 'User'}
-- Goals data: ${goalsContext}`;
+You MUST always call one of the two tools — never reply with plain text.
+
+Rules:
+- Use ask_question when you need more info. Ask ONE question, max 15 words.
+- Use create_goal as soon as you have: what to achieve, a number + unit, and a timeframe.
+- After at most 2 questions, make a reasonable assumption and call create_goal.
+- Never explain SMART goals. Never give advice. Just ask or create.
+
+User: ${user?.firstName || 'there'}
+${goalsContext}`;
+
+      const tools = [
+        {
+          type: 'function',
+          function: {
+            name: 'ask_question',
+            description: 'Ask the user one short clarifying question (under 15 words).',
+            parameters: {
+              type: 'object',
+              properties: {
+                question: { type: 'string', description: 'A short question to ask the user' }
+              },
+              required: ['question']
+            }
+          }
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'create_goal',
+            description: 'Save the goal once you know what to achieve, a numeric target + unit, and a deadline.',
+            parameters: {
+              type: 'object',
+              properties: {
+                title: { type: 'string' },
+                category: { type: 'string', enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'] },
+                targetValue: { type: 'number' },
+                unit: { type: 'string' },
+                deadline: { type: 'string', description: 'YYYY-MM-DD' },
+                why: { type: 'string' },
+                subtasks: { type: 'array', items: { type: 'string' }, description: '3-5 steps' }
+              },
+              required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
+            }
+          }
+        }
+      ];
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -113,36 +190,61 @@ User context:
         },
         body: JSON.stringify({
           model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: messageContent }
-          ],
-          max_tokens: 500,
-          temperature: 0.7
+          messages: [{ role: 'system', content: systemPrompt }, ...updatedHistory],
+          tools,
+          tool_choice: 'required',
+          max_tokens: 400,
+          temperature: 0.3
         })
       });
 
       if (!response.ok) throw new Error('Failed to get AI response');
 
       const data = await response.json();
-      const aiMessage = {
+      const message = data.choices[0].message;
+      const toolCall = message.tool_calls && message.tool_calls[0];
+
+      let aiResponseContent = '';
+
+      if (toolCall?.function.name === 'create_goal') {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          createGoal(args);
+          aiResponseContent = `Done! Created your goal: **${args.title}** 🎯\n\nTarget: ${args.targetValue} ${args.unit} by ${args.deadline}\n\nYou can track it on your dashboard. Want to set another?`;
+          setConversationHistory([]);
+        } catch (err) {
+          aiResponseContent = "I had trouble saving that. Could you try again?";
+          setConversationHistory(updatedHistory);
+        }
+      } else if (toolCall?.function.name === 'ask_question') {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          aiResponseContent = args.question;
+          setConversationHistory([...updatedHistory, { role: 'assistant', content: args.question }]);
+        } catch (err) {
+          aiResponseContent = "What would you like to achieve?";
+          setConversationHistory(updatedHistory);
+        }
+      } else {
+        aiResponseContent = "What would you like to achieve?";
+        setConversationHistory(updatedHistory);
+      }
+
+      setMessages(prev => [...prev, {
         id: Date.now() + 1,
         type: 'ai',
-        content: data.choices[0].message.content,
+        content: aiResponseContent,
         timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, aiMessage]);
+      }]);
     } catch (error) {
       console.error('Error calling OpenAI:', error);
-      const errorMessage = {
+      setMessages(prev => [...prev, {
         id: Date.now() + 1,
         type: 'ai',
-        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment. 🎯",
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again. 🎯",
         timestamp: new Date(),
         isError: true
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      }]);
     } finally {
       setIsLoading(false);
     }
@@ -161,6 +263,14 @@ User context:
 
   return (
     <>
+      {/* Goal created banner */}
+      {showGoalCreatedAlert && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-[70] bg-[#58CC02] text-white px-5 py-2.5 rounded-lg shadow-xl flex items-center gap-2 text-sm font-semibold">
+          <Target className="h-4 w-4" />
+          Goal Created Successfully! 🎉
+        </div>
+      )}
+
       {/* Backdrop for mobile */}
       <div
         className="lg:hidden fixed inset-0 bg-black/50 z-[55] transition-opacity"
