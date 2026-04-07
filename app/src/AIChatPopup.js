@@ -132,6 +132,8 @@ const AIChatPopup = ({ isOpen, onClose }) => {
           }).join('\n')}`
         : 'User has no goals yet.';
 
+      const today = new Date().toISOString().split('T')[0];
+
       const systemPrompt = `You are a Goal Coach AI. You help users create trackable goals by asking short questions then saving the goal.
 
 You MUST always call one of the two tools — never reply with plain text.
@@ -141,6 +143,7 @@ Rules:
 - Use create_goal as soon as you have: what to achieve, a number + unit, and a timeframe.
 - After at most 2 questions, make a reasonable assumption and call create_goal.
 - Never explain SMART goals. Never give advice. Just ask or create.
+- Today's date is ${today}. All deadlines must be in the future relative to today.
 
 User: ${user?.firstName || 'there'}
 ${goalsContext}`;
