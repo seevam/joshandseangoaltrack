@@ -18,6 +18,7 @@ import SetupGuide from './SetupGuide';
 const AIChatPage = () => {
   const { user, isLoaded } = useUser();
   const [messages, setMessages] = useState([]);
+  const [conversationHistory, setConversationHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [goals, setGoals] = useState([]);
@@ -181,96 +182,55 @@ const AIChatPage = () => {
     setInputMessage('');
     setIsLoading(true);
 
+    const updatedHistory = [...conversationHistory, { role: 'user', content: messageContent }];
+
     try {
-      const goalsContext = goals.length > 0 
-        ? `\n\nUser's current goals:\n${goals.map(goal => {
+      const goalsContext = goals.length > 0
+        ? `User's current goals:\n${goals.map(goal => {
             const progress = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
             return `- ${goal.title} (${goal.category}): ${progress.toFixed(1)}% complete (${goal.currentValue}/${goal.targetValue} ${goal.unit})`;
           }).join('\n')}`
-        : '\n\nUser has no goals set yet.';
+        : 'User has no goals set yet.';
 
-      const systemPrompt = `You are a SMART Goal Creation AI Assistant. Your PRIMARY role is to help users CREATE concrete, actionable goals.
+      const systemPrompt = `You are a friendly Goal Coach AI for GoalQuest. Help users create SMART goals through natural conversation.
 
-CRITICAL RULES:
-1. When a user mentions wanting to do, achieve, or improve something - IMMEDIATELY use the create_goal function
-2. For motivation/progress questions about existing goals - provide a brief encouraging response
-3. Be proactive - even vague desires should trigger goal creation
-
-When creating goals:
-- Choose appropriate category: fitness, health, personal, career, finance, or education
-- Set realistic deadlines based on the goal type
-- Create 3-5 specific, actionable sub-tasks
-- Make targets measurable with appropriate units (km, books, hours, days, workouts, etc.)
+Guidelines:
+- If a user's request is vague (e.g. "I want to get fit"), ask ONE focused clarifying question (e.g. "What specifically would you like to achieve — run a distance, lose weight, or work out regularly?")
+- Once you have enough detail (what they want, a measurable target, and roughly when), call create_goal immediately — do not ask more than 2 questions total
+- For motivation or progress questions, respond encouragingly in 2-3 sentences — do not create a goal
+- Keep all replies short and conversational
 
 User context:
 - Name: ${user?.firstName || 'User'}
-- Current goals: ${goalsContext}
+- ${goalsContext}`;
 
-Always be encouraging and action-oriented!`;
-
-      // Detect if user wants to create a goal
-      const goalKeywords = /\b(want|wanna|going to|plan|planning|goal|achieve|do|start|begin|learn|improve|get|become|run|read|save|work out|exercise|study)\b/i;
-      const isGoalIntent = goalKeywords.test(messageContent);
-
-      const apiPayload = {
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: messageContent }
-        ],
-        max_tokens: 800,
-        temperature: 0.7
-      };
-
-      // Only add functions for goal-related messages
-      if (isGoalIntent) {
-        apiPayload.functions = [
-          {
-            name: 'create_goal',
-            description: 'Create a new trackable goal for the user when they express wanting to do, achieve, or improve something',
-            parameters: {
-              type: 'object',
-              properties: {
-                title: {
-                  type: 'string',
-                  description: 'Clear, action-oriented goal title (e.g., "Complete Marathon Training")'
-                },
-                category: {
-                  type: 'string',
-                  enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'],
-                  description: 'Goal category'
-                },
-                targetValue: {
-                  type: 'number',
-                  description: 'Numeric target to achieve (e.g., 42 for 42km)'
-                },
-                unit: {
-                  type: 'string',
-                  description: 'Unit of measurement (e.g., km, books, hours, days, dollars)'
-                },
-                deadline: {
-                  type: 'string',
-                  description: 'Deadline date in YYYY-MM-DD format'
-                },
-                why: {
-                  type: 'string',
-                  description: 'Motivational reason for this goal (1-2 sentences)'
-                },
-                subtasks: {
-                  type: 'array',
-                  items: {
-                    type: 'string'
-                  },
-                  description: 'List of 3-5 actionable sub-tasks to achieve the goal'
-                }
+      const createGoalTool = {
+        type: 'function',
+        function: {
+          name: 'create_goal',
+          description: 'Save a new trackable goal for the user. Call this once you know what they want to achieve, a measurable target, and a deadline.',
+          parameters: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Short, action-oriented goal title' },
+              category: {
+                type: 'string',
+                enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education']
               },
-              required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
-            }
+              targetValue: { type: 'number', description: 'Numeric target (e.g. 42)' },
+              unit: { type: 'string', description: 'Unit of measurement (e.g. km, books, hours, $)' },
+              deadline: { type: 'string', description: 'Deadline in YYYY-MM-DD format' },
+              why: { type: 'string', description: 'Brief motivational reason (1-2 sentences)' },
+              subtasks: {
+                type: 'array',
+                items: { type: 'string' },
+                description: '3-5 actionable steps to achieve the goal'
+              }
+            },
+            required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
           }
-        ];
-        // FORCE function call for goal-related messages
-        apiPayload.function_call = { name: 'create_goal' };
-      }
+        }
+      };
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -278,7 +238,17 @@ Always be encouraging and action-oriented!`;
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
         },
-        body: JSON.stringify(apiPayload)
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...updatedHistory
+          ],
+          tools: [createGoalTool],
+          tool_choice: 'auto',
+          max_tokens: 800,
+          temperature: 0.7
+        })
       });
 
       if (!response.ok) {
@@ -291,12 +261,12 @@ Always be encouraging and action-oriented!`;
       let goalCreated = null;
       let aiResponseContent = '';
 
-      // Check if AI wants to call the create_goal function
-      if (message.function_call && message.function_call.name === 'create_goal') {
+      // Handle tool call (new API format)
+      const toolCall = message.tool_calls && message.tool_calls[0];
+      if (toolCall && toolCall.function.name === 'create_goal') {
         try {
-          const functionArgs = JSON.parse(message.function_call.arguments);
+          const functionArgs = JSON.parse(toolCall.function.arguments);
 
-          // Process subtasks
           const subtasks = functionArgs.subtasks.map((taskText, index) => ({
             id: Date.now() + index,
             title: taskText,
@@ -305,8 +275,7 @@ Always be encouraging and action-oriented!`;
             completed: false
           }));
 
-          // Create goal from function call data
-          const goalData = {
+          goalCreated = createGoalFromParsedData({
             title: functionArgs.title,
             category: functionArgs.category,
             targetValue: functionArgs.targetValue,
@@ -314,25 +283,21 @@ Always be encouraging and action-oriented!`;
             endDate: functionArgs.deadline,
             description: functionArgs.why,
             subtasks
-          };
+          });
 
-          goalCreated = createGoalFromParsedData(goalData);
+          aiResponseContent = `Done! I've created your goal: **${functionArgs.title}** 🎯\n\nTarget: ${functionArgs.targetValue} ${functionArgs.unit} by ${functionArgs.deadline}\n\n${functionArgs.why}\n\nYou can track it on your dashboard. Want to set another goal?`;
 
-          // Generate a friendly confirmation message
-          aiResponseContent = `Perfect! I've created your goal: "${functionArgs.title}" 🎯\n\nTarget: ${functionArgs.targetValue} ${functionArgs.unit}\nDeadline: ${functionArgs.deadline}\n\n${functionArgs.why}\n\nYour goal has been saved and you can track it on your dashboard!`;
+          // Don't add tool call to history — reset so next message is fresh
+          setConversationHistory([]);
         } catch (error) {
-          console.error('Error processing function call:', error);
-          aiResponseContent = "I created a goal structure but had trouble saving it. Please try again!";
+          console.error('Error processing tool call:', error);
+          aiResponseContent = "I had trouble saving that goal. Could you try again?";
+          setConversationHistory(updatedHistory);
         }
       } else {
-        // Normal text response (for motivation, progress checks, etc.)
+        // Conversational reply — append to history
         aiResponseContent = message.content || "I'm here to help you create goals! What would you like to achieve?";
-
-        // Also try to parse from text format as fallback
-        const parsedGoal = parseGoalFromAIResponse(aiResponseContent);
-        if (parsedGoal) {
-          goalCreated = createGoalFromParsedData(parsedGoal);
-        }
+        setConversationHistory([...updatedHistory, { role: 'assistant', content: aiResponseContent }]);
       }
 
       const aiMessage = {
@@ -340,7 +305,7 @@ Always be encouraging and action-oriented!`;
         type: 'ai',
         content: aiResponseContent,
         timestamp: new Date(),
-        goalCreated: goalCreated ? true : false
+        goalCreated: !!goalCreated
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -371,6 +336,7 @@ Always be encouraging and action-oriented!`;
   const startNewChat = () => {
     if (window.confirm('Start a new chat? This will clear your current conversation.')) {
       setMessages([]);
+      setConversationHistory([]);
       setInputMessage('');
     }
   };
