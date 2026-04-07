@@ -48,7 +48,7 @@ const AIChatPopup = ({ isOpen, onClose }) => {
       };
       setMessages([welcomeMessage]);
     }
-  }, [user, messages.length, hasApiKey, isOpen]);
+  }, [user, messages.length, hasApiKey, isOpen, assistantName]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
