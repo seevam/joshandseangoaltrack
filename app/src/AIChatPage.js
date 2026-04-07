@@ -192,45 +192,67 @@ const AIChatPage = () => {
           }).join('\n')}`
         : 'User has no goals set yet.';
 
-      const systemPrompt = `You are a friendly Goal Coach AI for GoalQuest. Help users create SMART goals through natural conversation.
+      const systemPrompt = `You are a Goal Coach AI for GoalQuest. You help users create trackable goals by asking short questions then saving the goal.
 
-Guidelines:
-- If a user's request is vague (e.g. "I want to get fit"), ask ONE focused clarifying question (e.g. "What specifically would you like to achieve — run a distance, lose weight, or work out regularly?")
-- Once you have enough detail (what they want, a measurable target, and roughly when), call create_goal immediately — do not ask more than 2 questions total
-- For motivation or progress questions, respond encouragingly in 2-3 sentences — do not create a goal
-- Keep all replies short and conversational
+You MUST always call one of the two tools — never reply with plain text.
 
-User context:
-- Name: ${user?.firstName || 'User'}
-- ${goalsContext}`;
+Rules:
+- Use ask_question when you need more info. Ask ONE question, max 15 words.
+- Use create_goal as soon as you have: what to achieve, a number + unit, and a timeframe.
+- After at most 2 questions, make a reasonable assumption and call create_goal.
+- Never explain SMART goals. Never give advice. Just ask or create.
 
-      const createGoalTool = {
-        type: 'function',
-        function: {
-          name: 'create_goal',
-          description: 'Save a new trackable goal for the user. Call this once you know what they want to achieve, a measurable target, and a deadline.',
-          parameters: {
-            type: 'object',
-            properties: {
-              title: { type: 'string', description: 'Short, action-oriented goal title' },
-              category: {
-                type: 'string',
-                enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education']
+Examples of ask_question:
+- "What would you like to achieve?"
+- "How many times a week do you want to work out?"
+- "By when would you like to reach this goal?"
+
+User: ${user?.firstName || 'there'}
+${goalsContext}`;
+
+      const tools = [
+        {
+          type: 'function',
+          function: {
+            name: 'ask_question',
+            description: 'Ask the user one short clarifying question (under 15 words) to gather missing goal details.',
+            parameters: {
+              type: 'object',
+              properties: {
+                question: { type: 'string', description: 'A short question to ask the user' }
               },
-              targetValue: { type: 'number', description: 'Numeric target (e.g. 42)' },
-              unit: { type: 'string', description: 'Unit of measurement (e.g. km, books, hours, $)' },
-              deadline: { type: 'string', description: 'Deadline in YYYY-MM-DD format' },
-              why: { type: 'string', description: 'Brief motivational reason (1-2 sentences)' },
-              subtasks: {
-                type: 'array',
-                items: { type: 'string' },
-                description: '3-5 actionable steps to achieve the goal'
-              }
-            },
-            required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
+              required: ['question']
+            }
+          }
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'create_goal',
+            description: 'Save the goal. Call this once you know what to achieve, a numeric target + unit, and a deadline.',
+            parameters: {
+              type: 'object',
+              properties: {
+                title: { type: 'string', description: 'Short, action-oriented goal title' },
+                category: {
+                  type: 'string',
+                  enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education']
+                },
+                targetValue: { type: 'number', description: 'Numeric target (e.g. 42)' },
+                unit: { type: 'string', description: 'Unit of measurement (e.g. km, books, hours, $)' },
+                deadline: { type: 'string', description: 'Deadline in YYYY-MM-DD format' },
+                why: { type: 'string', description: 'Brief motivational reason (1-2 sentences)' },
+                subtasks: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: '3-5 actionable steps to achieve the goal'
+                }
+              },
+              required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
+            }
           }
         }
-      };
+      ];
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -244,10 +266,10 @@ User context:
             { role: 'system', content: systemPrompt },
             ...updatedHistory
           ],
-          tools: [createGoalTool],
-          tool_choice: 'auto',
-          max_tokens: 800,
-          temperature: 0.7
+          tools,
+          tool_choice: 'required',
+          max_tokens: 400,
+          temperature: 0.3
         })
       });
 
@@ -257,17 +279,16 @@ User context:
 
       const data = await response.json();
       const message = data.choices[0].message;
+      const toolCall = message.tool_calls && message.tool_calls[0];
 
       let goalCreated = null;
       let aiResponseContent = '';
 
-      // Handle tool call (new API format)
-      const toolCall = message.tool_calls && message.tool_calls[0];
       if (toolCall && toolCall.function.name === 'create_goal') {
         try {
-          const functionArgs = JSON.parse(toolCall.function.arguments);
+          const args = JSON.parse(toolCall.function.arguments);
 
-          const subtasks = functionArgs.subtasks.map((taskText, index) => ({
+          const subtasks = args.subtasks.map((taskText, index) => ({
             id: Date.now() + index,
             title: taskText,
             description: taskText,
@@ -276,28 +297,34 @@ User context:
           }));
 
           goalCreated = createGoalFromParsedData({
-            title: functionArgs.title,
-            category: functionArgs.category,
-            targetValue: functionArgs.targetValue,
-            unit: functionArgs.unit,
-            endDate: functionArgs.deadline,
-            description: functionArgs.why,
+            title: args.title,
+            category: args.category,
+            targetValue: args.targetValue,
+            unit: args.unit,
+            endDate: args.deadline,
+            description: args.why,
             subtasks
           });
 
-          aiResponseContent = `Done! I've created your goal: **${functionArgs.title}** 🎯\n\nTarget: ${functionArgs.targetValue} ${functionArgs.unit} by ${functionArgs.deadline}\n\n${functionArgs.why}\n\nYou can track it on your dashboard. Want to set another goal?`;
-
-          // Don't add tool call to history — reset so next message is fresh
+          aiResponseContent = `Done! I've created your goal: **${args.title}** 🎯\n\nTarget: ${args.targetValue} ${args.unit} by ${args.deadline}\n\n${args.why}\n\nYou can track it on your dashboard. Want to set another goal?`;
           setConversationHistory([]);
         } catch (error) {
           console.error('Error processing tool call:', error);
           aiResponseContent = "I had trouble saving that goal. Could you try again?";
           setConversationHistory(updatedHistory);
         }
+      } else if (toolCall && toolCall.function.name === 'ask_question') {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          aiResponseContent = args.question;
+          setConversationHistory([...updatedHistory, { role: 'assistant', content: args.question }]);
+        } catch (error) {
+          aiResponseContent = "What would you like to achieve?";
+          setConversationHistory(updatedHistory);
+        }
       } else {
-        // Conversational reply — append to history
-        aiResponseContent = message.content || "I'm here to help you create goals! What would you like to achieve?";
-        setConversationHistory([...updatedHistory, { role: 'assistant', content: aiResponseContent }]);
+        aiResponseContent = "What would you like to achieve?";
+        setConversationHistory(updatedHistory);
       }
 
       const aiMessage = {
