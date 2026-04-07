@@ -132,17 +132,27 @@ const AIChatPopup = ({ isOpen, onClose }) => {
           }).join('\n')}`
         : 'User has no goals yet.';
 
-      const systemPrompt = `You are a Goal Coach AI. You help users create trackable goals by asking short questions then saving the goal.
+      const today = new Date().toISOString().split('T')[0];
+
+      const systemPrompt = `You are an enthusiastic, warm personal Goal Coach. Your job is to have a short friendly conversation to understand what the user wants to achieve, then save it as a trackable goal.
 
 You MUST always call one of the two tools — never reply with plain text.
 
-Rules:
-- Use ask_question when you need more info. Ask ONE question, max 15 words.
-- Use create_goal as soon as you have: what to achieve, a number + unit, and a timeframe.
-- After at most 2 questions, make a reasonable assumption and call create_goal.
-- Never explain SMART goals. Never give advice. Just ask or create.
+Conversation style:
+- Sound like a real coach — encouraging, curious, personal. Reference their name (${user?.firstName || 'there'}) occasionally.
+- When using ask_question, you can include a brief warm reaction (1 sentence) before the question. Keep the total response under 2 sentences.
+- Ask 2-3 questions to really understand the goal: what they want, why it matters to them, and their timeframe.
+- After 3 questions max, call create_goal with confident, specific values.
+- Never explain SMART goals. Never lecture. Just coach.
 
-User: ${user?.firstName || 'there'}
+Today's date is ${today}. All deadlines must be in the future.
+
+Sub-task quality rules (critical):
+- Sub-tasks must be PROGRESSIVE milestones that build toward the goal, not generic advice.
+- Each sub-task should represent a measurable checkpoint, e.g. "Run 2km without stopping", "Complete first 5km", "Hit 75% of target by month 2"
+- Order them from easiest/earliest to hardest/latest
+- Make them specific to the user's actual goal, not copy-paste generic steps
+
 ${goalsContext}`;
 
       const tools = [
@@ -150,11 +160,11 @@ ${goalsContext}`;
           type: 'function',
           function: {
             name: 'ask_question',
-            description: 'Ask the user one short clarifying question (under 15 words).',
+            description: 'Send a warm, encouraging message with one clarifying question. Keep it under 2 sentences total.',
             parameters: {
               type: 'object',
               properties: {
-                question: { type: 'string', description: 'A short question to ask the user' }
+                question: { type: 'string', description: 'A warm 1-2 sentence message ending with one question' }
               },
               required: ['question']
             }
@@ -173,8 +183,12 @@ ${goalsContext}`;
                 targetValue: { type: 'number' },
                 unit: { type: 'string' },
                 deadline: { type: 'string', description: 'YYYY-MM-DD' },
-                why: { type: 'string' },
-                subtasks: { type: 'array', items: { type: 'string' }, description: '3-5 steps' }
+                why: { type: 'string', description: 'Personalized motivational reason based on what the user said' },
+                subtasks: {
+                  type: 'array',
+                  items: { type: 'string' },
+                  description: '4-5 progressive milestone checkpoints specific to this goal. Each must be a measurable achievement that builds toward the final target, ordered from earliest to latest (e.g. "Run 2km without stopping", "Complete first 5km run under 35 mins", "Run 10km by end of month 2"). Never use generic advice like "Stay consistent" or "Join a gym".'
+                }
               },
               required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
             }
@@ -193,8 +207,8 @@ ${goalsContext}`;
           messages: [{ role: 'system', content: systemPrompt }, ...updatedHistory],
           tools,
           tool_choice: 'required',
-          max_tokens: 400,
-          temperature: 0.3
+          max_tokens: 600,
+          temperature: 0.5
         })
       });
 
