@@ -495,7 +495,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   const overdueGoals = goals.filter(g => getGoalStatus(g) === 'overdue').length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] pb-24 lg:pb-8">
+    <div className="min-h-screen bg-[#F0F0F0] pb-24 lg:pb-8">
       {/* Header */}
       <header className="bg-[#F0F0F0] shadow-sm border-b border-[#E0E0E0] sticky top-0 z-10">
         <div className="px-4 py-3 sm:px-6">
