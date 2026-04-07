@@ -18,6 +18,7 @@ import SetupGuide from './SetupGuide';
 const AIChatPage = () => {
   const { user, isLoaded } = useUser();
   const [messages, setMessages] = useState([]);
+  const [conversationHistory, setConversationHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [goals, setGoals] = useState([]);
@@ -181,96 +182,77 @@ const AIChatPage = () => {
     setInputMessage('');
     setIsLoading(true);
 
+    const updatedHistory = [...conversationHistory, { role: 'user', content: messageContent }];
+
     try {
-      const goalsContext = goals.length > 0 
-        ? `\n\nUser's current goals:\n${goals.map(goal => {
+      const goalsContext = goals.length > 0
+        ? `User's current goals:\n${goals.map(goal => {
             const progress = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
             return `- ${goal.title} (${goal.category}): ${progress.toFixed(1)}% complete (${goal.currentValue}/${goal.targetValue} ${goal.unit})`;
           }).join('\n')}`
-        : '\n\nUser has no goals set yet.';
+        : 'User has no goals set yet.';
 
-      const systemPrompt = `You are a SMART Goal Creation AI Assistant. Your PRIMARY role is to help users CREATE concrete, actionable goals.
+      const systemPrompt = `You are a Goal Coach AI for GoalQuest. You help users create trackable goals by asking short questions then saving the goal.
 
-CRITICAL RULES:
-1. When a user mentions wanting to do, achieve, or improve something - IMMEDIATELY use the create_goal function
-2. For motivation/progress questions about existing goals - provide a brief encouraging response
-3. Be proactive - even vague desires should trigger goal creation
+You MUST always call one of the two tools — never reply with plain text.
 
-When creating goals:
-- Choose appropriate category: fitness, health, personal, career, finance, or education
-- Set realistic deadlines based on the goal type
-- Create 3-5 specific, actionable sub-tasks
-- Make targets measurable with appropriate units (km, books, hours, days, workouts, etc.)
+Rules:
+- Use ask_question when you need more info. Ask ONE question, max 15 words.
+- Use create_goal as soon as you have: what to achieve, a number + unit, and a timeframe.
+- After at most 2 questions, make a reasonable assumption and call create_goal.
+- Never explain SMART goals. Never give advice. Just ask or create.
 
-User context:
-- Name: ${user?.firstName || 'User'}
-- Current goals: ${goalsContext}
+Examples of ask_question:
+- "What would you like to achieve?"
+- "How many times a week do you want to work out?"
+- "By when would you like to reach this goal?"
 
-Always be encouraging and action-oriented!`;
+User: ${user?.firstName || 'there'}
+${goalsContext}`;
 
-      // Detect if user wants to create a goal
-      const goalKeywords = /\b(want|wanna|going to|plan|planning|goal|achieve|do|start|begin|learn|improve|get|become|run|read|save|work out|exercise|study)\b/i;
-      const isGoalIntent = goalKeywords.test(messageContent);
-
-      const apiPayload = {
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: messageContent }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
-      };
-
-      // Only add functions for goal-related messages
-      if (isGoalIntent) {
-        apiPayload.functions = [
-          {
-            name: 'create_goal',
-            description: 'Create a new trackable goal for the user when they express wanting to do, achieve, or improve something',
+      const tools = [
+        {
+          type: 'function',
+          function: {
+            name: 'ask_question',
+            description: 'Ask the user one short clarifying question (under 15 words) to gather missing goal details.',
             parameters: {
               type: 'object',
               properties: {
-                title: {
-                  type: 'string',
-                  description: 'Clear, action-oriented goal title (e.g., "Complete Marathon Training")'
-                },
+                question: { type: 'string', description: 'A short question to ask the user' }
+              },
+              required: ['question']
+            }
+          }
+        },
+        {
+          type: 'function',
+          function: {
+            name: 'create_goal',
+            description: 'Save the goal. Call this once you know what to achieve, a numeric target + unit, and a deadline.',
+            parameters: {
+              type: 'object',
+              properties: {
+                title: { type: 'string', description: 'Short, action-oriented goal title' },
                 category: {
                   type: 'string',
-                  enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'],
-                  description: 'Goal category'
+                  enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education']
                 },
-                targetValue: {
-                  type: 'number',
-                  description: 'Numeric target to achieve (e.g., 42 for 42km)'
-                },
-                unit: {
-                  type: 'string',
-                  description: 'Unit of measurement (e.g., km, books, hours, days, dollars)'
-                },
-                deadline: {
-                  type: 'string',
-                  description: 'Deadline date in YYYY-MM-DD format'
-                },
-                why: {
-                  type: 'string',
-                  description: 'Motivational reason for this goal (1-2 sentences)'
-                },
+                targetValue: { type: 'number', description: 'Numeric target (e.g. 42)' },
+                unit: { type: 'string', description: 'Unit of measurement (e.g. km, books, hours, $)' },
+                deadline: { type: 'string', description: 'Deadline in YYYY-MM-DD format' },
+                why: { type: 'string', description: 'Brief motivational reason (1-2 sentences)' },
                 subtasks: {
                   type: 'array',
-                  items: {
-                    type: 'string'
-                  },
-                  description: 'List of 3-5 actionable sub-tasks to achieve the goal'
+                  items: { type: 'string' },
+                  description: '3-5 actionable steps to achieve the goal'
                 }
               },
               required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
             }
           }
-        ];
-        // FORCE function call for goal-related messages
-        apiPayload.function_call = { name: 'create_goal' };
-      }
+        }
+      ];
 
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -278,7 +260,17 @@ Always be encouraging and action-oriented!`;
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
         },
-        body: JSON.stringify(apiPayload)
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...updatedHistory
+          ],
+          tools,
+          tool_choice: 'required',
+          max_tokens: 400,
+          temperature: 0.3
+        })
       });
 
       if (!response.ok) {
@@ -287,17 +279,16 @@ Always be encouraging and action-oriented!`;
 
       const data = await response.json();
       const message = data.choices[0].message;
+      const toolCall = message.tool_calls && message.tool_calls[0];
 
       let goalCreated = null;
       let aiResponseContent = '';
 
-      // Check if AI wants to call the create_goal function
-      if (message.function_call && message.function_call.name === 'create_goal') {
+      if (toolCall && toolCall.function.name === 'create_goal') {
         try {
-          const functionArgs = JSON.parse(message.function_call.arguments);
+          const args = JSON.parse(toolCall.function.arguments);
 
-          // Process subtasks
-          const subtasks = functionArgs.subtasks.map((taskText, index) => ({
+          const subtasks = args.subtasks.map((taskText, index) => ({
             id: Date.now() + index,
             title: taskText,
             description: taskText,
@@ -305,34 +296,35 @@ Always be encouraging and action-oriented!`;
             completed: false
           }));
 
-          // Create goal from function call data
-          const goalData = {
-            title: functionArgs.title,
-            category: functionArgs.category,
-            targetValue: functionArgs.targetValue,
-            unit: functionArgs.unit,
-            endDate: functionArgs.deadline,
-            description: functionArgs.why,
+          goalCreated = createGoalFromParsedData({
+            title: args.title,
+            category: args.category,
+            targetValue: args.targetValue,
+            unit: args.unit,
+            endDate: args.deadline,
+            description: args.why,
             subtasks
-          };
+          });
 
-          goalCreated = createGoalFromParsedData(goalData);
-
-          // Generate a friendly confirmation message
-          aiResponseContent = `Perfect! I've created your goal: "${functionArgs.title}" 🎯\n\nTarget: ${functionArgs.targetValue} ${functionArgs.unit}\nDeadline: ${functionArgs.deadline}\n\n${functionArgs.why}\n\nYour goal has been saved and you can track it on your dashboard!`;
+          aiResponseContent = `Done! I've created your goal: **${args.title}** 🎯\n\nTarget: ${args.targetValue} ${args.unit} by ${args.deadline}\n\n${args.why}\n\nYou can track it on your dashboard. Want to set another goal?`;
+          setConversationHistory([]);
         } catch (error) {
-          console.error('Error processing function call:', error);
-          aiResponseContent = "I created a goal structure but had trouble saving it. Please try again!";
+          console.error('Error processing tool call:', error);
+          aiResponseContent = "I had trouble saving that goal. Could you try again?";
+          setConversationHistory(updatedHistory);
+        }
+      } else if (toolCall && toolCall.function.name === 'ask_question') {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          aiResponseContent = args.question;
+          setConversationHistory([...updatedHistory, { role: 'assistant', content: args.question }]);
+        } catch (error) {
+          aiResponseContent = "What would you like to achieve?";
+          setConversationHistory(updatedHistory);
         }
       } else {
-        // Normal text response (for motivation, progress checks, etc.)
-        aiResponseContent = message.content || "I'm here to help you create goals! What would you like to achieve?";
-
-        // Also try to parse from text format as fallback
-        const parsedGoal = parseGoalFromAIResponse(aiResponseContent);
-        if (parsedGoal) {
-          goalCreated = createGoalFromParsedData(parsedGoal);
-        }
+        aiResponseContent = "What would you like to achieve?";
+        setConversationHistory(updatedHistory);
       }
 
       const aiMessage = {
@@ -340,7 +332,7 @@ Always be encouraging and action-oriented!`;
         type: 'ai',
         content: aiResponseContent,
         timestamp: new Date(),
-        goalCreated: goalCreated ? true : false
+        goalCreated: !!goalCreated
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -371,6 +363,7 @@ Always be encouraging and action-oriented!`;
   const startNewChat = () => {
     if (window.confirm('Start a new chat? This will clear your current conversation.')) {
       setMessages([]);
+      setConversationHistory([]);
       setInputMessage('');
     }
   };
@@ -388,7 +381,7 @@ Always be encouraging and action-oriented!`;
       {/* Goal Created Success Alert */}
       {showGoalCreatedAlert && (
         <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 animate-bounce">
-          <div className="bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
+          <div className="bg-[#58CC02] text-white px-6 py-3 rounded-lg shadow-xl flex items-center gap-3">
             <Target className="h-5 w-5" />
             <span className="font-semibold">Goal Created Successfully! 🎉</span>
           </div>
@@ -396,12 +389,12 @@ Always be encouraging and action-oriented!`;
       )}
 
       {/* Mobile-First Header */}
-      <div className="bg-[#cfcfcf] shadow-sm border-b border-[#E0E0E0]">
+      <div className="bg-[#F0F0F0] shadow-sm border-b border-[#E0E0E0]">
         <div className="px-4 py-3 sm:px-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center min-w-0 flex-1">
               <div className="relative flex-shrink-0">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center shadow-lg">
+                <div className="h-10 w-10 rounded-full bg-[#58CC02] flex items-center justify-center shadow-lg">
                   <Bot className="h-6 w-6 text-white" />
                 </div>
                 <div className="absolute -bottom-1 -right-1 h-3 w-3 bg-[#00CD4B] rounded-full border-2 border-white animate-pulse"></div>
@@ -444,7 +437,7 @@ Always be encouraging and action-oriented!`;
                     <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center ${
                       message.isError
                         ? 'bg-red-100'
-                        : 'bg-gradient-to-r from-[#58CC02] to-[#00CD4B]'
+                        : 'bg-[#58CC02]'
                     }`}>
                       <Bot className={`h-4 w-4 sm:h-5 sm:w-5 ${message.isError ? 'text-red-600' : 'text-white'}`} />
                     </div>
@@ -461,7 +454,7 @@ Always be encouraging and action-oriented!`;
                       ? 'bg-red-50 text-red-800 border border-red-200'
                       : message.goalCreated
                       ? 'bg-gradient-to-br from-[#F7FFF4] to-[#E8F5E9] text-[#1a1a1a] border-2 border-[#58CC02]'
-                      : 'bg-[#cfcfcf] text-[#1a1a1a] border border-gray-200'
+                      : 'bg-[#F0F0F0] text-[#1a1a1a] border border-gray-200'
                   }`}>
                     {message.goalCreated && (
                       <div className="flex items-center gap-2 mb-2 pb-2 border-b border-[#58CC02]">
@@ -485,10 +478,10 @@ Always be encouraging and action-oriented!`;
 
             {isLoading && (
               <div className="flex items-start gap-2 sm:gap-3">
-                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-r from-[#58CC02] to-[#00CD4B] flex items-center justify-center">
+                <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-[#58CC02] flex items-center justify-center">
                   <Bot className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div className="bg-[#cfcfcf] border border-gray-200 rounded-2xl p-3 shadow-sm">
+                <div className="bg-[#F0F0F0] border border-gray-200 rounded-2xl p-3 shadow-sm">
                   <div className="flex items-center gap-2">
                     <div className="flex space-x-1">
                       <div className="w-2 h-2 bg-[#58CC02] rounded-full animate-bounce"></div>
@@ -505,7 +498,7 @@ Always be encouraging and action-oriented!`;
           </div>
 
           {messages.length <= 1 && hasApiKey && (
-            <div className="p-3 sm:p-4 border-t bg-[#cfcfcf]">
+            <div className="p-3 sm:p-4 border-t bg-[#F0F0F0]">
               <h3 className="text-sm font-medium text-[#1a1a1a] mb-2 flex items-center gap-2">
                 <span className="h-4 w-4 text-[#FBBF24]">⚡</span>
                 Quick Actions
@@ -528,7 +521,7 @@ Always be encouraging and action-oriented!`;
           {!hasApiKey && (
             <div className="p-3 sm:p-4 border-t bg-gradient-to-r from-[#F7FFF4] to-[#E8F5E9]">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] rounded-full mb-3">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-[#58CC02] rounded-full mb-3">
                   <Key className="h-6 w-6 text-white" />
                 </div>
                 <h3 className="font-semibold text-[#1a1a1a] mb-2">Setup Required</h3>
@@ -537,7 +530,7 @@ Always be encouraging and action-oriented!`;
                 </p>
                 <button
                   onClick={() => setShowSetupGuide(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] text-white rounded-lg hover:from-[#4CAD02] hover:to-[#267300] transition-colors active:scale-95"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-[#58CC02] text-white rounded-lg hover:bg-[#4CAD02] transition-colors active:scale-95"
                 >
                   <Settings className="h-4 w-4" />
                   Setup AI Chat
@@ -546,7 +539,7 @@ Always be encouraging and action-oriented!`;
             </div>
           )}
 
-          <div className="p-3 sm:p-4 bg-[#cfcfcf] border-t pb-24">
+          <div className="p-3 sm:p-4 bg-[#F0F0F0] border-t pb-24">
             <form onSubmit={handleSubmit} className="flex items-end gap-2 sm:gap-3">
               <div className="flex-1">
                 <textarea
