@@ -98,7 +98,8 @@ const AIChatPopup = ({ isOpen, onClose }) => {
       endDate: new Date(args.deadline).toISOString(),
       color: categoryColors[category], subtasks,
       createdAt: new Date().toISOString(), milestones: [],
-      progressHistory: [{ date: new Date().toISOString(), value: 0 }]
+      progressHistory: [{ date: new Date().toISOString(), value: 0 }],
+      checkIns: []
     };
     const key = `goaltracker-goals-${user.id}`;
     const updated = [...goals, newGoal];

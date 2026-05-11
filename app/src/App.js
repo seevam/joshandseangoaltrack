@@ -21,7 +21,8 @@ import {
   AlertTriangle,
   Trophy,
   Filter,
-  SortAsc
+  SortAsc,
+  Flame
 } from 'lucide-react';
 
 // Smart suggestions based on category
@@ -204,6 +205,23 @@ const LandingPage = () => {
       </div>
     </div>
   );
+};
+
+const getStreak = (checkIns = []) => {
+  if (!checkIns.length) return 0;
+  const today = new Date().toISOString().split('T')[0];
+  const set = new Set(checkIns);
+  let streak = 0;
+  let cursor = new Date();
+  // Allow today OR yesterday as most recent (so streak doesn't reset mid-day)
+  if (!set.has(today)) cursor.setDate(cursor.getDate() - 1);
+  while (true) {
+    const d = cursor.toISOString().split('T')[0];
+    if (!set.has(d)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
 };
 
 const ProgressChart = ({ history, targetValue, color }) => {
@@ -463,7 +481,8 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
         color: categoryColors[newGoal.category].hex,
         milestones: [],
         subtasks: newGoal.subtasks || [],
-        progressHistory: [{ date: new Date().toISOString(), value: initialValue }]
+        progressHistory: [{ date: new Date().toISOString(), value: initialValue }],
+        checkIns: []
       };
       setGoals([goal, ...goals]);
       setNewGoal({
@@ -545,6 +564,20 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
     if (justCompleted) {
       setShowGoalDetails(false);
       setCelebratingGoal(justCompleted);
+    }
+  };
+
+  const checkInGoal = (goalId) => {
+    const today = new Date().toISOString().split('T')[0];
+    const updated = goals.map(goal => {
+      if (goal.id !== goalId) return goal;
+      const existing = goal.checkIns || [];
+      if (existing.includes(today)) return goal;
+      return { ...goal, checkIns: [...existing, today] };
+    });
+    setGoals(updated);
+    if (selectedGoal?.id === goalId) {
+      setSelectedGoal(updated.find(g => g.id === goalId));
     }
   };
 
@@ -738,6 +771,9 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
               const categoryStyle = categoryColors[goal.category];
               const completedSubtasks = goal.subtasks?.filter(st => st.completed).length || 0;
               const totalSubtasks = goal.subtasks?.length || 0;
+              const streak = getStreak(goal.checkIns);
+              const todayStr = new Date().toISOString().split('T')[0];
+              const checkedInToday = (goal.checkIns || []).includes(todayStr);
               
               return (
                 <div
@@ -810,6 +846,27 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                           Overdue
                         </div>
                       )}
+
+                      {/* Streak + Check-in row */}
+                      <div className="flex items-center justify-between pt-1 border-t border-gray-200">
+                        <div className="flex items-center gap-1">
+                          <Flame className={`h-3.5 w-3.5 ${streak > 0 ? 'text-orange-500' : 'text-gray-300'}`} />
+                          <span className={`text-xs font-semibold ${streak > 0 ? 'text-orange-500' : 'text-gray-400'}`}>
+                            {streak} day streak
+                          </span>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); checkInGoal(goal.id); }}
+                          disabled={checkedInToday}
+                          className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all ${
+                            checkedInToday
+                              ? 'bg-[#D7FFB8] text-[#2E8B00] cursor-default'
+                              : 'bg-[#58CC02] text-white hover:bg-[#4CAD02] active:scale-95'
+                          }`}
+                        >
+                          {checkedInToday ? '✓ Done today' : 'Check In'}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1332,6 +1389,47 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                       color={selectedGoal.color}
                     />
                   </div>
+
+                  {/* Streak & Check-in */}
+                  {(() => {
+                    const streak = getStreak(selectedGoal.checkIns);
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const checkedInToday = (selectedGoal.checkIns || []).includes(todayStr);
+                    const recent = (selectedGoal.checkIns || []).slice(-7).reverse();
+                    return (
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                            <Flame className={`h-4 w-4 ${streak > 0 ? 'text-orange-500' : 'text-gray-400'}`} />
+                            {streak > 0 ? `${streak}-day streak!` : 'No streak yet'}
+                          </h3>
+                          <button
+                            onClick={() => checkInGoal(selectedGoal.id)}
+                            disabled={checkedInToday}
+                            className={`text-sm px-4 py-1.5 rounded-full font-medium transition-all ${
+                              checkedInToday
+                                ? 'bg-[#D7FFB8] text-[#2E8B00] cursor-default'
+                                : 'bg-[#58CC02] text-white hover:bg-[#4CAD02] active:scale-95'
+                            }`}
+                          >
+                            {checkedInToday ? '✓ Checked in today' : 'Check In Today'}
+                          </button>
+                        </div>
+                        {recent.length > 0 && (
+                          <div>
+                            <p className="text-xs text-gray-500 mb-2">Recent check-ins</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {recent.map(d => (
+                                <span key={d} className="text-xs bg-[#D7FFB8] text-[#2E8B00] px-2 py-0.5 rounded-full">
+                                  {new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
 
                   {/* Sub-tasks */}
                   {selectedGoal.subtasks && selectedGoal.subtasks.length > 0 && (
