@@ -29,14 +29,12 @@ const AIChatPopup = ({ isOpen, onClose }) => {
   const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
 
   useEffect(() => {
-    if (user) {
+    if (user && isOpen) {
       const userGoalsKey = `goaltracker-goals-${user.id}`;
       const savedGoals = localStorage.getItem(userGoalsKey);
-      if (savedGoals) {
-        setGoals(JSON.parse(savedGoals));
-      }
+      setGoals(savedGoals ? JSON.parse(savedGoals) : []);
     }
-  }, [user]);
+  }, [user, isOpen]);
 
   useEffect(() => {
     if (user && messages.length === 0 && isOpen) {
@@ -110,6 +108,28 @@ const AIChatPopup = ({ isOpen, onClose }) => {
     return newGoal;
   };
 
+  const buildGoalsContext = () => {
+    if (goals.length === 0) return 'User has no goals yet.';
+    const today = new Date();
+    return `User's current goals:\n${goals.map(goal => {
+      const pct = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
+      const daysLeft = goal.endDate
+        ? Math.ceil((new Date(goal.endDate) - today) / 86400000)
+        : null;
+      const checkIns = goal.checkIns || [];
+      const lastCheckIn = checkIns.length > 0 ? checkIns[checkIns.length - 1].slice(0, 10) : null;
+      const subtasksDone = (goal.subtasks || []).filter(s => s.completed).length;
+      const subtasksTotal = (goal.subtasks || []).length;
+      return [
+        `• ${goal.title} (${goal.category})`,
+        `  Progress: ${goal.currentValue} / ${goal.targetValue} ${goal.unit} (${pct.toFixed(0)}%)`,
+        daysLeft !== null ? `  Deadline: ${daysLeft > 0 ? `${daysLeft} days left` : 'OVERDUE'}` : '',
+        subtasksTotal > 0 ? `  Subtasks: ${subtasksDone}/${subtasksTotal} complete` : '',
+        lastCheckIn ? `  Last check-in: ${lastCheckIn}` : '  No check-ins yet',
+      ].filter(Boolean).join('\n');
+    }).join('\n\n')}`;
+  };
+
   const sendMessage = async (messageContent) => {
     if (!messageContent.trim() || !hasApiKey) return;
 
@@ -127,50 +147,48 @@ const AIChatPopup = ({ isOpen, onClose }) => {
     const updatedHistory = [...conversationHistory, { role: 'user', content: messageContent }];
 
     try {
-      const goalsContext = goals.length > 0
-        ? `User's current goals:\n${goals.map(goal => {
-            const progress = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
-            return `- ${goal.title} (${goal.category}): ${progress.toFixed(1)}% complete`;
-          }).join('\n')}`
-        : 'User has no goals yet.';
-
+      const goalsContext = buildGoalsContext();
       const today = new Date().toISOString().split('T')[0];
 
-      const systemPrompt = `You are a warm, curious personal Goal Coach. Your job is to have a genuine conversation to deeply understand the user's background and goal, then save it as a trackable goal.
+      const systemPrompt = `You are a warm, encouraging personal Goal Coach named ${assistantName}. You can both help create new goals AND review existing ones.
 
 You MUST always call one of the two tools — never reply with plain text.
 
-Conversation approach:
-- Sound like a real coach — encouraging, personal, genuinely interested. Use their name (${user?.firstName || 'there'}) naturally.
-- Ask 4-6 questions across the conversation before creating the goal. Understand:
-  1. What they want to achieve (the goal)
-  2. Their current level / starting point (e.g. "Do you currently run? How far?", "What's your current salary?", "How many books do you read now?")
-  3. Why this matters to them personally
+## When to use each tool
+- Use **respond** for: progress reviews, motivation, answering questions, coaching advice, or any conversational turn that's NOT the final goal-saving step.
+- Use **create_goal** ONLY when you have collected enough info to save a fully-formed goal (after ≥4 back-and-forth exchanges on that goal).
+
+## Handling "how am I doing?" or progress questions
+When the user asks about their progress, use **respond** to give a personalized review:
+- Reference specific goals by name
+- Highlight what's going well (high %, upcoming milestones, check-in streaks)
+- Flag any goals that are overdue or stalled
+- Give one actionable suggestion
+- Keep it warm and personal — use their name (${user?.firstName || 'there'})
+
+## Handling goal creation
+- Ask 4-6 questions across the conversation. Understand:
+  1. What they want to achieve
+  2. Their current level / starting point
+  3. Why it matters to them personally
   4. Their timeframe / deadline
-  5. Any constraints or challenges they foresee (optional)
-- Ask ONE question per message. React warmly to their answer before asking the next.
-- Only call create_goal once you have a clear picture of their background and goal.
+  5. Any constraints they foresee (optional)
+- Ask ONE question per message. React warmly before asking the next.
 - Never explain SMART goals. Never lecture. Just coach.
 
 Today's date is ${today}. All deadlines must be in the future.
 
-Sub-task quality rules (CRITICAL):
-- Every sub-task MUST include specific numbers/quantities relevant to the goal.
-- Sub-tasks must be progressive checkpoints that build week-by-week or month-by-month toward the final target.
-- Calibrate the numbers based on the user's current level (beginner vs experienced).
-- Examples for a running goal (current: can run 1km, target: 10km in 3 months):
+## Sub-task quality rules (CRITICAL for create_goal)
+- Every sub-task MUST include specific numbers/quantities.
+- Sub-tasks must be progressive checkpoints week-by-week or month-by-month.
+- Calibrate to the user's current level.
+- Examples for running (current: 1km, target: 10km in 3 months):
   "Week 1-2: Run 2km, 3x per week"
   "Week 3-4: Run 3.5km, 4x per week"
-  "Month 2: Complete a 6km run under 40 minutes"
+  "Month 2: Complete a 6km run under 40 min"
   "Month 2 end: Run 8km without stopping"
-  "Month 3: Complete 10km in under 60 minutes"
-- Examples for a savings goal (saving $10,000 in 12 months):
-  "Month 1-2: Save $800/month, cut dining out to twice a week"
-  "Month 3-4: Reach $2,000 total saved"
-  "Month 6: Hit $5,000 milestone, review budget"
-  "Month 9: Reach $7,500, increase monthly savings to $900"
-  "Month 12: Hit $10,000 target"
-- Never use vague steps like "Stay consistent", "Work hard", or "Join a gym".
+  "Month 3: Complete 10km under 60 min"
+- Never use vague steps like "Stay consistent" or "Work hard".
 
 ${goalsContext}`;
 
@@ -178,14 +196,14 @@ ${goalsContext}`;
         {
           type: 'function',
           function: {
-            name: 'ask_question',
-            description: 'Send a warm 1-2 sentence reaction to the user\'s last message, then ask one focused question about their background or goal details.',
+            name: 'respond',
+            description: 'Send any conversational message: a progress review, motivational note, coaching question, or warm reply. Use for all turns that are NOT the final create_goal step.',
             parameters: {
               type: 'object',
               properties: {
-                question: { type: 'string', description: 'A warm reaction + one specific question (2 sentences max)' }
+                message: { type: 'string', description: 'Your response to the user (can be a question, progress review, motivation, or any coaching message)' }
               },
-              required: ['question']
+              required: ['message']
             }
           }
         },
@@ -193,7 +211,7 @@ ${goalsContext}`;
           type: 'function',
           function: {
             name: 'create_goal',
-            description: 'Save the goal once you understand the user\'s background, current level, target, and timeframe (after at least 4 exchanges).',
+            description: 'Save the goal once you have the user\'s background, current level, target, and timeframe (after ≥4 exchanges on this goal).',
             parameters: {
               type: 'object',
               properties: {
@@ -206,7 +224,7 @@ ${goalsContext}`;
                 subtasks: {
                   type: 'array',
                   items: { type: 'string' },
-                  description: '5 quantified progressive milestones calibrated to the user\'s current level. Every milestone must include specific numbers (distances, amounts, frequencies, times). Ordered week-by-week or month-by-month from current level to final target. No vague steps.'
+                  description: '5 quantified progressive milestones calibrated to the user\'s current level. Include specific numbers. Order from current level to final target. No vague steps.'
                 }
               },
               required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
@@ -226,7 +244,7 @@ ${goalsContext}`;
           messages: [{ role: 'system', content: systemPrompt }, ...updatedHistory],
           tools,
           tool_choice: 'required',
-          max_tokens: 600,
+          max_tokens: 700,
           temperature: 0.5
         })
       });
@@ -243,23 +261,23 @@ ${goalsContext}`;
         try {
           const args = JSON.parse(toolCall.function.arguments);
           createGoal(args);
-          aiResponseContent = `Done! Created your goal: **${args.title}** 🎯\n\nTarget: ${args.targetValue} ${args.unit} by ${args.deadline}\n\nYou can track it on your dashboard. Want to set another?`;
+          aiResponseContent = `Done! Created your goal: **${args.title}** 🎯\n\nTarget: ${args.targetValue} ${args.unit} by ${args.deadline}\n\nYou can track it on your dashboard. Want to set another goal or review your progress?`;
           setConversationHistory([]);
         } catch (err) {
           aiResponseContent = "I had trouble saving that. Could you try again?";
           setConversationHistory(updatedHistory);
         }
-      } else if (toolCall?.function.name === 'ask_question') {
+      } else if (toolCall?.function.name === 'respond') {
         try {
           const args = JSON.parse(toolCall.function.arguments);
-          aiResponseContent = args.question;
-          setConversationHistory([...updatedHistory, { role: 'assistant', content: args.question }]);
+          aiResponseContent = args.message;
+          setConversationHistory([...updatedHistory, { role: 'assistant', content: args.message }]);
         } catch (err) {
-          aiResponseContent = "What would you like to achieve?";
+          aiResponseContent = "What would you like to work on?";
           setConversationHistory(updatedHistory);
         }
       } else {
-        aiResponseContent = "What would you like to achieve?";
+        aiResponseContent = "What would you like to work on?";
         setConversationHistory(updatedHistory);
       }
 
