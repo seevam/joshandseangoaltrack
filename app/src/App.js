@@ -17,7 +17,11 @@ import {
   Shield,
   Sparkles,
   Circle,
-  Save
+  Save,
+  AlertTriangle,
+  Trophy,
+  Filter,
+  SortAsc
 } from 'lucide-react';
 
 // Smart suggestions based on category
@@ -202,12 +206,58 @@ const LandingPage = () => {
   );
 };
 
+const ProgressChart = ({ history, targetValue, color }) => {
+  if (!history || history.length < 2) return (
+    <p className="text-xs text-gray-400 text-center py-4">Log more updates to see your progress chart.</p>
+  );
+
+  const W = 320, H = 100, pl = 32, pr = 8, pt = 8, pb = 20;
+  const cw = W - pl - pr, ch = H - pt - pb;
+  const dates = history.map(e => new Date(e.date).getTime());
+  const minD = Math.min(...dates), maxD = Math.max(...dates);
+  const rangeD = maxD - minD || 1;
+
+  const pts = history.map(e => {
+    const x = pl + ((new Date(e.date).getTime() - minD) / rangeD) * cw;
+    const y = pt + ch - Math.min(e.value / targetValue, 1) * ch;
+    return [x, y];
+  });
+
+  const d = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
+  const area = `${d} L ${pts[pts.length-1][0].toFixed(1)} ${(pt+ch).toFixed(1)} L ${pts[0][0].toFixed(1)} ${(pt+ch).toFixed(1)} Z`;
+
+  const fmtDate = (ts) => new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      <defs>
+        <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <line x1={pl} y1={pt} x2={pl} y2={pt+ch} stroke="#E5E7EB" strokeWidth="1" />
+      <line x1={pl} y1={pt+ch} x2={pl+cw} y2={pt+ch} stroke="#E5E7EB" strokeWidth="1" />
+      <text x={pl-3} y={pt+4} textAnchor="end" fontSize="7" fill="#9CA3AF">{targetValue}</text>
+      <text x={pl-3} y={pt+ch} textAnchor="end" fontSize="7" fill="#9CA3AF">0</text>
+      <text x={pl} y={H-2} fontSize="7" fill="#9CA3AF">{fmtDate(minD)}</text>
+      <text x={pl+cw} y={H-2} textAnchor="end" fontSize="7" fill="#9CA3AF">{fmtDate(maxD)}</text>
+      <path d={area} fill="url(#chartFill)" />
+      <path d={d} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="3" fill={color} />)}
+    </svg>
+  );
+};
+
 export const Dashboard = () => {
   const { user, isLoaded } = useUser();
   const [goals, setGoals] = useState([]);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showGoalDetails, setShowGoalDetails] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [sortBy, setSortBy] = useState('deadline');
+  const [celebratingGoal, setCelebratingGoal] = useState(null);
   const [isGeneratingSubtasks, setIsGeneratingSubtasks] = useState(false);
   const [generatedSubtasks, setGeneratedSubtasks] = useState([]);
   const [editingGoal, setEditingGoal] = useState(null);
@@ -402,16 +452,18 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   const handleAddGoal = (e) => {
     e.preventDefault();
     if (newGoal.title && newGoal.targetValue) {
+      const initialValue = parseFloat(newGoal.currentValue || 0);
       const goal = {
         ...newGoal,
         id: Date.now(),
         userId: user.id,
         targetValue: parseFloat(newGoal.targetValue),
-        currentValue: parseFloat(newGoal.currentValue || 0),
+        currentValue: initialValue,
         createdAt: new Date().toISOString(),
         color: categoryColors[newGoal.category].hex,
         milestones: [],
-        subtasks: newGoal.subtasks || []
+        subtasks: newGoal.subtasks || [],
+        progressHistory: [{ date: new Date().toISOString(), value: initialValue }]
       };
       setGoals([goal, ...goals]);
       setNewGoal({
@@ -467,15 +519,32 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   };
 
   const updateGoalProgress = (goalId, newValue) => {
-    setGoals(goals.map(goal => {
+    const parsed = parseFloat(newValue);
+    const historyEntry = { date: new Date().toISOString(), value: parsed };
+    let justCompleted = null;
+
+    const updated = goals.map(goal => {
       if (goal.id === goalId) {
-        return { ...goal, currentValue: parseFloat(newValue) };
+        const wasComplete = calculateProgress(goal.currentValue, goal.targetValue) >= 100;
+        const nowComplete = calculateProgress(parsed, goal.targetValue) >= 100;
+        if (!wasComplete && nowComplete) justCompleted = goal;
+        return {
+          ...goal,
+          currentValue: parsed,
+          progressHistory: [...(goal.progressHistory || []), historyEntry]
+        };
       }
       return goal;
-    }));
-    
+    });
+
+    setGoals(updated);
     if (selectedGoal && selectedGoal.id === goalId) {
-      setSelectedGoal({ ...selectedGoal, currentValue: parseFloat(newValue) });
+      const updatedGoal = updated.find(g => g.id === goalId);
+      setSelectedGoal(updatedGoal);
+    }
+    if (justCompleted) {
+      setShowGoalDetails(false);
+      setCelebratingGoal(justCompleted);
     }
   };
 
@@ -493,6 +562,21 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
   const completedGoals = goals.filter(g => getGoalStatus(g) === 'completed').length;
   const overdueGoals = goals.filter(g => getGoalStatus(g) === 'overdue').length;
+
+  const dueSoonGoals = goals.filter(g => {
+    if (!g.endDate || getGoalStatus(g) !== 'in-progress') return false;
+    const daysLeft = (new Date(g.endDate) - new Date()) / (1000 * 60 * 60 * 24);
+    return daysLeft >= 0 && daysLeft <= 7;
+  });
+
+  const filteredGoals = goals
+    .filter(g => filterCategory === 'all' || g.category === filterCategory)
+    .sort((a, b) => {
+      if (sortBy === 'deadline') return new Date(a.endDate || '9999') - new Date(b.endDate || '9999');
+      if (sortBy === 'progress') return calculateProgress(b.currentValue, b.targetValue) - calculateProgress(a.currentValue, a.targetValue);
+      if (sortBy === 'name') return a.title.localeCompare(b.title);
+      return 0;
+    });
 
   return (
     <div className="min-h-screen bg-[#F0F0F0] pb-24 lg:pb-8">
@@ -570,6 +654,63 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
         </div>
       </div>
 
+      {/* Deadline Alerts */}
+      {dueSoonGoals.length > 0 && (
+        <div className="px-4 sm:px-6 mb-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+              <span className="text-sm font-semibold text-amber-800">Due within 7 days</span>
+            </div>
+            <div className="space-y-1.5">
+              {dueSoonGoals.map(g => {
+                const daysLeft = Math.ceil((new Date(g.endDate) - new Date()) / (1000 * 60 * 60 * 24));
+                return (
+                  <div key={g.id} onClick={() => handleGoalClick(g)} className="flex items-center justify-between cursor-pointer hover:opacity-80">
+                    <span className="text-sm text-amber-900 truncate">{g.title}</span>
+                    <span className="text-xs font-medium text-amber-700 ml-2 flex-shrink-0">
+                      {daysLeft === 0 ? 'Due today' : `${daysLeft}d left`}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Filter & Sort */}
+      <div className="px-4 sm:px-6 mb-4">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          {['all', 'fitness', 'health', 'personal', 'career', 'finance', 'education'].map(cat => (
+            <button
+              key={cat}
+              onClick={() => setFilterCategory(cat)}
+              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all ${
+                filterCategory === cat
+                  ? 'bg-[#58CC02] text-white'
+                  : 'bg-white border border-gray-300 text-gray-600 hover:border-[#58CC02]'
+              }`}
+            >
+              {cat.charAt(0).toUpperCase() + cat.slice(1)}
+            </button>
+          ))}
+          <div className="flex-shrink-0 ml-auto flex items-center gap-1 border border-gray-300 rounded-full bg-white px-2 py-1">
+            <SortAsc className="h-3 w-3 text-gray-400" />
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="text-xs text-gray-600 bg-transparent outline-none cursor-pointer"
+            >
+              <option value="deadline">Deadline</option>
+              <option value="progress">Progress</option>
+              <option value="name">Name</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       {/* Goals List */}
       <div className="px-4 pb-8 sm:px-6 mb-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -586,8 +727,12 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                 Create Goal
               </button>
             </div>
+          ) : filteredGoals.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-gray-400 text-sm">
+              No goals in this category.
+            </div>
           ) : (
-            goals.map((goal) => {
+            filteredGoals.map((goal) => {
               const progress = calculateProgress(goal.currentValue, goal.targetValue);
               const status = getGoalStatus(goal);
               const categoryStyle = categoryColors[goal.category];
@@ -1162,7 +1307,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                     <div className="mt-4">
                       <div className="h-4 rounded-full bg-gray-200 overflow-hidden">
                         <div
-                          style={{ 
+                          style={{
                             width: `${calculateProgress(selectedGoal.currentValue, selectedGoal.targetValue)}%`,
                             backgroundColor: selectedGoal.color
                           }}
@@ -1173,6 +1318,19 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                         {calculateProgress(selectedGoal.currentValue, selectedGoal.targetValue).toFixed(1)}% Complete
                       </p>
                     </div>
+                  </div>
+
+                  {/* Progress Chart */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-[#58CC02]" />
+                      Progress History
+                    </h3>
+                    <ProgressChart
+                      history={selectedGoal.progressHistory}
+                      targetValue={selectedGoal.targetValue}
+                      color={selectedGoal.color}
+                    />
                   </div>
 
                   {/* Sub-tasks */}
@@ -1264,6 +1422,40 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Goal Completion Celebration */}
+      {celebratingGoal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/60" onClick={() => setCelebratingGoal(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+            <div className="text-6xl mb-4">🎉</div>
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-[#D7FFB8] rounded-full flex items-center justify-center">
+                <Trophy className="h-8 w-8 text-[#58CC02]" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Goal Achieved!</h2>
+            <p className="text-gray-600 mb-1 font-medium">{celebratingGoal.title}</p>
+            <p className="text-sm text-gray-500 mb-6">
+              You hit {celebratingGoal.targetValue} {celebratingGoal.unit}. Incredible work! 🏆
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setCelebratingGoal(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50"
+              >
+                Done
+              </button>
+              <button
+                onClick={() => { setCelebratingGoal(null); setShowAddGoal(true); }}
+                className="flex-1 py-2.5 rounded-xl bg-[#58CC02] text-white text-sm font-medium hover:bg-[#4CAD02]"
+              >
+                Set New Goal
+              </button>
             </div>
           </div>
         </div>
