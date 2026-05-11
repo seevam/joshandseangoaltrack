@@ -267,6 +267,18 @@ const ProgressChart = ({ history, targetValue, color }) => {
   );
 };
 
+const MILESTONE_BADGES = [
+  { pct: 25,  emoji: '🌱', label: 'First Quarter',  color: '#A3E635' },
+  { pct: 50,  emoji: '⚡', label: 'Halfway There',  color: '#FBBF24' },
+  { pct: 75,  emoji: '🔥', label: 'Almost There',   color: '#F97316' },
+  { pct: 100, emoji: '🏆', label: 'Goal Achieved',  color: '#58CC02' },
+];
+
+const getEarnedBadges = (goal) => {
+  const pct = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
+  return MILESTONE_BADGES.filter(b => pct >= b.pct);
+};
+
 export const Dashboard = () => {
   const { user, isLoaded } = useUser();
   const [goals, setGoals] = useState([]);
@@ -774,6 +786,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
               const streak = getStreak(goal.checkIns);
               const todayStr = new Date().toISOString().split('T')[0];
               const checkedInToday = (goal.checkIns || []).includes(todayStr);
+              const earnedBadges = getEarnedBadges(goal);
               
               return (
                 <div
@@ -844,6 +857,18 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                         <div className="flex items-center text-xs text-[#FF4B4B] font-medium">
                           <Clock className="h-3 w-3 mr-1 flex-shrink-0" />
                           Overdue
+                        </div>
+                      )}
+
+                      {/* Badges */}
+                      {earnedBadges.length > 0 && (
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {earnedBadges.map(b => (
+                            <span key={b.pct} title={b.label} className="text-base" role="img" aria-label={b.label}>
+                              {b.emoji}
+                            </span>
+                          ))}
+                          <span className="text-xs text-gray-500">{earnedBadges[earnedBadges.length - 1].label}</span>
                         </div>
                       )}
 
@@ -1388,6 +1413,23 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                       targetValue={selectedGoal.targetValue}
                       color={selectedGoal.color}
                     />
+                  </div>
+
+                  {/* Badges */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Milestone Badges</h3>
+                    <div className="grid grid-cols-4 gap-2">
+                      {MILESTONE_BADGES.map(b => {
+                        const earned = calculateProgress(selectedGoal.currentValue, selectedGoal.targetValue) >= b.pct;
+                        return (
+                          <div key={b.pct} className={`flex flex-col items-center p-2 rounded-xl text-center transition-all ${earned ? 'bg-white shadow-sm' : 'opacity-30'}`}>
+                            <span className="text-2xl mb-1">{b.emoji}</span>
+                            <span className="text-xs font-medium text-gray-700 leading-tight">{b.label}</span>
+                            <span className="text-xs text-gray-400">{b.pct}%</span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
 
                   {/* Streak & Check-in */}
