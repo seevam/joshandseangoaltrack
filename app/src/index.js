@@ -10,6 +10,7 @@ import AuthenticatedLayout from './AuthenticatedLayout';
 import SignInPage from './SignInPage';
 import SignUpPage from './SignUpPage';
 import OnboardingPage from './OnboardingPage';
+import CalendarView from './CalendarView';
 import { Target } from 'lucide-react';
 
 // Get the Publishable Key from environment variables
@@ -146,6 +147,17 @@ if (!clerkPubKey) {
         />
         
         {/* AI Chat is now a popup, no dedicated route needed */}
+
+        <Route
+          path="/calendar"
+          element={
+            <ProtectedRoute>
+              <AuthenticatedLayout>
+                <CalendarView />
+              </AuthenticatedLayout>
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/profile"

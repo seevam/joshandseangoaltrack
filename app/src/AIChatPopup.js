@@ -88,16 +88,23 @@ const AIChatPopup = ({ isOpen, onClose }) => {
       id: Date.now() + i, title: text, description: text,
       daysFromStart: (i + 1) * 7, completed: false
     }));
+    const dailyTasks = (args.dailyTasks || []).map((t, i) => ({
+      id: Date.now() + 1000 + i,
+      title: t.title,
+      targetValue: t.targetValue || null,
+      unit: t.unit || '',
+      type: t.type || 'checkbox'
+    }));
     const newGoal = {
       id: Date.now(), userId: user.id, title: args.title,
       description: args.why, category, targetValue: args.targetValue,
       currentValue: 0, unit: args.unit,
       startDate: new Date().toISOString(),
       endDate: new Date(args.deadline).toISOString(),
-      color: categoryColors[category], subtasks,
+      color: categoryColors[category], subtasks, dailyTasks,
       createdAt: new Date().toISOString(), milestones: [],
       progressHistory: [{ date: new Date().toISOString(), value: 0 }],
-      checkIns: []
+      checkIns: [], taskCompletions: {}
     };
     const key = `goaltracker-goals-${user.id}`;
     const updated = [...goals, newGoal];
@@ -190,6 +197,14 @@ Today's date is ${today}. All deadlines must be in the future.
   "Month 3: Complete 10km under 60 min"
 - Never use vague steps like "Stay consistent" or "Work hard".
 
+## Daily tasks rules (CRITICAL for create_goal)
+- Generate 3-5 daily recurring habits based on the goal and the user's current level.
+- Each task should be something they can realistically do every day.
+- Use type "number" when the user will log a quantity each day (steps, pages, minutes, calories, etc.).
+- Use type "checkbox" for binary tasks (morning weigh-in, log meals, take medication, etc.).
+- Examples for a running goal: [{title: "Run or walk", targetValue: 5000, unit: "steps", type: "number"}, {title: "Stretch after workout", type: "checkbox"}]
+- Examples for a reading goal: [{title: "Read", targetValue: 20, unit: "pages", type: "number"}, {title: "Log book notes", type: "checkbox"}]
+
 ${goalsContext}`;
 
       const tools = [
@@ -225,9 +240,23 @@ ${goalsContext}`;
                   type: 'array',
                   items: { type: 'string' },
                   description: '5 quantified progressive milestones calibrated to the user\'s current level. Include specific numbers. Order from current level to final target. No vague steps.'
+                },
+                dailyTasks: {
+                  type: 'array',
+                  description: '3-5 daily recurring habits/tasks the user should do every day to make progress on this goal. Each task must be specific and measurable. Use type "number" for tasks where the user logs a quantity (e.g. steps, pages, minutes), and "checkbox" for binary done/not-done tasks.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string', description: 'Short action phrase, e.g. "Walk 8,000 steps" or "Read 20 pages"' },
+                      targetValue: { type: 'number', description: 'Daily target quantity (null for checkbox tasks)' },
+                      unit: { type: 'string', description: 'Unit of measurement, e.g. "steps", "pages", "minutes" (empty for checkbox)' },
+                      type: { type: 'string', enum: ['number', 'checkbox'] }
+                    },
+                    required: ['title', 'type']
+                  }
                 }
               },
-              required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
+              required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks', 'dailyTasks']
             }
           }
         }
