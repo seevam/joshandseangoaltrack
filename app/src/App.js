@@ -22,8 +22,10 @@ import {
   Trophy,
   Filter,
   SortAsc,
-  Flame
+  Flame,
+  MessageCircle
 } from 'lucide-react';
+import GoalChatPanel from './GoalChatPanel';
 
 // Smart suggestions based on category
 const categoryTemplates = {
@@ -293,6 +295,9 @@ export const Dashboard = () => {
   const [editingGoal, setEditingGoal] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [selectedExample, setSelectedExample] = useState(null);
+  const [goalChatTarget, setGoalChatTarget] = useState(null);
+  const [newDailyTask, setNewDailyTask] = useState({ title: '', targetValue: '', unit: '', type: 'number' });
+  const [dailyTaskInputs, setDailyTaskInputs] = useState({});
   const [newGoal, setNewGoal] = useState({
     title: '',
     description: '',
@@ -493,6 +498,8 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
         color: categoryColors[newGoal.category].hex,
         milestones: [],
         subtasks: newGoal.subtasks || [],
+        dailyTasks: newGoal.dailyTasks || [],
+        taskCompletions: {},
         progressHistory: [{ date: new Date().toISOString(), value: initialValue }],
         checkIns: []
       };
@@ -591,6 +598,54 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
     if (selectedGoal?.id === goalId) {
       setSelectedGoal(updated.find(g => g.id === goalId));
     }
+  };
+
+  const updateGoalFromPanel = (updatedGoal) => {
+    setGoals(prev => prev.map(g => g.id === updatedGoal.id ? updatedGoal : g));
+    if (selectedGoal?.id === updatedGoal.id) setSelectedGoal(updatedGoal);
+  };
+
+  const logTaskCompletion = (goalId, taskId, value) => {
+    const today = new Date().toISOString().split('T')[0];
+    const updated = goals.map(g => {
+      if (g.id !== goalId) return g;
+      return {
+        ...g,
+        taskCompletions: {
+          ...(g.taskCompletions || {}),
+          [today]: { ...(g.taskCompletions?.[today] || {}), [taskId]: value }
+        }
+      };
+    });
+    setGoals(updated);
+    if (selectedGoal?.id === goalId) setSelectedGoal(updated.find(g => g.id === goalId));
+  };
+
+  const addDailyTaskToGoal = (goalId) => {
+    if (!newDailyTask.title.trim()) return;
+    const task = {
+      id: Date.now(),
+      title: newDailyTask.title.trim(),
+      targetValue: newDailyTask.type === 'number' ? parseFloat(newDailyTask.targetValue) || null : null,
+      unit: newDailyTask.unit.trim(),
+      type: newDailyTask.type
+    };
+    const updated = goals.map(g => {
+      if (g.id !== goalId) return g;
+      return { ...g, dailyTasks: [...(g.dailyTasks || []), task] };
+    });
+    setGoals(updated);
+    if (selectedGoal?.id === goalId) setSelectedGoal(updated.find(g => g.id === goalId));
+    setNewDailyTask({ title: '', targetValue: '', unit: '', type: 'number' });
+  };
+
+  const removeDailyTask = (goalId, taskId) => {
+    const updated = goals.map(g => {
+      if (g.id !== goalId) return g;
+      return { ...g, dailyTasks: (g.dailyTasks || []).filter(t => t.id !== taskId) };
+    });
+    setGoals(updated);
+    if (selectedGoal?.id === goalId) setSelectedGoal(updated.find(g => g.id === goalId));
   };
 
   const calculateProgress = (current, target) => {
@@ -872,7 +927,25 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                         </div>
                       )}
 
-                      {/* Streak + Check-in row */}
+                      {/* Daily tasks summary */}
+                      {(goal.dailyTasks || []).length > 0 && (() => {
+                        const todayStr2 = new Date().toISOString().split('T')[0];
+                        const todayComp = goal.taskCompletions?.[todayStr2] || {};
+                        const doneTasks = (goal.dailyTasks || []).filter(t => {
+                          const v = todayComp[t.id];
+                          return t.type === 'checkbox' ? !!v : (v !== undefined && v > 0);
+                        }).length;
+                        return (
+                          <div className="flex items-center text-xs text-gray-500">
+                            <CheckCircle className={`h-3 w-3 mr-1 ${doneTasks > 0 ? 'text-[#58CC02]' : 'text-gray-300'}`} />
+                            <span className={doneTasks === goal.dailyTasks.length ? 'text-[#58CC02] font-semibold' : ''}>
+                              {doneTasks}/{goal.dailyTasks.length} daily tasks today
+                            </span>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Streak + Check-in + Chat row */}
                       <div className="flex items-center justify-between pt-1 border-t border-gray-200">
                         <div className="flex items-center gap-1">
                           <Flame className={`h-3.5 w-3.5 ${streak > 0 ? 'text-orange-500' : 'text-gray-300'}`} />
@@ -880,17 +953,26 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                             {streak} day streak
                           </span>
                         </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); checkInGoal(goal.id); }}
-                          disabled={checkedInToday}
-                          className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all ${
-                            checkedInToday
-                              ? 'bg-[#D7FFB8] text-[#2E8B00] cursor-default'
-                              : 'bg-[#58CC02] text-white hover:bg-[#4CAD02] active:scale-95'
-                          }`}
-                        >
-                          {checkedInToday ? '✓ Done today' : 'Check In'}
-                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setGoalChatTarget(goal); }}
+                            className="text-xs px-2 py-1 rounded-full font-medium bg-gray-200 text-gray-600 hover:bg-gray-300 active:scale-95 transition-all flex items-center gap-1"
+                          >
+                            <MessageCircle className="h-3 w-3" />
+                            Chat
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); checkInGoal(goal.id); }}
+                            disabled={checkedInToday}
+                            className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all ${
+                              checkedInToday
+                                ? 'bg-[#D7FFB8] text-[#2E8B00] cursor-default'
+                                : 'bg-[#58CC02] text-white hover:bg-[#4CAD02] active:scale-95'
+                            }`}
+                          >
+                            {checkedInToday ? '✓ Done' : 'Check In'}
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1473,6 +1555,111 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                     );
                   })()}
 
+                  {/* Daily Tasks */}
+                  <div className="bg-gray-50 rounded-xl p-4">
+                    <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-[#58CC02]" />
+                      Daily Tasks
+                    </h3>
+                    {(selectedGoal.dailyTasks || []).length === 0 ? (
+                      <p className="text-xs text-gray-400 mb-3">No daily tasks yet. Add one below or create goals via AI chat to get them auto-generated.</p>
+                    ) : (
+                      <div className="space-y-2 mb-3">
+                        {(selectedGoal.dailyTasks || []).map(task => {
+                          const todayStr = new Date().toISOString().split('T')[0];
+                          const todayComp = selectedGoal.taskCompletions?.[todayStr] || {};
+                          const loggedValue = todayComp[task.id];
+                          const isDone = task.type === 'checkbox' ? !!loggedValue : (loggedValue !== undefined && loggedValue > 0);
+                          return (
+                            <div key={task.id} className={`flex items-center gap-2 p-2.5 rounded-lg border-2 ${isDone ? 'border-[#58CC02] bg-[#F7FFF4]' : 'border-gray-200 bg-white'}`}>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-800 truncate">{task.title}</p>
+                                {task.targetValue && <p className="text-xs text-gray-400">Target: {task.targetValue} {task.unit}</p>}
+                              </div>
+                              {task.type === 'checkbox' ? (
+                                <button
+                                  onClick={() => logTaskCompletion(selectedGoal.id, task.id, !loggedValue)}
+                                  className={`flex-shrink-0 text-xs px-2.5 py-1 rounded-full font-medium ${isDone ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'bg-[#58CC02] text-white hover:bg-[#4CAD02]'}`}
+                                >
+                                  {isDone ? '✓ Done' : 'Mark done'}
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                  <input
+                                    type="number"
+                                    value={dailyTaskInputs[task.id] !== undefined ? dailyTaskInputs[task.id] : (loggedValue ?? '')}
+                                    onChange={e => setDailyTaskInputs(prev => ({ ...prev, [task.id]: e.target.value }))}
+                                    className="w-16 text-xs border rounded-lg px-2 py-1 focus:ring-1 focus:ring-[#58CC02]"
+                                    placeholder="0"
+                                  />
+                                  <button
+                                    onClick={() => {
+                                      const val = parseFloat(dailyTaskInputs[task.id]);
+                                      if (!isNaN(val)) { logTaskCompletion(selectedGoal.id, task.id, val); setDailyTaskInputs(prev => ({ ...prev, [task.id]: '' })); }
+                                    }}
+                                    className="text-xs bg-[#58CC02] text-white px-2 py-1 rounded-lg hover:bg-[#4CAD02]"
+                                  >Log</button>
+                                </div>
+                              )}
+                              <button
+                                onClick={() => removeDailyTask(selectedGoal.id, task.id)}
+                                className="flex-shrink-0 p-1 text-gray-300 hover:text-red-400 transition-colors"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {/* Add new daily task */}
+                    <div className="space-y-2">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newDailyTask.title}
+                          onChange={e => setNewDailyTask(prev => ({ ...prev, title: e.target.value }))}
+                          placeholder='e.g. "Walk 8,000 steps" or "Read 20 pages"'
+                          className="flex-1 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-[#58CC02]"
+                        />
+                        <select
+                          value={newDailyTask.type}
+                          onChange={e => setNewDailyTask(prev => ({ ...prev, type: e.target.value }))}
+                          className="text-xs border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-1 focus:ring-[#58CC02]"
+                        >
+                          <option value="number">Number</option>
+                          <option value="checkbox">Checkbox</option>
+                        </select>
+                      </div>
+                      {newDailyTask.type === 'number' && (
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            value={newDailyTask.targetValue}
+                            onChange={e => setNewDailyTask(prev => ({ ...prev, targetValue: e.target.value }))}
+                            placeholder="Daily target"
+                            className="flex-1 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-[#58CC02]"
+                          />
+                          <input
+                            type="text"
+                            value={newDailyTask.unit}
+                            onChange={e => setNewDailyTask(prev => ({ ...prev, unit: e.target.value }))}
+                            placeholder="Unit (steps, pages…)"
+                            className="flex-1 text-xs border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-[#58CC02]"
+                          />
+                        </div>
+                      )}
+                      <button
+                        onClick={() => addDailyTaskToGoal(selectedGoal.id)}
+                        disabled={!newDailyTask.title.trim()}
+                        className="w-full text-xs py-1.5 rounded-lg bg-[#58CC02] text-white hover:bg-[#4CAD02] disabled:opacity-40 font-medium transition-all flex items-center justify-center gap-1"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Daily Task
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Sub-tasks */}
                   {selectedGoal.subtasks && selectedGoal.subtasks.length > 0 && (
                     <div>
@@ -1565,6 +1752,15 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
             </div>
           </div>
         </div>
+      )}
+
+      {/* Per-goal Chat Panel */}
+      {goalChatTarget && (
+        <GoalChatPanel
+          goal={goals.find(g => g.id === goalChatTarget.id) || goalChatTarget}
+          onClose={() => setGoalChatTarget(null)}
+          onUpdateGoal={updateGoalFromPanel}
+        />
       )}
 
       {/* Goal Completion Celebration */}

@@ -5,7 +5,8 @@ import {
   MessageCircle,
   User,
   Target,
-  Plus
+  Plus,
+  Calendar
 } from 'lucide-react';
 
 const ResponsiveNavigation = ({ onNewGoal, onToggleChat }) => {
@@ -19,6 +20,13 @@ const ResponsiveNavigation = ({ onNewGoal, onToggleChat }) => {
       icon: Home,
       path: '/home',
       active: location.pathname === '/home' || location.pathname === '/dashboard'
+    },
+    {
+      id: 'calendar',
+      label: 'Calendar',
+      icon: Calendar,
+      path: '/calendar',
+      active: location.pathname === '/calendar'
     },
     {
       id: 'chat',
@@ -112,6 +120,18 @@ const ResponsiveNavigation = ({ onNewGoal, onToggleChat }) => {
             >
               <Home className="h-5 w-5 mr-3" />
               Home
+            </button>
+
+            <button
+              onClick={() => navigate('/calendar')}
+              className={`w-full flex items-center px-4 py-3 rounded-xl transition-all ${
+                location.pathname === '/calendar'
+                  ? 'bg-[#E0E0E0] text-[#58CC02] font-semibold shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-200 hover:text-gray-900'
+              }`}
+            >
+              <Calendar className="h-5 w-5 mr-3" />
+              Calendar
             </button>
 
             <button
