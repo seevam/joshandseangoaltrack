@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   SignedOut,
-  useUser
+  useUser,
+  useAuth
 } from '@clerk/clerk-react';
 import {
   Target,
@@ -283,7 +284,9 @@ const getEarnedBadges = (goal) => {
 
 export const Dashboard = () => {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const [goals, setGoals] = useState([]);
+  const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [showGoalDetails, setShowGoalDetails] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null);
@@ -370,26 +373,61 @@ export const Dashboard = () => {
     fitness: { bg: 'bg-[#FF4B4B]', light: 'bg-[#FECACA]', text: 'text-[#DC2626]', hex: '#FF4B4B' }
   };
 
+  const apiCall = async (url, method = 'GET', body = null) => {
+    const token = await getToken();
+    const opts = { method, headers: { Authorization: `Bearer ${token}` } };
+    if (body) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(url, opts);
+    if (!res.ok) throw new Error(`API ${method} ${url} failed: ${res.status}`);
+    return res.json();
+  };
+
   useEffect(() => {
-    if (user) {
-      const userGoalsKey = `goaltracker-goals-${user.id}`;
-      const savedGoals = localStorage.getItem(userGoalsKey);
-      if (savedGoals) {
-        setGoals(JSON.parse(savedGoals));
+    if (!user || !isLoaded) return;
+    const load = async () => {
+      setIsLoadingGoals(true);
+      try {
+        const token = await getToken();
+        const res = await fetch('/api/goals', { headers: { Authorization: `Bearer ${token}` } });
+        if (!res.ok) throw new Error('API error');
+        const serverGoals = await res.json();
+
+        if (serverGoals.length === 0) {
+          // Migrate any existing localStorage goals on first DB load
+          const local = JSON.parse(localStorage.getItem(`goaltracker-goals-${user.id}`) || '[]');
+          if (local.length > 0) {
+            const migrated = await Promise.all(
+              local.map(g => fetch('/api/goals', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                body: JSON.stringify(g)
+              }).then(r => r.ok ? r.json() : null))
+            );
+            setGoals(migrated.filter(Boolean));
+            localStorage.removeItem(`goaltracker-goals-${user.id}`);
+          } else {
+            setGoals([]);
+          }
+        } else {
+          setGoals(serverGoals);
+        }
+      } catch {
+        // Fallback to localStorage if API unreachable
+        const local = JSON.parse(localStorage.getItem(`goaltracker-goals-${user.id}`) || '[]');
+        setGoals(local);
+      } finally {
+        setIsLoadingGoals(false);
       }
-    }
-  }, [user]);
+    };
+    load();
+  }, [user, isLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (user && goals.length >= 0) {
-      const userGoalsKey = `goaltracker-goals-${user.id}`;
-      localStorage.setItem(userGoalsKey, JSON.stringify(goals));
-    }
-  }, [goals, user]);
-
-  if (!isLoaded) {
+  if (!isLoaded || isLoadingGoals) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F7FFF4]">
+      <div className="min-h-screen flex items-center justify-center bg-[#F0F0F0]">
         <Target className="h-8 w-8 text-[#58CC02] animate-spin" />
       </div>
     );
@@ -484,48 +522,42 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
     }
   };
 
-  const handleAddGoal = (e) => {
+  const handleAddGoal = async (e) => {
     e.preventDefault();
-    if (newGoal.title && newGoal.targetValue) {
-      const initialValue = parseFloat(newGoal.currentValue || 0);
-      const goal = {
-        ...newGoal,
-        id: Date.now(),
-        userId: user.id,
-        targetValue: parseFloat(newGoal.targetValue),
-        currentValue: initialValue,
-        createdAt: new Date().toISOString(),
-        color: categoryColors[newGoal.category].hex,
-        milestones: [],
-        subtasks: newGoal.subtasks || [],
-        dailyTasks: newGoal.dailyTasks || [],
-        taskCompletions: {},
-        progressHistory: [{ date: new Date().toISOString(), value: initialValue }],
-        checkIns: []
-      };
-      setGoals([goal, ...goals]);
-      setNewGoal({
-        title: '',
-        description: '',
-        category: 'personal',
-        targetValue: '',
-        currentValue: 0,
-        unit: '',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: '',
-        color: '#3B82F6',
-        subtasks: []
-      });
+    if (!newGoal.title || !newGoal.targetValue) return;
+    const initialValue = parseFloat(newGoal.currentValue || 0);
+    const goalData = {
+      ...newGoal,
+      targetValue: parseFloat(newGoal.targetValue),
+      currentValue: initialValue,
+      color: categoryColors[newGoal.category].hex,
+      subtasks: newGoal.subtasks || [],
+      dailyTasks: newGoal.dailyTasks || [],
+      taskCompletions: {},
+      progressHistory: [{ date: new Date().toISOString(), value: initialValue }],
+      checkIns: [], milestones: []
+    };
+    try {
+      const created = await apiCall('/api/goals', 'POST', goalData);
+      setGoals(prev => [created, ...prev]);
+      setNewGoal({ title: '', description: '', category: 'personal', targetValue: '', currentValue: 0, unit: '', startDate: new Date().toISOString().split('T')[0], endDate: '', color: '#3B82F6', subtasks: [] });
       setGeneratedSubtasks([]);
       setShowAdvanced(false);
       setSelectedExample(null);
       setShowAddGoal(false);
+    } catch (err) {
+      console.error('Failed to create goal:', err);
     }
   };
 
-  const deleteGoal = (id) => {
-    setGoals(goals.filter(goal => goal.id !== id));
-    setShowGoalDetails(false);
+  const deleteGoal = async (id) => {
+    try {
+      await apiCall(`/api/goals/${id}`, 'DELETE');
+      setGoals(prev => prev.filter(g => g.id !== id));
+      setShowGoalDetails(false);
+    } catch (err) {
+      console.error('Failed to delete goal:', err);
+    }
   };
 
   const handleGoalClick = (goal) => {
@@ -533,119 +565,107 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
     setShowGoalDetails(true);
   };
 
-  const toggleSubtask = (goalId, subtaskIndex) => {
-    setGoals(goals.map(goal => {
-      if (goal.id === goalId) {
-        const updatedSubtasks = [...goal.subtasks];
-        updatedSubtasks[subtaskIndex] = {
-          ...updatedSubtasks[subtaskIndex],
-          completed: !updatedSubtasks[subtaskIndex].completed
-        };
-        return { ...goal, subtasks: updatedSubtasks };
-      }
-      return goal;
-    }));
-    
-    if (selectedGoal && selectedGoal.id === goalId) {
-      const updatedSubtasks = [...selectedGoal.subtasks];
-      updatedSubtasks[subtaskIndex] = {
-        ...updatedSubtasks[subtaskIndex],
-        completed: !updatedSubtasks[subtaskIndex].completed
-      };
-      setSelectedGoal({ ...selectedGoal, subtasks: updatedSubtasks });
+  const toggleSubtask = async (goalId, subtaskIndex) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const subtasks = goal.subtasks.map((s, i) =>
+      i === subtaskIndex ? { ...s, completed: !s.completed } : s
+    );
+    try {
+      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { subtasks });
+      setGoals(prev => prev.map(g => g.id === goalId ? saved : g));
+      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
+    } catch (err) {
+      console.error('Failed to toggle subtask:', err);
     }
   };
 
-  const updateGoalProgress = (goalId, newValue) => {
+  const updateGoalProgress = async (goalId, newValue) => {
     const parsed = parseFloat(newValue);
-    const historyEntry = { date: new Date().toISOString(), value: parsed };
-    let justCompleted = null;
-
-    const updated = goals.map(goal => {
-      if (goal.id === goalId) {
-        const wasComplete = calculateProgress(goal.currentValue, goal.targetValue) >= 100;
-        const nowComplete = calculateProgress(parsed, goal.targetValue) >= 100;
-        if (!wasComplete && nowComplete) justCompleted = goal;
-        return {
-          ...goal,
-          currentValue: parsed,
-          progressHistory: [...(goal.progressHistory || []), historyEntry]
-        };
-      }
-      return goal;
-    });
-
-    setGoals(updated);
-    if (selectedGoal && selectedGoal.id === goalId) {
-      const updatedGoal = updated.find(g => g.id === goalId);
-      setSelectedGoal(updatedGoal);
-    }
-    if (justCompleted) {
-      setShowGoalDetails(false);
-      setCelebratingGoal(justCompleted);
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const wasComplete = calculateProgress(goal.currentValue, goal.targetValue) >= 100;
+    const nowComplete = calculateProgress(parsed, goal.targetValue) >= 100;
+    const progressHistory = [...(goal.progressHistory || []), { date: new Date().toISOString(), value: parsed }];
+    try {
+      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { currentValue: parsed, progressHistory });
+      setGoals(prev => prev.map(g => g.id === goalId ? saved : g));
+      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
+      if (!wasComplete && nowComplete) { setShowGoalDetails(false); setCelebratingGoal(saved); }
+    } catch (err) {
+      console.error('Failed to update progress:', err);
     }
   };
 
-  const checkInGoal = (goalId) => {
+  const checkInGoal = async (goalId) => {
     const today = new Date().toISOString().split('T')[0];
-    const updated = goals.map(goal => {
-      if (goal.id !== goalId) return goal;
-      const existing = goal.checkIns || [];
-      if (existing.includes(today)) return goal;
-      return { ...goal, checkIns: [...existing, today] };
-    });
-    setGoals(updated);
-    if (selectedGoal?.id === goalId) {
-      setSelectedGoal(updated.find(g => g.id === goalId));
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const existing = goal.checkIns || [];
+    if (existing.includes(today)) return;
+    const checkIns = [...existing, today];
+    try {
+      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { checkIns });
+      setGoals(prev => prev.map(g => g.id === goalId ? saved : g));
+      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
+    } catch (err) {
+      console.error('Failed to check in:', err);
     }
   };
 
-  const updateGoalFromPanel = (updatedGoal) => {
-    setGoals(prev => prev.map(g => g.id === updatedGoal.id ? updatedGoal : g));
-    if (selectedGoal?.id === updatedGoal.id) setSelectedGoal(updatedGoal);
+  const updateGoalFromPanel = async (updatedGoal) => {
+    try {
+      const saved = await apiCall(`/api/goals/${updatedGoal.id}`, 'PUT', { taskCompletions: updatedGoal.taskCompletions });
+      setGoals(prev => prev.map(g => g.id === saved.id ? saved : g));
+      if (selectedGoal?.id === saved.id) setSelectedGoal(saved);
+    } catch {
+      // Optimistic update on API failure
+      setGoals(prev => prev.map(g => g.id === updatedGoal.id ? updatedGoal : g));
+      if (selectedGoal?.id === updatedGoal.id) setSelectedGoal(updatedGoal);
+    }
   };
 
-  const logTaskCompletion = (goalId, taskId, value) => {
+  const logTaskCompletion = async (goalId, taskId, value) => {
     const today = new Date().toISOString().split('T')[0];
-    const updated = goals.map(g => {
-      if (g.id !== goalId) return g;
-      return {
-        ...g,
-        taskCompletions: {
-          ...(g.taskCompletions || {}),
-          [today]: { ...(g.taskCompletions?.[today] || {}), [taskId]: value }
-        }
-      };
-    });
-    setGoals(updated);
-    if (selectedGoal?.id === goalId) setSelectedGoal(updated.find(g => g.id === goalId));
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const taskCompletions = { ...(goal.taskCompletions || {}), [today]: { ...(goal.taskCompletions?.[today] || {}), [taskId]: value } };
+    try {
+      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { taskCompletions });
+      setGoals(prev => prev.map(g => g.id === goalId ? saved : g));
+      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
+    } catch (err) {
+      console.error('Failed to log task:', err);
+    }
   };
 
-  const addDailyTaskToGoal = (goalId) => {
+  const addDailyTaskToGoal = async (goalId) => {
     if (!newDailyTask.title.trim()) return;
-    const task = {
-      id: Date.now(),
-      title: newDailyTask.title.trim(),
-      targetValue: newDailyTask.type === 'number' ? parseFloat(newDailyTask.targetValue) || null : null,
-      unit: newDailyTask.unit.trim(),
-      type: newDailyTask.type
-    };
-    const updated = goals.map(g => {
-      if (g.id !== goalId) return g;
-      return { ...g, dailyTasks: [...(g.dailyTasks || []), task] };
-    });
-    setGoals(updated);
-    if (selectedGoal?.id === goalId) setSelectedGoal(updated.find(g => g.id === goalId));
-    setNewDailyTask({ title: '', targetValue: '', unit: '', type: 'number' });
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const task = { id: Date.now(), title: newDailyTask.title.trim(), targetValue: newDailyTask.type === 'number' ? parseFloat(newDailyTask.targetValue) || null : null, unit: newDailyTask.unit.trim(), type: newDailyTask.type };
+    const dailyTasks = [...(goal.dailyTasks || []), task];
+    try {
+      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks });
+      setGoals(prev => prev.map(g => g.id === goalId ? saved : g));
+      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
+      setNewDailyTask({ title: '', targetValue: '', unit: '', type: 'number' });
+    } catch (err) {
+      console.error('Failed to add daily task:', err);
+    }
   };
 
-  const removeDailyTask = (goalId, taskId) => {
-    const updated = goals.map(g => {
-      if (g.id !== goalId) return g;
-      return { ...g, dailyTasks: (g.dailyTasks || []).filter(t => t.id !== taskId) };
-    });
-    setGoals(updated);
-    if (selectedGoal?.id === goalId) setSelectedGoal(updated.find(g => g.id === goalId));
+  const removeDailyTask = async (goalId, taskId) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const dailyTasks = (goal.dailyTasks || []).filter(t => t.id !== taskId);
+    try {
+      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks });
+      setGoals(prev => prev.map(g => g.id === goalId ? saved : g));
+      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
+    } catch (err) {
+      console.error('Failed to remove daily task:', err);
+    }
   };
 
   const calculateProgress = (current, target) => {

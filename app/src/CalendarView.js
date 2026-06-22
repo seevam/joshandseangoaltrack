@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -37,6 +37,7 @@ const getFirstDayOfWeek = (year, month) => new Date(year, month, 1).getDay();
 
 const CalendarView = () => {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const [goals, setGoals] = useState([]);
   const [viewYear, setViewYear] = useState(() => new Date().getFullYear());
   const [viewMonth, setViewMonth] = useState(() => new Date().getMonth());
@@ -44,18 +45,24 @@ const CalendarView = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Load goals from localStorage
+  // Load goals from API
   useEffect(() => {
     if (!isLoaded || !user) return;
-    const raw = localStorage.getItem(`goaltracker-goals-${user.id}`);
-    if (raw) {
+    (async () => {
       try {
-        setGoals(JSON.parse(raw));
-      } catch {
-        setGoals([]);
+        const token = await getToken();
+        const res = await fetch('/api/goals', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setGoals(data);
+        }
+      } catch (err) {
+        console.error('CalendarView: failed to load goals', err);
       }
-    }
-  }, [user, isLoaded]);
+    })();
+  }, [user, isLoaded, getToken]);
 
   // ── Calendar grid helpers ────────────────────────────────────────────────
 

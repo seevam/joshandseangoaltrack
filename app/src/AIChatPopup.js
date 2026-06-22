@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   Send,
   Bot,
@@ -15,6 +15,7 @@ import {
 
 const AIChatPopup = ({ isOpen, onClose }) => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [messages, setMessages] = useState([]);
   const [conversationHistory, setConversationHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -25,16 +26,17 @@ const AIChatPopup = ({ isOpen, onClose }) => {
   const messagesEndRef = useRef(null);
 
   const assistantName = localStorage.getItem('ai-assistant-name') || 'My Assistant';
-
-  const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
+  const hasApiKey = true; // key now lives server-side in OPENAI_API_KEY
 
   useEffect(() => {
-    if (user && isOpen) {
-      const userGoalsKey = `goaltracker-goals-${user.id}`;
-      const savedGoals = localStorage.getItem(userGoalsKey);
-      setGoals(savedGoals ? JSON.parse(savedGoals) : []);
-    }
-  }, [user, isOpen]);
+    if (!user || !isOpen) return;
+    getToken().then(token =>
+      fetch('/api/goals', { headers: { Authorization: `Bearer ${token}` } })
+        .then(r => r.ok ? r.json() : [])
+        .then(setGoals)
+        .catch(() => setGoals([]))
+    );
+  }, [user, isOpen, getToken]);
 
   useEffect(() => {
     if (user && messages.length === 0 && isOpen) {
@@ -77,7 +79,7 @@ const AIChatPopup = ({ isOpen, onClose }) => {
     }
   ];
 
-  const createGoal = (args) => {
+  const createGoal = async (args) => {
     const validCategories = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
     const category = validCategories.includes(args.category) ? args.category : 'personal';
     const categoryColors = {
@@ -89,30 +91,36 @@ const AIChatPopup = ({ isOpen, onClose }) => {
       daysFromStart: (i + 1) * 7, completed: false
     }));
     const dailyTasks = (args.dailyTasks || []).map((t, i) => ({
-      id: Date.now() + 1000 + i,
-      title: t.title,
-      targetValue: t.targetValue || null,
-      unit: t.unit || '',
+      id: Date.now() + 1000 + i, title: t.title,
+      targetValue: t.targetValue || null, unit: t.unit || '',
       type: t.type || 'checkbox'
     }));
-    const newGoal = {
-      id: Date.now(), userId: user.id, title: args.title,
-      description: args.why, category, targetValue: args.targetValue,
-      currentValue: 0, unit: args.unit,
+    const goalData = {
+      title: args.title, description: args.why, category,
+      targetValue: args.targetValue, currentValue: 0, unit: args.unit,
       startDate: new Date().toISOString(),
       endDate: new Date(args.deadline).toISOString(),
-      color: categoryColors[category], subtasks, dailyTasks,
-      createdAt: new Date().toISOString(), milestones: [],
+      color: categoryColors[category], subtasks, dailyTasks, milestones: [],
       progressHistory: [{ date: new Date().toISOString(), value: 0 }],
       checkIns: [], taskCompletions: {}
     };
-    const key = `goaltracker-goals-${user.id}`;
-    const updated = [...goals, newGoal];
-    localStorage.setItem(key, JSON.stringify(updated));
-    setGoals(updated);
-    setShowGoalCreatedAlert(true);
-    setTimeout(() => setShowGoalCreatedAlert(false), 4000);
-    return newGoal;
+    try {
+      const token = await getToken();
+      const res = await fetch('/api/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(goalData)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setGoals(prev => [...prev, saved]);
+        setShowGoalCreatedAlert(true);
+        setTimeout(() => setShowGoalCreatedAlert(false), 4000);
+        return saved;
+      }
+    } catch (err) {
+      console.error('Failed to create goal via chat:', err);
+    }
   };
 
   const buildGoalsContext = () => {

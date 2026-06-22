@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   X,
   Send,
@@ -37,6 +37,7 @@ const QUICK_PROMPTS = [
 
 const GoalChatPanel = ({ goal, onClose, onUpdateGoal }) => {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const [messages, setMessages] = useState([]);
   const [history, setHistory] = useState([]);
   const [input, setInput] = useState('');
@@ -167,11 +168,12 @@ Your role:
 - If daily tasks haven't been logged today, gently mention them.
 - Be encouraging and practical.`;
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const token = await getToken();
+      const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           model: 'gpt-4o',
