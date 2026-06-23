@@ -1,5 +1,5 @@
-const prisma = require('./_lib/prisma');
-const { getUserId } = require('./_lib/auth');
+const prisma = require('../_lib/prisma');
+const { getUserId } = require('../_lib/auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
