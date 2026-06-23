@@ -1,9 +1,7 @@
 {
-  "buildCommand": "cd .. && npm install && npx prisma generate && cd app && npm install && npm run build",
+  "buildCommand": "npm install && npm run build",
   "outputDirectory": "build",
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/index.html" }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
