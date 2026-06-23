@@ -153,20 +153,47 @@ const GoalChatPanel = ({ goal, onClose, onUpdateGoal }) => {
             : `${daysLeft} days left`
           : 'no deadline set';
 
-      const systemPrompt = `You are a personal goal coach helping ${user?.firstName || 'the user'} with ONE specific goal: "${goal.title}" (${goal.category}).
+      const subtasks = goal.subtasks || [];
+      const completedSubtasks = subtasks.filter(s => s.completed).length;
+      const subtaskProgress = subtasks.length > 0
+        ? `${completedSubtasks}/${subtasks.length} tasks complete (${Math.round((completedSubtasks / subtasks.length) * 100)}%)`
+        : `${goal.currentValue}/${goal.targetValue} ${goal.unit} (${Math.round(progress)}%)`;
 
-Goal context:
-- Progress: ${goal.currentValue} / ${goal.targetValue} ${goal.unit} (${Math.round(progress)}% complete)
+      const startDate = goal.startDate ? new Date(goal.startDate.split('T')[0]) : new Date();
+      const todayDate = new Date(today);
+      const daysSinceStart = Math.floor((todayDate - startDate) / (1000 * 60 * 60 * 24));
+      const incompleteSubtasks = subtasks
+        .filter(s => !s.completed)
+        .sort((a, b) => a.daysFromStart - b.daysFromStart);
+      const currentWeekTask = incompleteSubtasks.find(s => s.daysFromStart >= daysSinceStart - 3);
+      const programContext = currentWeekTask
+        ? `Current program item: "${currentWeekTask.title}" (due day ${currentWeekTask.daysFromStart})`
+        : completedSubtasks === subtasks.length && subtasks.length > 0
+        ? 'All program tasks completed!'
+        : 'No program tasks assigned yet';
+
+      const remainingSubtasks = incompleteSubtasks
+        .map(s => `  - Day ${s.daysFromStart}: ${s.title}`)
+        .join('\n') || '  (none remaining)';
+
+      const systemPrompt = `You are a coach helping ${user?.firstName || 'the user'} with: "${goal.title}" (${goal.category}).
+
+Goal state:
+- Progress: ${subtaskProgress}
 - Streak: ${streak} day${streak !== 1 ? 's' : ''}
 - Deadline: ${goal.endDate ? `${goal.endDate} (${deadlineText})` : 'none set'}
+- ${programContext}
+- Remaining program tasks:
+${remainingSubtasks}
 - Daily tasks today:
 ${taskSummary}
 
 Your role:
-- Coach for THIS goal only — do not discuss other goals or unrelated topics.
-- Keep responses to 2–4 sentences. Be personal and reference actual numbers from the goal.
-- If daily tasks haven't been logged today, gently mention them.
-- Be encouraging and practical.`;
+- Coach for THIS goal only.
+- Keep responses to 2-3 sentences. Reference specific numbers and tasks.
+- When user reports what they did or missed, call update_program with adjusted remaining tasks.
+- Adapt the plan if they're ahead or behind — don't just encourage, actually update the schedule.
+- If daily tasks haven't been logged, mention it once.`;
 
       const token = await getToken();
       const response = await fetch('/api/ai/chat', {
@@ -186,7 +213,7 @@ Your role:
               type: 'function',
               function: {
                 name: 'respond',
-                description: 'Send a coaching response to the user.',
+                description: 'Send a coaching response to the user. Use when no program adjustment is needed.',
                 parameters: {
                   type: 'object',
                   properties: {
@@ -199,9 +226,38 @@ Your role:
                 },
               },
             },
+            {
+              type: 'function',
+              function: {
+                name: 'update_program',
+                description: 'Update the remaining program tasks AND send a coaching message. Use when the user reports what they completed/missed and the plan needs adjusting.',
+                parameters: {
+                  type: 'object',
+                  properties: {
+                    message: {
+                      type: 'string',
+                      description: 'Brief coaching message acknowledging what was done and presenting the updated plan (2-3 sentences).',
+                    },
+                    remaining_tasks: {
+                      type: 'array',
+                      description: 'Updated list of remaining (incomplete) program tasks. Keep already-completed tasks unchanged.',
+                      items: {
+                        type: 'object',
+                        properties: {
+                          title: { type: 'string', description: 'What to do with specific numbers' },
+                          daysFromStart: { type: 'number', description: 'Days from goal start when due' },
+                        },
+                        required: ['title', 'daysFromStart'],
+                      },
+                    },
+                  },
+                  required: ['message', 'remaining_tasks'],
+                },
+              },
+            },
           ],
           tool_choice: 'required',
-          max_tokens: 400,
+          max_tokens: 600,
           temperature: 0.6,
         }),
       });
@@ -217,6 +273,25 @@ Your role:
         try {
           const args = JSON.parse(toolCall.function.arguments);
           aiText = args.message;
+        } catch {
+          // use default
+        }
+      } else if (toolCall && toolCall.function.name === 'update_program') {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          aiText = args.message;
+          if (args.remaining_tasks && Array.isArray(args.remaining_tasks)) {
+            const completedSubtasks = (goal.subtasks || []).filter(s => s.completed);
+            const newTasks = args.remaining_tasks.map((t, i) => ({
+              id: Date.now() + i,
+              title: t.title,
+              description: t.title,
+              daysFromStart: t.daysFromStart,
+              completed: false,
+            }));
+            const updatedGoal = { ...goal, subtasks: [...completedSubtasks, ...newTasks] };
+            onUpdateGoal(updatedGoal);
+          }
         } catch {
           // use default
         }

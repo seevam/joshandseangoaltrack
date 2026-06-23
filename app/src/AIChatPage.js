@@ -194,41 +194,39 @@ const AIChatPage = () => {
 
       const today = new Date().toISOString().split('T')[0];
 
-      const systemPrompt = `You are a warm, curious personal Goal Coach. Your job is to have a genuine conversation to deeply understand the user's background and goal, then save it as a trackable goal.
+      const systemPrompt = `You are a Goal Coach. Gather information to create a personalized program, then save it.
 
 You MUST always call one of the two tools — never reply with plain text.
 
-Conversation approach:
-- Sound like a real coach — encouraging, personal, genuinely interested. Use their name (${user?.firstName || 'there'}) naturally.
-- Ask 4-6 questions across the conversation before creating the goal. Understand:
-  1. What they want to achieve (the goal)
-  2. Their current level / starting point (e.g. "Do you currently run? How far?", "What's your current salary?", "How many books do you read now?")
-  3. Why this matters to them personally
-  4. Their timeframe / deadline
-  5. Any constraints or challenges they foresee (optional)
-- Ask ONE question per message. React warmly to their answer before asking the next.
-- Only call create_goal once you have a clear picture of their background and goal.
-- Never explain SMART goals. Never lecture. Just coach.
+Rules:
+- Ask ONE question per message. One short sentence of acknowledgment (max), then the question.
+- Gather 4-6 pieces of information before calling create_goal:
+  1. What they want to achieve
+  2. Their current level / starting point
+  3. Why it matters
+  4. Their deadline
+  5. Constraints or obstacles (optional)
+- No motivational intros. No summaries before asking. Just ask the question.
+- Example — instead of "Running a marathon is incredible! Let me help you break it down. What is your current training level?" just ask "What's your current running distance?"
 
 Today's date is ${today}. All deadlines must be in the future.
 
-Sub-task quality rules (CRITICAL):
-- Every sub-task MUST include specific numbers/quantities relevant to the goal.
-- Sub-tasks must be progressive checkpoints that build week-by-week or month-by-month toward the final target.
-- Calibrate the numbers based on the user's current level (beginner vs experienced).
-- Examples for a running goal (current: can run 1km, target: 10km in 3 months):
-  "Week 1-2: Run 2km, 3x per week"
-  "Week 3-4: Run 3.5km, 4x per week"
-  "Month 2: Complete a 6km run under 40 minutes"
-  "Month 2 end: Run 8km without stopping"
-  "Month 3: Complete 10km in under 60 minutes"
-- Examples for a savings goal (saving $10,000 in 12 months):
-  "Month 1-2: Save $800/month, cut dining out to twice a week"
-  "Month 3-4: Reach $2,000 total saved"
-  "Month 6: Hit $5,000 milestone, review budget"
-  "Month 9: Reach $7,500, increase monthly savings to $900"
-  "Month 12: Hit $10,000 target"
-- Never use vague steps like "Stay consistent", "Work hard", or "Join a gym".
+Program generation rules (CRITICAL):
+- Generate a FULL week-by-week program for the ENTIRE goal duration — not just 5 milestones.
+- For a 3-month goal: ~12 weekly program items. For 6 months: ~16 items.
+- Each item must be specific with numbers. Calibrate to the user's current level.
+- Include daysFromStart for each item (7 = week 1, 14 = week 2, etc.).
+- Example for a marathon goal (beginner, 16 weeks):
+  Week 1: "Run 3km, 3x per week" (daysFromStart: 7)
+  Week 2: "Run 4km, 3x per week" (daysFromStart: 14)
+  Week 4: "Run 6km, 3x per week + 10km long run Sunday" (daysFromStart: 28)
+  Week 6: "Run 8km, 4x per week" (daysFromStart: 42)
+  Week 8: "Long run: 16km. Weekly total: 40km" (daysFromStart: 56)
+  Week 10: "Long run: 21km. Weekly total: 50km" (daysFromStart: 70)
+  Week 12: "Long run: 27km. Weekly total: 55km" (daysFromStart: 84)
+  Week 14: "Long run: 32km. Peak week." (daysFromStart: 98)
+  Week 16: "Taper week. Race day — 42km!" (daysFromStart: 112)
+- Never use vague steps like "Stay consistent" or "Work hard".
 
 ${goalsContext}`;
 
@@ -237,7 +235,7 @@ ${goalsContext}`;
           type: 'function',
           function: {
             name: 'ask_question',
-            description: 'Send a warm 1-2 sentence reaction to the user\'s last message, then ask one focused question about their background or goal details.',
+            description: 'Acknowledge the user\'s answer in one sentence (max), then ask one focused question. Be direct — no motivational filler.',
             parameters: {
               type: 'object',
               properties: {
@@ -251,7 +249,7 @@ ${goalsContext}`;
           type: 'function',
           function: {
             name: 'create_goal',
-            description: 'Save the goal. Call this once you know what to achieve, a numeric target + unit, and a deadline.',
+            description: 'Save the goal. Call this once you have all the information needed.',
             parameters: {
               type: 'object',
               properties: {
@@ -266,8 +264,15 @@ ${goalsContext}`;
                 why: { type: 'string', description: 'Brief motivational reason (1-2 sentences)' },
                 subtasks: {
                   type: 'array',
-                  items: { type: 'string' },
-                  description: '5 quantified progressive milestones calibrated to the user\'s current level. Every milestone must include specific numbers (distances, amounts, frequencies, times). Ordered week-by-week or month-by-month from current level to final target. No vague steps.'
+                  description: 'Full week-by-week program for the ENTIRE goal duration. One item per week or every 2 weeks. Each must have specific numbers. Generate enough items to cover the full duration.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title: { type: 'string', description: 'What to do this week/phase with specific numbers and frequencies' },
+                      daysFromStart: { type: 'number', description: 'Days from today when this is due (7 = week 1 end, 14 = week 2 end, etc.)' }
+                    },
+                    required: ['title', 'daysFromStart']
+                  }
                 }
               },
               required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks']
@@ -310,13 +315,23 @@ ${goalsContext}`;
         try {
           const args = JSON.parse(toolCall.function.arguments);
 
-          const subtasks = args.subtasks.map((taskText, index) => ({
-            id: Date.now() + index,
-            title: taskText,
-            description: taskText,
-            daysFromStart: (index + 1) * 7,
-            completed: false
-          }));
+          const startDate = new Date();
+          const endDate = new Date(args.deadline);
+          const totalDays = Math.max(Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)), 7);
+
+          const subtasks = args.subtasks.map((task, index) => {
+            const taskTitle = typeof task === 'string' ? task : task.title;
+            const daysFromStart = typeof task === 'object' && task.daysFromStart != null
+              ? task.daysFromStart
+              : Math.round((totalDays / args.subtasks.length) * (index + 1));
+            return {
+              id: Date.now() + index,
+              title: taskTitle,
+              description: taskTitle,
+              daysFromStart,
+              completed: false
+            };
+          });
 
           goalCreated = createGoalFromParsedData({
             title: args.title,
