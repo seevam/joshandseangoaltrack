@@ -293,7 +293,7 @@ const getEarnedBadges = (goal) => {
   return MILESTONE_BADGES.filter(b => pct >= b.pct);
 };
 
-export const Dashboard = () => {
+export const Dashboard = ({ triggerNewGoal, onNewGoalHandled }) => {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
   const [goals, setGoals] = useState([]);
@@ -395,6 +395,13 @@ export const Dashboard = () => {
     if (!res.ok) throw new Error(`API ${method} ${url} failed: ${res.status}`);
     return res.json();
   };
+
+  useEffect(() => {
+    if (triggerNewGoal) {
+      setShowAddGoal(true);
+      if (onNewGoalHandled) onNewGoalHandled();
+    }
+  }, [triggerNewGoal, onNewGoalHandled]);
 
   useEffect(() => {
     if (!user || !isLoaded) return;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useUser } from '@clerk/clerk-react';
+import { useUser, useAuth } from '@clerk/clerk-react';
 import {
   Send,
   Target,
@@ -17,6 +17,7 @@ import SetupGuide from './SetupGuide';
 
 const AIChatPage = () => {
   const { user, isLoaded } = useUser();
+  const { getToken } = useAuth();
   const [messages, setMessages] = useState([]);
   const [conversationHistory, setConversationHistory] = useState([]);
   const [inputMessage, setInputMessage] = useState('');
@@ -26,7 +27,7 @@ const AIChatPage = () => {
   const [showGoalCreatedAlert, setShowGoalCreatedAlert] = useState(false);
   const messagesEndRef = useRef(null);
 
-  const hasApiKey = !!process.env.REACT_APP_OPENAI_API_KEY;
+  const hasApiKey = true;
 
   useEffect(() => {
     if (user) {
@@ -97,7 +98,7 @@ const AIChatPage = () => {
     };
   };
 
-  const createGoalFromParsedData = (goalData) => {
+  const createGoalFromParsedData = async (goalData) => {
     const validCategories = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
     const category = validCategories.includes(goalData.category) ? goalData.category : 'personal';
 
@@ -110,9 +111,7 @@ const AIChatPage = () => {
       fitness: '#F472B6'
     };
 
-    const newGoal = {
-      id: Date.now(),
-      userId: user.id,
+    const goalPayload = {
       title: goalData.title,
       description: goalData.description,
       category: category,
@@ -123,21 +122,27 @@ const AIChatPage = () => {
       endDate: new Date(goalData.endDate).toISOString(),
       color: categoryColors[category],
       subtasks: goalData.subtasks,
-      createdAt: new Date().toISOString(),
       milestones: []
     };
 
-    // Save to localStorage
-    const userGoalsKey = `goaltracker-goals-${user.id}`;
-    const updatedGoals = [...goals, newGoal];
-    localStorage.setItem(userGoalsKey, JSON.stringify(updatedGoals));
-    setGoals(updatedGoals);
+    const token = await getToken();
+    const res = await fetch('/api/goals', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(goalPayload)
+    });
 
-    // Show success alert
+    if (!res.ok) throw new Error('Failed to save goal');
+    const savedGoal = await res.json();
+    setGoals(prev => [...prev, savedGoal]);
+
     setShowGoalCreatedAlert(true);
     setTimeout(() => setShowGoalCreatedAlert(false), 5000);
 
-    return newGoal;
+    return savedGoal;
   };
 
   const quickActions = [
@@ -281,11 +286,12 @@ ${goalsContext}`;
         }
       ];
 
-      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      const aiToken = await getToken();
+      const response = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.REACT_APP_OPENAI_API_KEY}`
+          'Authorization': `Bearer ${aiToken}`
         },
         body: JSON.stringify({
           model: 'gpt-4o',
@@ -333,7 +339,7 @@ ${goalsContext}`;
             };
           });
 
-          goalCreated = createGoalFromParsedData({
+          goalCreated = await createGoalFromParsedData({
             title: args.title,
             category: args.category,
             targetValue: args.targetValue,
