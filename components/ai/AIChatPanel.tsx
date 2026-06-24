@@ -32,7 +32,12 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const [isMinimized, setIsMinimized] = useState(false);
   const [showGoalCreated, setShowGoalCreated] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const assistantName = 'My Assistant';
+  const [assistantName, setAssistantName] = useState('My Assistant');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('ai_assistant_name');
+    if (stored) setAssistantName(stored);
+  }, [isOpen]);
 
   useEffect(() => {
     if (user && messages.length === 0 && isOpen) {

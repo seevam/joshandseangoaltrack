@@ -1,9 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { CATEGORY_COLORS, type Category, type Subtask } from '@/lib/types';
+import { CATEGORY_COLORS, type Category, type Subtask, type Goal } from '@/lib/types';
 
 const CATEGORIES: Category[] = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
 
@@ -16,16 +16,28 @@ const TEMPLATES: Record<Category, { placeholder: string; unit: string; target: s
   fitness:   { placeholder: 'e.g., Run 500 km this year',            unit: 'km',       target: '500' },
 };
 
-export default function GoalForm({ onClose }: { onClose: () => void }) {
-  const addGoal = useGoalStore(s => s.addGoal);
+interface Props {
+  onClose: () => void;
+  editGoal?: Goal;
+}
+
+export default function GoalForm({ onClose, editGoal }: Props) {
+  const { addGoal, updateGoal } = useGoalStore();
+  const isEditing = !!editGoal;
 
   const [form, setForm] = useState({
-    title: '', description: '', category: 'personal' as Category,
-    targetValue: '', unit: '', startDate: new Date().toISOString().split('T')[0], endDate: '',
+    title:       editGoal?.title       ?? '',
+    description: editGoal?.description ?? '',
+    category:    (editGoal?.category   ?? 'personal') as Category,
+    targetValue: editGoal?.targetValue != null ? String(editGoal.targetValue) : '',
+    unit:        editGoal?.unit        ?? '',
+    startDate:   editGoal?.startDate   ?? new Date().toISOString().split('T')[0],
+    endDate:     editGoal?.endDate     ?? '',
   });
-  const [subtasks, setSubtasks] = useState<Partial<Subtask>[]>([]);
+  const [subtasks, setSubtasks] = useState<Partial<Subtask>[]>(editGoal?.subtasks ?? []);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
 
   const tpl = TEMPLATES[form.category];
 
@@ -64,29 +76,52 @@ export default function GoalForm({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     if (!form.title || !form.targetValue) return;
     setIsSaving(true);
+    setError('');
     try {
-      const res = await fetch('/api/goals', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...form,
-          targetValue: parseFloat(form.targetValue),
-          currentValue: 0,
-          color: CATEGORY_COLORS[form.category].hex,
-          subtasks,
-          dailyTasks: [],
-          taskCompletions: {},
-          checkIns: [],
-          progressHistory: [{ date: new Date().toISOString(), value: 0 }],
-          milestones: [],
-        }),
-      });
-      if (!res.ok) throw new Error('Failed to create goal');
-      const created = await res.json();
-      addGoal(created);
+      if (isEditing && editGoal) {
+        const res = await fetch(`/api/goals/${editGoal.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: form.title,
+            description: form.description,
+            category: form.category,
+            targetValue: parseFloat(form.targetValue),
+            unit: form.unit,
+            startDate: form.startDate,
+            endDate: form.endDate,
+            color: CATEGORY_COLORS[form.category].hex,
+            subtasks,
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to update goal');
+        const saved = await res.json();
+        updateGoal(saved);
+      } else {
+        const res = await fetch('/api/goals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...form,
+            targetValue: parseFloat(form.targetValue),
+            currentValue: 0,
+            color: CATEGORY_COLORS[form.category].hex,
+            subtasks,
+            dailyTasks: [],
+            taskCompletions: {},
+            checkIns: [],
+            progressHistory: [{ date: new Date().toISOString(), value: 0 }],
+            milestones: [],
+          }),
+        });
+        if (!res.ok) throw new Error('Failed to create goal');
+        const created = await res.json();
+        addGoal(created);
+      }
       onClose();
     } catch (err) {
-      console.error('Failed to create goal:', err);
+      setError(isEditing ? 'Failed to update goal. Please try again.' : 'Failed to create goal. Please try again.');
+      console.error(err);
     } finally {
       setIsSaving(false);
     }
@@ -97,7 +132,7 @@ export default function GoalForm({ onClose }: { onClose: () => void }) {
       <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-bold text-gray-900">Create New Goal</h2>
+          <h2 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit Goal' : 'Create New Goal'}</h2>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
             <X className="h-5 w-5 text-gray-500" />
           </button>
@@ -162,7 +197,7 @@ export default function GoalForm({ onClose }: { onClose: () => void }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
               <input
-                type="date" value={form.startDate}
+                type="date" value={form.startDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
               />
@@ -170,7 +205,7 @@ export default function GoalForm({ onClose }: { onClose: () => void }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
               <input
-                type="date" value={form.endDate}
+                type="date" value={form.endDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
                 className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
               />
@@ -201,7 +236,7 @@ export default function GoalForm({ onClose }: { onClose: () => void }) {
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-lg text-xs font-medium transition-colors"
               >
                 <Sparkles className="h-3.5 w-3.5" />
-                {isGenerating ? 'Generating…' : 'Generate'}
+                {isGenerating ? 'Generating…' : subtasks.length > 0 ? 'Regenerate' : 'Generate'}
               </button>
             </div>
             {subtasks.length > 0 && (
@@ -218,6 +253,8 @@ export default function GoalForm({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
+          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
+
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
@@ -230,7 +267,7 @@ export default function GoalForm({ onClose }: { onClose: () => void }) {
               type="submit" disabled={isSaving || !form.title || !form.targetValue}
               className="flex-1 py-3 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl font-semibold text-sm transition-colors"
             >
-              {isSaving ? 'Creating…' : 'Create Goal'}
+              {isSaving ? (isEditing ? 'Saving…' : 'Creating…') : (isEditing ? 'Save Changes' : 'Create Goal')}
             </button>
           </div>
         </form>
