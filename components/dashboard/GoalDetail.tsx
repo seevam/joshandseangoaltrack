@@ -89,7 +89,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-40 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] overflow-y-auto">
         {/* Header */}
         <div className={`${cat.bg} rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white`}>
           <div className="flex items-start justify-between mb-3">
@@ -166,7 +166,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
           {earnedBadges.length > 0 && (
             <div>
               <p className="text-sm font-semibold text-gray-700 mb-2">Milestone Badges</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {MILESTONE_BADGES.map(b => {
                   const earned = progress >= b.pct;
                   return (
@@ -269,7 +269,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                             type="number"
                             value={taskInputs[task.id] ?? (typeof val === 'number' ? val : '')}
                             onChange={e => setTaskInputs(p => ({ ...p, [task.id]: e.target.value }))}
-                            className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-xs text-center"
+                            className="w-20 px-2 py-1.5 border border-gray-300 rounded-lg text-sm text-center"
                             placeholder="0"
                           />
                           <button

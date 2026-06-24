@@ -482,7 +482,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
               {/* Deadline */}
               <div>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 block">Deadline</label>
-                <div className="grid grid-cols-5 gap-1.5 mb-3">
+                <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5 mb-3">
                   {TIMELINE_PRESETS.map(p => {
                     const date = addDays(p.days);
                     return (

@@ -86,7 +86,7 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="max-w-lg mx-auto px-4 py-6 space-y-6 pb-24">
+    <div className="max-w-lg mx-auto px-4 py-6 space-y-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 6rem)' }}>
       {/* Profile card */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center gap-4">
         {user?.imageUrl ? (
@@ -165,7 +165,7 @@ export default function ProfilePage() {
       {/* Badges */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
         <h3 className="text-sm font-semibold text-gray-800 mb-3">Badges</h3>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {badges.map(({ icon: Icon, label, earned, desc }) => (
             <div key={label} className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
               earned ? 'border-[#58CC02] bg-[#D7FFB8]/30' : 'border-gray-100 bg-gray-50 opacity-50'
@@ -176,7 +176,7 @@ export default function ProfilePage() {
                 <Icon className={`h-5 w-5 ${earned ? 'text-white' : 'text-gray-400'}`} />
               </div>
               <span className="text-xs font-semibold text-gray-700 text-center leading-tight">{label}</span>
-              <span className="text-[10px] text-gray-400 text-center leading-tight">{desc}</span>
+              <span className="text-xs text-gray-400 text-center leading-tight">{desc}</span>
             </div>
           ))}
         </div>

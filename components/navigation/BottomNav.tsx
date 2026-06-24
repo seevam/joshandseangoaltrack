@@ -42,7 +42,7 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
                 <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#58CC02]" />
               )}
               <item.icon className={`h-5 w-5 transition-colors ${active ? 'text-[#58CC02]' : 'text-gray-400'}`} />
-              <span className={`text-[10px] font-medium transition-colors ${active ? 'text-[#58CC02]' : 'text-gray-400'}`}>
+              <span className={`text-xs font-medium transition-colors ${active ? 'text-[#58CC02]' : 'text-gray-400'}`}>
                 {item.label}
               </span>
             </div>

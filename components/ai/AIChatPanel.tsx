@@ -255,7 +255,7 @@ ${buildGoalsContext()}`;
                       : <Bot className={`h-5 w-5 ${msg.isError ? 'text-red-600' : 'text-white'}`} />
                     }
                   </div>
-                  <div className={`max-w-[75%] p-3 rounded-2xl shadow-sm text-sm whitespace-pre-wrap break-words ${
+                  <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm text-sm whitespace-pre-wrap break-words ${
                     msg.type === 'user' ? 'bg-[#58CC02] text-white ml-auto' :
                     msg.isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-white text-gray-800'
                   }`}>
@@ -289,7 +289,7 @@ ${buildGoalsContext()}`;
                     <button
                       key={i}
                       onClick={() => send(a.action)}
-                      className="flex items-center gap-2 p-2 bg-gray-50 hover:bg-gray-100 rounded-lg text-xs text-gray-700 transition-colors"
+                      className="flex items-center gap-2 p-3 min-h-[44px] bg-gray-50 hover:bg-gray-100 rounded-lg text-xs text-gray-700 transition-colors"
                     >
                       <a.icon className="h-4 w-4 text-[#58CC02] flex-shrink-0" />
                       {a.label}
@@ -300,7 +300,7 @@ ${buildGoalsContext()}`;
             )}
 
             {/* Input */}
-            <div className="flex-shrink-0 p-4 bg-white border-t">
+            <div className="flex-shrink-0 px-4 pt-3 pb-4 bg-white border-t" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}>
               <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex items-end gap-2">
                 <textarea
                   value={input}
@@ -315,7 +315,7 @@ ${buildGoalsContext()}`;
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="h-10 w-10 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                  className="h-11 w-11 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
                 >
                   <Send className="h-5 w-5" />
                 </button>

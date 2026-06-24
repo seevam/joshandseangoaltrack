@@ -258,7 +258,7 @@ export default function Dashboard() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
                 activeTab === tab ? 'bg-[#58CC02] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
@@ -367,11 +367,11 @@ export default function Dashboard() {
                         {status === 'in-progress' && (
                           <button
                             onClick={e => { e.stopPropagation(); checkIn(goal.id); }}
-                            className={`ml-1 p-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            className={`ml-1 h-10 w-10 flex items-center justify-center rounded-xl transition-colors ${
                               checkedToday ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'bg-gray-100 text-gray-600 hover:bg-[#D7FFB8] hover:text-[#2E8B00]'
                             }`}
                           >
-                            {checkedToday ? <CheckCircle className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                            <CheckCircle className="h-5 w-5" />
                           </button>
                         )}
                       </div>
