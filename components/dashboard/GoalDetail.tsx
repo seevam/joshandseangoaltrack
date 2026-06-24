@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Plus, MessageCircle, Pencil, TrendingUp, Users, UserPlus, Mail } from 'lucide-react';
+import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Plus, Pencil, TrendingUp, Users, UserPlus, Mail, Bot, Sparkles } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import GoalChatPanel from './GoalChatPanel';
 import GoalForm from './GoalForm';
@@ -102,9 +102,6 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               <button onClick={() => setShowEdit(true)} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg" title="Edit Goal">
                 <Pencil className="h-4 w-4" />
               </button>
-              <button onClick={() => setShowChat(!showChat)} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg" title="AI Coach">
-                <MessageCircle className="h-4 w-4" />
-              </button>
               <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
                 <X className="h-4 w-4" />
               </button>
@@ -124,10 +121,26 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
         </div>
 
         <div className="p-5 space-y-5">
-          {/* AI Chat panel */}
-          {showChat && (
-            <GoalChatPanel goal={goal} onClose={() => setShowChat(false)} />
-          )}
+          {/* AI Coach card — always visible */}
+          <button
+            onClick={() => setShowChat(true)}
+            className="w-full flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-[#D7FFB8] to-[#CCFFDD] border border-[#58CC02]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
+          >
+            <div className="h-10 w-10 rounded-full bg-[#58CC02] flex items-center justify-center flex-shrink-0">
+              <Bot className="h-5 w-5 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-[#2E8B00]">Talk to your AI Coach</p>
+              <p className="text-xs text-[#58CC02] truncate">
+                {status === 'completed' ? 'Celebrate and plan what\'s next 🏆' :
+                 status === 'overdue' ? 'Get a recovery plan for this goal 💪' :
+                 getGoalProgress(goal) >= 75 ? 'You\'re almost there — finish strong! 🔥' :
+                 streak > 2 ? `${streak}-day streak! Keep the momentum going` :
+                 'Get tips, motivation, and a plan'}
+              </p>
+            </div>
+            <Sparkles className="h-5 w-5 text-[#58CC02] flex-shrink-0" />
+          </button>
 
           {/* Stats row */}
           <div className="grid grid-cols-3 gap-3">
@@ -440,6 +453,11 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
       {/* Edit modal rendered on top */}
       {showEdit && (
         <GoalForm editGoal={goal} onClose={() => setShowEdit(false)} />
+      )}
+
+      {/* AI Coach — full-screen modal */}
+      {showChat && (
+        <GoalChatPanel goal={goal} onClose={() => setShowChat(false)} />
       )}
     </div>
   );
