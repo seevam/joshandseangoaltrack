@@ -1,7 +1,10 @@
 {
   "buildCommand": "npm install && npm run build",
   "outputDirectory": "build",
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+  "routes": [
+    { "src": "/api/goals/([^/]+)", "dest": "/api/goals/[id].js?id=$1" },
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
