@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Plus, MessageCircle } from 'lucide-react';
+import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Plus, MessageCircle, Pencil, TrendingUp } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import GoalChatPanel from './GoalChatPanel';
+import GoalForm from './GoalForm';
 
 interface Props {
   goal: Goal;
@@ -31,6 +32,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   const [showAddTask, setShowAddTask] = useState(false);
   const [newTask, setNewTask] = useState<{ title: string; targetValue: string; unit: string; type: 'number' | 'checkbox' }>({ title: '', targetValue: '', unit: '', type: 'number' });
   const [showChat, setShowChat] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [taskInputs, setTaskInputs] = useState<Record<number, string>>({});
 
   const today = new Date().toISOString().split('T')[0];
@@ -55,11 +58,10 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               {goal.description && <p className="text-white/80 text-sm mt-1 line-clamp-2">{goal.description}</p>}
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={() => setShowChat(!showChat)}
-                className="p-2 bg-white/20 hover:bg-white/30 rounded-lg"
-                title="AI Coach"
-              >
+              <button onClick={() => setShowEdit(true)} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg" title="Edit Goal">
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button onClick={() => setShowChat(!showChat)} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg" title="AI Coach">
                 <MessageCircle className="h-4 w-4" />
               </button>
               <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
@@ -122,6 +124,24 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Progress history sparkline */}
+          {(goal.progressHistory || []).length > 1 && (
+            <div>
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
+              >
+                <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-[#58CC02]" /> Progress History</span>
+                {showHistory ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+              </button>
+              {showHistory && (
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <Sparkline history={goal.progressHistory} target={goal.targetValue} color={cat.hex} />
+                </div>
+              )}
             </div>
           )}
 
@@ -321,6 +341,49 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             <Trash2 className="h-4 w-4" /> Delete Goal
           </button>
         </div>
+      </div>
+
+      {/* Edit modal rendered on top */}
+      {showEdit && (
+        <GoalForm editGoal={goal} onClose={() => setShowEdit(false)} />
+      )}
+    </div>
+  );
+}
+
+function Sparkline({ history, target, color }: { history: { date: string; value: number }[]; target: number; color: string }) {
+  const W = 300, H = 60, PAD = 4;
+  const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date)).slice(-20);
+  if (sorted.length < 2) return null;
+  const max = Math.max(target, ...sorted.map(p => p.value));
+  const pts = sorted.map((p, i) => {
+    const x = PAD + (i / (sorted.length - 1)) * (W - PAD * 2);
+    const y = H - PAD - ((p.value / max) * (H - PAD * 2));
+    return `${x},${y}`;
+  });
+  const targetY = H - PAD - ((target / max) * (H - PAD * 2));
+  const last = sorted[sorted.length - 1];
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 60 }}>
+        {/* Target line */}
+        <line x1={PAD} y1={targetY} x2={W - PAD} y2={targetY} stroke="#E5E7EB" strokeWidth="1" strokeDasharray="4 3" />
+        {/* Area fill */}
+        <defs>
+          <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.2" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <polygon points={`${PAD},${H - PAD} ${pts.join(' ')} ${W - PAD},${H - PAD}`} fill="url(#spark-fill)" />
+        <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        {/* Last point dot */}
+        <circle cx={pts[pts.length - 1].split(',')[0]} cy={pts[pts.length - 1].split(',')[1]} r="3" fill={color} />
+      </svg>
+      <div className="flex justify-between text-xs text-gray-400 mt-1">
+        <span>{sorted[0].date.slice(5)}</span>
+        <span className="font-medium" style={{ color }}>{last.value} / {target}</span>
+        <span>{last.date.slice(5)}</span>
       </div>
     </div>
   );

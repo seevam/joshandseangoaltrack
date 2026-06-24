@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
-import { LogOut, Target, TrendingUp, Award, Flame, Trophy, Star } from 'lucide-react';
+import { LogOut, Target, TrendingUp, Award, Flame, Trophy, Star, Settings, Bot, Save } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { getGoalProgress, getGoalStatus, getStreak, CATEGORY_COLORS } from '@/lib/types';
 
@@ -9,6 +10,23 @@ export default function ProfilePage() {
   const { user } = useUser();
   const { signOut } = useClerk();
   const goals = useGoalStore(s => s.goals);
+
+  const [aiName, setAiName] = useState('My Assistant');
+  const [aiNameInput, setAiNameInput] = useState('My Assistant');
+  const [nameSaved, setNameSaved] = useState(false);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('ai_assistant_name');
+    if (stored) { setAiName(stored); setAiNameInput(stored); }
+  }, []);
+
+  const saveAiName = () => {
+    const name = aiNameInput.trim() || 'My Assistant';
+    localStorage.setItem('ai_assistant_name', name);
+    setAiName(name);
+    setNameSaved(true);
+    setTimeout(() => setNameSaved(false), 2000);
+  };
 
   const totalGoals = goals.length;
   const completedGoals = goals.filter(g => getGoalStatus(g) === 'completed').length;
@@ -136,6 +154,40 @@ export default function ProfilePage() {
               <span className="text-[10px] text-gray-400 text-center leading-tight">{desc}</span>
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* Settings */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+        <div className="flex items-center gap-2 mb-4">
+          <Settings className="h-4 w-4 text-gray-500" />
+          <h3 className="text-sm font-semibold text-gray-800">Settings</h3>
+        </div>
+
+        {/* AI Assistant name */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+            <Bot className="h-3.5 w-3.5 text-[#58CC02]" /> AI Coach Name
+          </label>
+          <div className="flex gap-2">
+            <input
+              value={aiNameInput}
+              onChange={e => setAiNameInput(e.target.value)}
+              placeholder="My Assistant"
+              maxLength={30}
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02]"
+            />
+            <button
+              onClick={saveAiName}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                nameSaved ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'bg-[#58CC02] hover:bg-[#4CAD02] text-white'
+              }`}
+            >
+              <Save className="h-3.5 w-3.5" />
+              {nameSaved ? 'Saved!' : 'Save'}
+            </button>
+          </div>
+          <p className="text-xs text-gray-400">This name appears in the AI chat panel header.</p>
         </div>
       </div>
 

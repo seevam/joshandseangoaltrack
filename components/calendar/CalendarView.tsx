@@ -27,6 +27,8 @@ export default function CalendarView() {
     const dateStr = date.toISOString().split('T')[0];
     const activeGoals: string[] = [];
     let checkInCount = 0;
+    let totalTasks = 0;
+    let completedTasks = 0;
 
     goals.forEach(goal => {
       const goalStart = goal.startDate ? new Date(goal.startDate) : null;
@@ -37,9 +39,17 @@ export default function CalendarView() {
       if (goal.checkIns?.some(c => c.startsWith(dateStr))) {
         checkInCount++;
       }
+      const dayCompletions = goal.taskCompletions?.[dateStr] || {};
+      (goal.dailyTasks || []).forEach(task => {
+        totalTasks++;
+        const val = dayCompletions[task.id];
+        if (task.type === 'checkbox' && val) completedTasks++;
+        else if (task.type === 'number' && task.targetValue && typeof val === 'number' && val >= task.targetValue) completedTasks++;
+      });
     });
 
-    return { activeGoals, checkInCount };
+    const taskRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : null;
+    return { activeGoals, checkInCount, taskRate, totalTasks };
   };
 
   const selectedGoalActivity = selected
@@ -95,7 +105,7 @@ export default function CalendarView() {
             const isToday = cellDate.getTime() === today.getTime();
             const isSelected = selected?.getTime() === cellDate.getTime();
             const isPast = cellDate < today;
-            const { activeGoals, checkInCount } = getActivityForDate(cellDate);
+            const { activeGoals, checkInCount, taskRate, totalTasks } = getActivityForDate(cellDate);
             const dotColors = Array.from(new Set(activeGoals)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#58CC02');
 
             return (
@@ -111,12 +121,19 @@ export default function CalendarView() {
                   isSelected ? 'text-[#58CC02] font-bold' :
                   isPast ? 'text-gray-400' : 'text-gray-700'
                 }`}>{day}</span>
-                {dotColors.length > 0 && (
-                  <div className="flex gap-0.5">
+                {(dotColors.length > 0 || taskRate !== null) && (
+                  <div className="flex gap-0.5 items-center">
                     {dotColors.map((color, ci) => (
                       <div key={ci} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                     ))}
                     {checkInCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                    {taskRate !== null && totalTasks > 0 && (
+                      <div
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: taskRate === 100 ? '#58CC02' : taskRate >= 50 ? '#FBBF24' : '#E5E7EB' }}
+                        title={`Tasks: ${taskRate}%`}
+                      />
+                    )}
                   </div>
                 )}
               </button>
@@ -137,6 +154,10 @@ export default function CalendarView() {
           <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
           <span className="text-xs text-gray-500">Check-in</span>
         </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#58CC02]" />
+          <span className="text-xs text-gray-500">All tasks done</span>
+        </div>
       </div>
 
       {/* Selected day detail */}
@@ -153,13 +174,24 @@ export default function CalendarView() {
                 const dateStr = selected!.toISOString().split('T')[0];
                 const hasCheckIn = goal.checkIns?.some(c => c.startsWith(dateStr));
                 const c = CATEGORY_COLORS[goal.category];
+                const dayCompletions = goal.taskCompletions?.[dateStr] || {};
+                const tasks = goal.dailyTasks || [];
+                const done = tasks.filter(t => {
+                  const val = dayCompletions[t.id];
+                  return t.type === 'checkbox' ? !!val : (typeof val === 'number' && t.targetValue ? val >= t.targetValue : false);
+                }).length;
                 return (
                   <li key={goal.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.hex }} />
+                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c.hex }} />
                       <span className="text-sm text-gray-700">{goal.title}</span>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
+                      {tasks.length > 0 && (
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${done === tasks.length ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'bg-gray-100 text-gray-500'}`}>
+                          {done}/{tasks.length} tasks
+                        </span>
+                      )}
                       {hasCheckIn ? (
                         <CheckCircle2 className="h-4 w-4 text-[#58CC02]" />
                       ) : (
