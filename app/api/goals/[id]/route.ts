@@ -16,7 +16,7 @@ export async function PUT(req: Request, { params }: Params) {
     const data: Record<string, unknown> = {};
     const fields = [
       'title', 'description', 'category', 'unit', 'startDate', 'endDate', 'color',
-      'subtasks', 'dailyTasks', 'taskCompletions', 'checkIns', 'progressHistory', 'milestones',
+      'subtasks', 'dailyTasks', 'taskCompletions', 'checkIns', 'progressHistory', 'milestones', 'sharedWith',
     ];
     for (const f of fields) {
       if (body[f] !== undefined) data[f] = body[f];

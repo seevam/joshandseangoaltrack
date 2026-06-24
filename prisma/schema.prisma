@@ -28,6 +28,7 @@ model Goal {
   checkIns        Json     @default("[]")
   progressHistory Json     @default("[]")
   milestones      Json     @default("[]")
+  sharedWith      Json     @default("[]")
 
   @@index([userId])
   @@map("goals")

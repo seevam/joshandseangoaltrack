@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Plus, MessageCircle, Pencil, TrendingUp } from 'lucide-react';
+import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Plus, MessageCircle, Pencil, TrendingUp, Users, UserPlus, Mail } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import GoalChatPanel from './GoalChatPanel';
 import GoalForm from './GoalForm';
@@ -35,6 +35,47 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   const [showEdit, setShowEdit] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [taskInputs, setTaskInputs] = useState<Record<number, string>>({});
+  const [showShare, setShowShare] = useState(false);
+  const [shareEmail, setShareEmail] = useState('');
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareError, setShareError] = useState('');
+
+  const partners = goal.sharedWith || [];
+
+  const addPartner = async () => {
+    const email = shareEmail.trim().toLowerCase();
+    if (!email || !/\S+@\S+\.\S+/.test(email) || partners.includes(email)) return;
+    setShareLoading(true);
+    setShareError('');
+    try {
+      const res = await fetch(`/api/goals/${goal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sharedWith: [...partners, email] }),
+      });
+      if (!res.ok) throw new Error();
+      setShareEmail('');
+    } catch {
+      setShareError('Failed to add partner. Make sure you own this goal.');
+    } finally {
+      setShareLoading(false);
+    }
+  };
+
+  const removePartner = async (email: string) => {
+    setShareLoading(true);
+    try {
+      await fetch(`/api/goals/${goal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sharedWith: partners.filter(e => e !== email) }),
+      });
+    } catch {
+      // best effort
+    } finally {
+      setShareLoading(false);
+    }
+  };
 
   const today = new Date().toISOString().split('T')[0];
   const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
@@ -332,6 +373,59 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               )}
             </div>
           )}
+
+          {/* Accountability Partner */}
+          <div>
+            <button
+              onClick={() => setShowShare(!showShare)}
+              className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
+            >
+              <span className="flex items-center gap-1.5">
+                <Users className="h-4 w-4 text-[#58CC02]" /> Accountability Partners
+                {partners.length > 0 && <span className="ml-1 text-xs bg-[#58CC02] text-white rounded-full px-1.5 py-0.5">{partners.length}</span>}
+              </span>
+              {showShare ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+            </button>
+
+            {showShare && (
+              <div className="space-y-3">
+                {partners.length > 0 && (
+                  <ul className="space-y-2">
+                    {partners.map(email => (
+                      <li key={email} className="flex items-center justify-between gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                          <span className="text-sm text-gray-700 truncate">{email}</span>
+                        </div>
+                        <button onClick={() => removePartner(email)} className="flex-shrink-0">
+                          <X className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="flex gap-2">
+                  <input
+                    type="email"
+                    value={shareEmail}
+                    onChange={e => setShareEmail(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && addPartner()}
+                    placeholder="Partner's email address"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02]"
+                  />
+                  <button
+                    onClick={addPartner}
+                    disabled={shareLoading || !shareEmail.trim()}
+                    className="px-3 py-2 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </button>
+                </div>
+                {shareError && <p className="text-xs text-red-500">{shareError}</p>}
+                <p className="text-xs text-gray-400">Partners can view this goal's progress when they log in.</p>
+              </div>
+            )}
+          </div>
 
           {/* Delete */}
           <button

@@ -3,8 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
-  Target, Plus, X, TrendingUp, Clock, CheckCircle, AlertTriangle,
-  Filter, SortAsc, ChevronRight, Trash2, Sparkles, Save, Flame, MessageCircle,
+  Target, Plus, TrendingUp, Clock, CheckCircle, AlertTriangle,
+  Filter, SortAsc, ChevronRight, Flame, Search, X,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
@@ -26,6 +26,8 @@ export default function Dashboard() {
   const [sortBy, setSortBy] = useState('deadline');
   const [celebratingGoal, setCelebratingGoal] = useState<Goal | null>(null);
   const [showGoalDetails, setShowGoalDetails] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
 
   // Load goals
   useEffect(() => {
@@ -146,7 +148,17 @@ export default function Dashboard() {
   });
 
   const filtered = goals
-    .filter(g => filterCategory === 'all' || g.category === filterCategory)
+    .filter(g => {
+      if (filterCategory !== 'all' && g.category !== filterCategory) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        if (!g.title.toLowerCase().includes(q) && !g.description?.toLowerCase().includes(q) && !g.category.toLowerCase().includes(q)) return false;
+      }
+      const status = getGoalStatus(g);
+      if (activeTab === 'active') return status !== 'completed';
+      if (activeTab === 'completed') return status === 'completed';
+      return true;
+    })
     .sort((a, b) => {
       if (sortBy === 'deadline') return new Date(a.endDate || '9999').getTime() - new Date(b.endDate || '9999').getTime();
       if (sortBy === 'progress') return getGoalProgress(b) - getGoalProgress(a);
@@ -223,6 +235,37 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Search bar */}
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Search goals..."
+            className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02]"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+            </button>
+          )}
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center gap-1 mb-3 bg-white rounded-xl p-1 border border-gray-200">
+          {(['active', 'completed', 'all'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === tab ? 'bg-[#58CC02] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab === 'active' ? `Active (${activeGoals})` : tab === 'completed' ? `Completed (${completedGoals})` : `All (${goals.length})`}
+            </button>
+          ))}
+        </div>
+
         {/* Filters */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide mb-4">
           <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -259,7 +302,9 @@ export default function Dashboard() {
               </button>
             </div>
           ) : filtered.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-gray-400 text-sm">No goals in this category.</div>
+            <div className="col-span-full text-center py-12 text-gray-400 text-sm">
+              {searchQuery ? `No goals match "${searchQuery}"` : activeTab === 'completed' ? 'No completed goals yet.' : 'No goals in this category.'}
+            </div>
           ) : (
             filtered.map(goal => {
               const progress = getGoalProgress(goal);

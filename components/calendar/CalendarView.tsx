@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Download } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS } from '@/lib/types';
 
@@ -63,6 +63,39 @@ export default function CalendarView() {
       })
     : [];
 
+  const exportICS = () => {
+    const lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//GoalTracker//EN',
+      'CALSCALE:GREGORIAN',
+    ];
+    goals.forEach(g => {
+      if (!g.endDate) return;
+      const dt = g.endDate.replace(/-/g, '');
+      const uid = `goal-${g.id}@goaltracker`;
+      const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+      lines.push(
+        'BEGIN:VEVENT',
+        `UID:${uid}`,
+        `DTSTAMP:${now}Z`,
+        `DTSTART;VALUE=DATE:${dt}`,
+        `DTEND;VALUE=DATE:${dt}`,
+        `SUMMARY:🎯 ${g.title}`,
+        `DESCRIPTION:Goal: ${g.title}\\nTarget: ${g.targetValue} ${g.unit}\\nCategory: ${g.category}`,
+        'END:VEVENT',
+      );
+    });
+    lines.push('END:VCALENDAR');
+    const blob = new Blob([lines.join('\r\n')], { type: 'text/calendar;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'goals.ics';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -77,6 +110,17 @@ export default function CalendarView() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+        <div className="flex items-center gap-2">
+          {goals.some(g => g.endDate) && (
+            <button
+              onClick={exportICS}
+              title="Export to Google Calendar / iCal"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#58CC02] text-gray-600 hover:text-[#58CC02] rounded-lg text-xs font-medium transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Export to Calendar
+            </button>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <button onClick={prev} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <ChevronLeft className="h-5 w-5 text-gray-600" />
