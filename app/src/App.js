@@ -277,12 +277,23 @@ const MILESTONE_BADGES = [
   { pct: 100, emoji: '🏆', label: 'Goal Achieved',  color: '#58CC02' },
 ];
 
+const getGoalProgress = (goal) => {
+  const subtasks = goal.subtasks || [];
+  if (subtasks.length > 0) {
+    const completed = subtasks.filter(s => s.completed).length;
+    return Math.min((completed / subtasks.length) * 100, 100);
+  }
+  return goal.targetValue > 0
+    ? Math.min((goal.currentValue / goal.targetValue) * 100, 100)
+    : 0;
+};
+
 const getEarnedBadges = (goal) => {
-  const pct = Math.min((goal.currentValue / goal.targetValue) * 100, 100);
+  const pct = getGoalProgress(goal);
   return MILESTONE_BADGES.filter(b => pct >= b.pct);
 };
 
-export const Dashboard = () => {
+export const Dashboard = ({ triggerNewGoal, onNewGoalHandled }) => {
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
   const [goals, setGoals] = useState([]);
@@ -384,6 +395,13 @@ export const Dashboard = () => {
     if (!res.ok) throw new Error(`API ${method} ${url} failed: ${res.status}`);
     return res.json();
   };
+
+  useEffect(() => {
+    if (triggerNewGoal) {
+      setShowAddGoal(true);
+      if (onNewGoalHandled) onNewGoalHandled();
+    }
+  }, [triggerNewGoal, onNewGoalHandled]);
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -614,8 +632,10 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   };
 
   const updateGoalFromPanel = async (updatedGoal) => {
+    const updateData = { taskCompletions: updatedGoal.taskCompletions };
+    if (updatedGoal.subtasks !== undefined) updateData.subtasks = updatedGoal.subtasks;
     try {
-      const saved = await apiCall(`/api/goals/${updatedGoal.id}`, 'PUT', { taskCompletions: updatedGoal.taskCompletions });
+      const saved = await apiCall(`/api/goals/${updatedGoal.id}`, 'PUT', updateData);
       setGoals(prev => prev.map(g => g.id === saved.id ? saved : g));
       if (selectedGoal?.id === saved.id) setSelectedGoal(saved);
     } catch {
@@ -673,7 +693,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
   };
 
   const getGoalStatus = (goal) => {
-    const progress = calculateProgress(goal.currentValue, goal.targetValue);
+    const progress = getGoalProgress(goal);
     if (progress >= 100) return 'completed';
     if (goal.endDate && new Date(goal.endDate) < new Date()) return 'overdue';
     return 'in-progress';
@@ -693,7 +713,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
     .filter(g => filterCategory === 'all' || g.category === filterCategory)
     .sort((a, b) => {
       if (sortBy === 'deadline') return new Date(a.endDate || '9999') - new Date(b.endDate || '9999');
-      if (sortBy === 'progress') return calculateProgress(b.currentValue, b.targetValue) - calculateProgress(a.currentValue, a.targetValue);
+      if (sortBy === 'progress') return getGoalProgress(b) - getGoalProgress(a);
       if (sortBy === 'name') return a.title.localeCompare(b.title);
       return 0;
     });
@@ -703,20 +723,11 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
       {/* Header */}
       <header className="bg-[#F0F0F0] shadow-sm border-b border-[#E0E0E0] sticky top-0 z-10">
         <div className="px-4 py-3 sm:px-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center min-w-0">
-              <Target className="h-6 w-6 sm:h-8 sm:w-8 text-[#58CC02] mr-2 sm:mr-3 flex-shrink-0" />
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent truncate">
-                Dashboard
-              </h1>
-            </div>
-            <button
-              onClick={() => setShowAddGoal(true)}
-              className="inline-flex items-center px-3 py-2 sm:px-4 text-sm font-medium rounded-lg shadow-sm text-white bg-[#58CC02] hover:bg-[#4CAD02] transition-all active:scale-95"
-            >
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">New Goal</span>
-            </button>
+          <div className="flex items-center">
+            <Target className="h-6 w-6 sm:h-8 sm:w-8 text-[#58CC02] mr-2 sm:mr-3 flex-shrink-0" />
+            <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent truncate">
+              Dashboard
+            </h1>
           </div>
         </div>
       </header>
@@ -853,7 +864,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
             </div>
           ) : (
             filteredGoals.map((goal) => {
-              const progress = calculateProgress(goal.currentValue, goal.targetValue);
+              const progress = getGoalProgress(goal);
               const status = getGoalStatus(goal);
               const categoryStyle = categoryColors[goal.category];
               const completedSubtasks = goal.subtasks?.filter(st => st.completed).length || 0;
@@ -888,7 +899,9 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                       <div className="flex justify-between text-xs sm:text-sm">
                         <span className="text-gray-500">Progress</span>
                         <span className="font-medium text-gray-900">
-                          {goal.currentValue} / {goal.targetValue} {goal.unit}
+                          {(goal.subtasks || []).length > 0
+                            ? `${(goal.subtasks || []).filter(s => s.completed).length}/${(goal.subtasks || []).length} tasks`
+                            : `${goal.currentValue} / ${goal.targetValue} ${goal.unit}`}
                         </span>
                       </div>
                       
@@ -1464,44 +1477,61 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                     )}
                   </div>
 
-                  {/* Progress Update */}
+                  {/* Progress */}
                   <div className="bg-gray-50 rounded-xl p-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Update Progress</label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={editingGoal?.id === selectedGoal.id ? editingGoal.currentValue : selectedGoal.currentValue}
-                        onChange={(e) => setEditingGoal({ id: selectedGoal.id, currentValue: e.target.value })}
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#58CC02]"
-                      />
-                      <span className="text-gray-500">/ {selectedGoal.targetValue} {selectedGoal.unit}</span>
-                      <button
-                        onClick={() => {
-                          if (editingGoal) {
-                            updateGoalProgress(selectedGoal.id, editingGoal.currentValue);
-                            setEditingGoal(null);
-                          }
-                        }}
-                        className="px-4 py-2 bg-[#58CC02] text-white rounded-lg hover:bg-[#4CAD02] text-sm font-medium"
-                      >
-                        <Save className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="mt-4">
-                      <div className="h-4 rounded-full bg-gray-200 overflow-hidden">
-                        <div
-                          style={{
-                            width: `${calculateProgress(selectedGoal.currentValue, selectedGoal.targetValue)}%`,
-                            backgroundColor: selectedGoal.color
-                          }}
-                          className="h-full transition-all duration-500"
-                        ></div>
-                      </div>
-                      <p className="text-sm text-gray-600 mt-2">
-                        {calculateProgress(selectedGoal.currentValue, selectedGoal.targetValue).toFixed(1)}% Complete
-                      </p>
-                    </div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-3">Progress</h3>
+                    {(selectedGoal.subtasks || []).length > 0 ? (
+                      <>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-600">
+                            {(selectedGoal.subtasks || []).filter(s => s.completed).length} of {(selectedGoal.subtasks || []).length} tasks completed
+                          </span>
+                          <span className="text-sm font-semibold" style={{ color: selectedGoal.color }}>
+                            {getGoalProgress(selectedGoal).toFixed(0)}%
+                          </span>
+                        </div>
+                        <div className="h-4 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            style={{ width: `${getGoalProgress(selectedGoal)}%`, backgroundColor: selectedGoal.color }}
+                            className="h-full transition-all duration-500"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-400 mt-2">Progress updates automatically as you complete tasks below.</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-3 mb-4">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={editingGoal?.id === selectedGoal.id ? editingGoal.currentValue : selectedGoal.currentValue}
+                            onChange={(e) => setEditingGoal({ id: selectedGoal.id, currentValue: e.target.value })}
+                            className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#58CC02]"
+                          />
+                          <span className="text-gray-500">/ {selectedGoal.targetValue} {selectedGoal.unit}</span>
+                          <button
+                            onClick={() => {
+                              if (editingGoal) {
+                                updateGoalProgress(selectedGoal.id, editingGoal.currentValue);
+                                setEditingGoal(null);
+                              }
+                            }}
+                            className="px-4 py-2 bg-[#58CC02] text-white rounded-lg hover:bg-[#4CAD02] text-sm font-medium"
+                          >
+                            <Save className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="h-4 rounded-full bg-gray-200 overflow-hidden">
+                          <div
+                            style={{ width: `${getGoalProgress(selectedGoal)}%`, backgroundColor: selectedGoal.color }}
+                            className="h-full transition-all duration-500"
+                          />
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                          {getGoalProgress(selectedGoal).toFixed(1)}% Complete
+                        </p>
+                      </>
+                    )}
                   </div>
 
                   {/* Progress Chart */}
@@ -1522,7 +1552,7 @@ Return ONLY a JSON array with this exact structure (no markdown, no explanations
                     <h3 className="text-sm font-semibold text-gray-700 mb-3">Milestone Badges</h3>
                     <div className="grid grid-cols-4 gap-2">
                       {MILESTONE_BADGES.map(b => {
-                        const earned = calculateProgress(selectedGoal.currentValue, selectedGoal.targetValue) >= b.pct;
+                        const earned = getGoalProgress(selectedGoal) >= b.pct;
                         return (
                           <div key={b.pct} className={`flex flex-col items-center p-2 rounded-xl text-center transition-all ${earned ? 'bg-white shadow-sm' : 'opacity-30'}`}>
                             <span className="text-2xl mb-1">{b.emoji}</span>

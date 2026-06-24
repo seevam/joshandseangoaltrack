@@ -1,25 +1,26 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import ResponsiveNavigation from './ResponsiveNavigation';
 import AIChatPopup from './AIChatPopup';
 
-const AuthenticatedLayout = ({ children, onNewGoal }) => {
+const AuthenticatedLayout = ({ children }) => {
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const navigate = useNavigate();
+  const [triggerNewGoal, setTriggerNewGoal] = useState(false);
 
   const handleNewGoal = () => {
-    // If we're on home/dashboard, trigger the new goal modal
-    if (onNewGoal) {
-      onNewGoal();
-    } else {
-      // Otherwise, navigate to home where the new goal button is
-      navigate('/home');
-    }
+    setTriggerNewGoal(true);
+  };
+
+  const handleNewGoalHandled = () => {
+    setTriggerNewGoal(false);
   };
 
   const handleToggleChat = () => {
     setIsChatOpen(!isChatOpen);
   };
+
+  const childWithProps = React.isValidElement(children)
+    ? React.cloneElement(children, { triggerNewGoal, onNewGoalHandled: handleNewGoalHandled })
+    : children;
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -30,7 +31,7 @@ const AuthenticatedLayout = ({ children, onNewGoal }) => {
 
       {/* Main content area with proper spacing for desktop sidebar */}
       <div className="flex-1 lg:ml-0">
-        {children}
+        {childWithProps}
       </div>
 
       <AIChatPopup

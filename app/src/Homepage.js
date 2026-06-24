@@ -38,12 +38,19 @@ const Homepage = () => {
     }
   }, [user]);
 
-  const calculateProgress = (current, target) => {
-    return Math.min((current / target) * 100, 100);
+  const getGoalProgress = (goal) => {
+    const subtasks = goal.subtasks || [];
+    if (subtasks.length > 0) {
+      const completed = subtasks.filter(s => s.completed).length;
+      return Math.min((completed / subtasks.length) * 100, 100);
+    }
+    return goal.targetValue > 0
+      ? Math.min((goal.currentValue / goal.targetValue) * 100, 100)
+      : 0;
   };
 
   const getGoalStatus = (goal) => {
-    const progress = calculateProgress(goal.currentValue, goal.targetValue);
+    const progress = getGoalProgress(goal);
     if (progress >= 100) return 'completed';
     if (goal.endDate && new Date(goal.endDate) < new Date()) return 'overdue';
     return 'in-progress';
@@ -102,7 +109,7 @@ const Homepage = () => {
               </div>
             ) : (
               recentGoals.map((goal) => {
-                const progress = calculateProgress(goal.currentValue, goal.targetValue);
+                const progress = getGoalProgress(goal);
                 const status = getGoalStatus(goal);
                 
                 return (
@@ -126,7 +133,11 @@ const Homepage = () => {
                     {/* Progress Bar */}
                     <div className="mb-2">
                       <div className="flex justify-between text-sm text-gray-600 mb-1">
-                        <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
+                        <span>
+                          {(goal.subtasks || []).length > 0
+                            ? `${(goal.subtasks || []).filter(s => s.completed).length}/${(goal.subtasks || []).length} tasks`
+                            : `${goal.currentValue} / ${goal.targetValue} ${goal.unit}`}
+                        </span>
                         <span className="font-medium">{progress.toFixed(0)}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
