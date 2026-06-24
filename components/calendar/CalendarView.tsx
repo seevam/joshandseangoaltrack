@@ -125,7 +125,7 @@ export default function CalendarView() {
           <button onClick={prev} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <ChevronLeft className="h-5 w-5 text-gray-600" />
           </button>
-          <span className="text-sm font-semibold text-gray-800 w-32 text-center">
+          <span className="text-sm font-semibold text-gray-800 w-28 text-center">
             {MONTHS[month]} {year}
           </span>
           <button onClick={next} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
