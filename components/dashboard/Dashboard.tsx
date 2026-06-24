@@ -10,6 +10,7 @@ import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import GoalDetail from './GoalDetail';
 import GoalForm from './GoalForm';
+import GoalWizard from './GoalWizard';
 
 const MILESTONE_BADGES = [
   { pct: 25,  label: 'First Quarter', emoji: '🌱' },
@@ -177,17 +178,17 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#F0F0F0] pb-24 lg:pb-8">
       {/* Header */}
-      <header className="bg-[#F0F0F0] shadow-sm border-b border-[#E0E0E0] sticky top-0 z-10">
+      <header className="bg-[#F0F0F0] border-b border-[#E0E0E0] sticky top-0 z-10">
         <div className="px-4 py-3 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center">
-            <Target className="h-6 w-6 text-[#58CC02] mr-2" />
+          <div className="flex items-center gap-2">
+            <Target className="h-6 w-6 text-[#58CC02]" />
             <h1 className="text-xl font-bold bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent">
               Dashboard
             </h1>
           </div>
           <button
             onClick={() => setShowAddGoal(true)}
-            className="lg:hidden flex items-center gap-1.5 px-3 py-1.5 bg-[#58CC02] text-white rounded-lg text-sm font-medium"
+            className="hidden lg:flex items-center gap-1.5 px-4 py-2 bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl text-sm font-semibold transition-colors"
           >
             <Plus className="h-4 w-4" /> New Goal
           </button>
@@ -383,9 +384,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Goal Form Modal */}
+      {/* Goal Wizard (creation) */}
       {showAddGoal && (
-        <GoalForm onClose={() => setShowAddGoal(false)} />
+        <GoalWizard onClose={() => setShowAddGoal(false)} />
       )}
 
       {/* Goal Detail Drawer */}
