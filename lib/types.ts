@@ -41,6 +41,7 @@ export interface Goal {
   checkIns: string[];
   progressHistory: ProgressEntry[];
   milestones: unknown[];
+  sharedWith: string[];
 }
 
 export const CATEGORY_COLORS: Record<Category, { bg: string; light: string; text: string; hex: string }> = {

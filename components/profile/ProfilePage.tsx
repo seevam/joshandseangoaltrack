@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
-import { LogOut, Target, TrendingUp, Award, Flame, Trophy, Star, Settings, Bot, Save } from 'lucide-react';
+import { LogOut, Target, TrendingUp, Award, Flame, Trophy, Star, Settings, Bot, Save, Download } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { getGoalProgress, getGoalStatus, getStreak, CATEGORY_COLORS } from '@/lib/types';
 
@@ -19,6 +19,31 @@ export default function ProfilePage() {
     const stored = localStorage.getItem('ai_assistant_name');
     if (stored) { setAiName(stored); setAiNameInput(stored); }
   }, []);
+
+  const exportCSV = () => {
+    const headers = ['Title', 'Category', 'Progress (%)', 'Current', 'Target', 'Unit', 'Status', 'Start Date', 'End Date', 'Check-ins', 'Streak (days)'];
+    const rows = goals.map(g => [
+      `"${g.title.replace(/"/g, '""')}"`,
+      g.category,
+      getGoalProgress(g).toFixed(0),
+      g.currentValue,
+      g.targetValue,
+      g.unit,
+      getGoalStatus(g),
+      g.startDate || '',
+      g.endDate || '',
+      (g.checkIns || []).length,
+      getStreak(g.checkIns),
+    ]);
+    const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `goals-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const saveAiName = () => {
     const name = aiNameInput.trim() || 'My Assistant';
@@ -190,6 +215,17 @@ export default function ProfilePage() {
           <p className="text-xs text-gray-400">This name appears in the AI chat panel header.</p>
         </div>
       </div>
+
+      {/* Export */}
+      {goals.length > 0 && (
+        <button
+          onClick={exportCSV}
+          className="w-full py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors"
+        >
+          <Download className="h-4 w-4" />
+          Export Goals as CSV
+        </button>
+      )}
 
       {/* Sign out */}
       <button
