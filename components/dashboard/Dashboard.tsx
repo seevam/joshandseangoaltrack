@@ -10,7 +10,6 @@ import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import GoalDetail from './GoalDetail';
 import GoalForm from './GoalForm';
-import GoalWizard from './GoalWizard';
 
 const MILESTONE_BADGES = [
   { pct: 25,  label: 'First Quarter', emoji: '🌱' },
@@ -21,7 +20,7 @@ const MILESTONE_BADGES = [
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
-  const { goals, setGoals, updateGoal, removeGoal, showAddGoal, setShowAddGoal, selectedGoal, setSelectedGoal } = useGoalStore();
+  const { goals, setGoals, updateGoal, removeGoal, showAddGoal, setShowAddGoal, selectedGoal, setSelectedGoal, setIsChatOpen } = useGoalStore();
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState('deadline');
@@ -187,7 +186,7 @@ export default function Dashboard() {
             </h1>
           </div>
           <button
-            onClick={() => setShowAddGoal(true)}
+            onClick={() => setIsChatOpen(true)}
             className="hidden lg:flex items-center gap-1.5 px-4 py-2 bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl text-sm font-semibold transition-colors"
           >
             <Plus className="h-4 w-4" /> New Goal
@@ -383,11 +382,6 @@ export default function Dashboard() {
           )}
         </div>
       </div>
-
-      {/* Goal Wizard (creation) */}
-      {showAddGoal && (
-        <GoalWizard onClose={() => setShowAddGoal(false)} />
-      )}
 
       {/* Goal Detail Drawer */}
       {showGoalDetails && selectedGoal && (

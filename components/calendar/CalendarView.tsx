@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Download, Info, X } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS } from '@/lib/types';
 
@@ -11,8 +11,11 @@ const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
 
 export default function CalendarView() {
   const goals = useGoalStore(s => s.goals);
+  const updateGoal = useGoalStore(s => s.updateGoal);
   const [current, setCurrent] = useState(new Date());
   const [selected, setSelected] = useState<Date | null>(new Date());
+  const [showExportHelp, setShowExportHelp] = useState(false);
+  const [loggingTask, setLoggingTask] = useState<string | null>(null);
 
   const year = current.getFullYear();
   const month = current.getMonth();
@@ -23,45 +26,71 @@ export default function CalendarView() {
   const prev = () => setCurrent(new Date(year, month - 1, 1));
   const next = () => setCurrent(new Date(year, month + 1, 1));
 
-  const getActivityForDate = (date: Date) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // Returns tasks scheduled for a given date across all goals
+  const getTasksForDate = (date: Date) => {
+    const dow = date.getDay();
     const dateStr = date.toISOString().split('T')[0];
-    const activeGoals: string[] = [];
-    let checkInCount = 0;
-    let totalTasks = 0;
-    let completedTasks = 0;
+    const result: { goal: typeof goals[0]; task: typeof goals[0]['dailyTasks'][0]; done: boolean; dateStr: string }[] = [];
 
     goals.forEach(goal => {
-      const goalStart = goal.startDate ? new Date(goal.startDate) : null;
-      const goalEnd = goal.endDate ? new Date(goal.endDate) : null;
-      if ((!goalStart || date >= goalStart) && (!goalEnd || date <= goalEnd)) {
-        activeGoals.push(goal.category);
-      }
-      if (goal.checkIns?.some(c => c.startsWith(dateStr))) {
-        checkInCount++;
-      }
+      const start = goal.startDate ? new Date(goal.startDate) : null;
+      const end = goal.endDate ? new Date(goal.endDate) : null;
+      if (start) { const s = new Date(start); s.setHours(0,0,0,0); if (date < s) return; }
+      if (end) { const e = new Date(end); e.setHours(0,0,0,0); if (date > e) return; }
+
       const dayCompletions = goal.taskCompletions?.[dateStr] || {};
       (goal.dailyTasks || []).forEach(task => {
-        totalTasks++;
-        const val = dayCompletions[task.id];
-        if (task.type === 'checkbox' && val) completedTasks++;
-        else if (task.type === 'number' && task.targetValue && typeof val === 'number' && val >= task.targetValue) completedTasks++;
+        const days = task.daysOfWeek;
+        const scheduled = !days || days.length === 0 || days.includes(dow);
+        if (scheduled) {
+          result.push({ goal, task, done: !!dayCompletions[task.id], dateStr });
+        }
       });
     });
-
-    const taskRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : null;
-    return { activeGoals, checkInCount, taskRate, totalTasks };
+    return result;
   };
 
-  const selectedGoalActivity = selected
-    ? goals.filter(g => {
-        const dateStr = selected.toISOString().split('T')[0];
-        const start = g.startDate ? new Date(g.startDate) : null;
-        const end = g.endDate ? new Date(g.endDate) : null;
-        const inRange = (!start || selected >= start) && (!end || selected <= end);
-        const hasCheckIn = g.checkIns?.some(c => c.startsWith(dateStr));
-        return inRange || hasCheckIn;
-      })
-    : [];
+  const logTask = async (goalId: string, taskId: number, dateStr: string, done: boolean) => {
+    const key = `${goalId}-${taskId}`;
+    setLoggingTask(key);
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) { setLoggingTask(null); return; }
+    const taskCompletions = {
+      ...(goal.taskCompletions || {}),
+      [dateStr]: { ...(goal.taskCompletions?.[dateStr] || {}), [taskId]: done },
+    };
+    try {
+      const res = await fetch(`/api/goals/${goalId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskCompletions }),
+      });
+      if (res.ok) updateGoal(await res.json());
+    } catch { /* best effort */ } finally {
+      setLoggingTask(null);
+    }
+  };
+
+  const getActivityForDate = (date: Date) => {
+    const dateStr = date.toISOString().split('T')[0];
+    const categories = new Set<string>();
+    let hasCheckIn = false;
+    const tasks = getTasksForDate(date);
+    const doneTasks = tasks.filter(t => t.done).length;
+
+    goals.forEach(goal => {
+      const start = goal.startDate ? new Date(goal.startDate) : null;
+      const end = goal.endDate ? new Date(goal.endDate) : null;
+      const inRange = (!start || date >= start) && (!end || date <= end);
+      if (inRange) categories.add(goal.category);
+      if (goal.checkIns?.some(c => c.startsWith(dateStr))) hasCheckIn = true;
+    });
+
+    return { categories: Array.from(categories), hasCheckIn, totalTasks: tasks.length, doneTasks };
+  };
 
   const exportICS = () => {
     const lines = [
@@ -82,7 +111,7 @@ export default function CalendarView() {
         `DTSTART;VALUE=DATE:${dt}`,
         `DTEND;VALUE=DATE:${dt}`,
         `SUMMARY:🎯 ${g.title}`,
-        `DESCRIPTION:Goal: ${g.title}\\nTarget: ${g.targetValue} ${g.unit}\\nCategory: ${g.category}`,
+        `DESCRIPTION:Goal: ${g.title}\\nCategory: ${g.category}`,
         'END:VEVENT',
       );
     });
@@ -96,43 +125,72 @@ export default function CalendarView() {
     URL.revokeObjectURL(url);
   };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
   const cells: (number | null)[] = [
     ...Array(firstDay).fill(null),
     ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
   ];
   while (cells.length % 7 !== 0) cells.push(null);
 
+  const selectedTasks = selected ? getTasksForDate(selected) : [];
+  const selectedDateStr = selected?.toISOString().split('T')[0];
+  const selectedCheckIns = selected
+    ? goals.filter(g => g.checkIns?.some(c => c.startsWith(selectedDateStr!)))
+    : [];
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
         <div className="flex items-center gap-2">
-          {goals.some(g => g.endDate) && (
-            <button
-              onClick={exportICS}
-              title="Export to Google Calendar / iCal"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#58CC02] text-gray-600 hover:text-[#58CC02] rounded-lg text-xs font-medium transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" /> Export to Calendar
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
+          {/* Month nav */}
           <button onClick={prev} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <ChevronLeft className="h-5 w-5 text-gray-600" />
           </button>
-          <span className="text-sm font-semibold text-gray-800 w-28 text-center">
+          <span className="text-sm font-semibold text-gray-800 min-w-[7rem] text-center">
             {MONTHS[month]} {year}
           </span>
           <button onClick={next} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
             <ChevronRight className="h-5 w-5 text-gray-600" />
           </button>
+
+          {/* Export button */}
+          {goals.some(g => g.endDate) && (
+            <div className="relative">
+              <button
+                onClick={exportICS}
+                title="Export to Google Calendar / iCal"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#58CC02] text-gray-600 hover:text-[#58CC02] rounded-lg text-xs font-medium transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" /> Export
+              </button>
+              <button
+                onClick={() => setShowExportHelp(h => !h)}
+                className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center"
+              >
+                <Info className="h-2.5 w-2.5 text-gray-600" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Export help modal */}
+      {showExportHelp && (
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 relative">
+          <button onClick={() => setShowExportHelp(false)} className="absolute top-3 right-3">
+            <X className="h-4 w-4 text-blue-400" />
+          </button>
+          <p className="text-sm font-semibold text-blue-800 mb-2">How to use the exported calendar</p>
+          <ol className="text-xs text-blue-700 space-y-1.5 list-decimal list-inside">
+            <li>Click <strong>Export</strong> — a <code>goals.ics</code> file will download.</li>
+            <li><strong>Google Calendar:</strong> Open calendar.google.com → Settings (⚙️) → Import &amp; export → Import → choose the .ics file.</li>
+            <li><strong>Apple Calendar:</strong> Double-click the .ics file on your Mac, or on iPhone open the Files app and tap the file.</li>
+            <li><strong>Outlook:</strong> File → Open &amp; Export → Import/Export → Import an iCalendar file.</li>
+          </ol>
+          <p className="text-xs text-blue-500 mt-2">Each goal's deadline appears as an all-day event in your calendar.</p>
+        </div>
+      )}
 
       {/* Calendar grid */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -149,8 +207,8 @@ export default function CalendarView() {
             const isToday = cellDate.getTime() === today.getTime();
             const isSelected = selected?.getTime() === cellDate.getTime();
             const isPast = cellDate < today;
-            const { activeGoals, checkInCount, taskRate, totalTasks } = getActivityForDate(cellDate);
-            const dotColors = Array.from(new Set(activeGoals)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#58CC02');
+            const { categories, hasCheckIn, totalTasks, doneTasks } = getActivityForDate(cellDate);
+            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#58CC02');
 
             return (
               <button
@@ -165,17 +223,16 @@ export default function CalendarView() {
                   isSelected ? 'text-[#58CC02] font-bold' :
                   isPast ? 'text-gray-400' : 'text-gray-700'
                 }`}>{day}</span>
-                {(dotColors.length > 0 || taskRate !== null) && (
+                {(dotColors.length > 0 || hasCheckIn || totalTasks > 0) && (
                   <div className="flex gap-0.5 items-center">
                     {dotColors.map((color, ci) => (
                       <div key={ci} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                     ))}
-                    {checkInCount > 0 && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                    {taskRate !== null && totalTasks > 0 && (
+                    {hasCheckIn && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
+                    {totalTasks > 0 && (
                       <div
                         className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: taskRate === 100 ? '#58CC02' : taskRate >= 50 ? '#FBBF24' : '#E5E7EB' }}
-                        title={`Tasks: ${taskRate}%`}
+                        style={{ backgroundColor: doneTasks === totalTasks ? '#58CC02' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
                       />
                     )}
                   </div>
@@ -187,7 +244,7 @@ export default function CalendarView() {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap gap-x-4 gap-y-2">
         {Object.entries(CATEGORY_COLORS).map(([cat, colors]) => (
           <div key={cat} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.hex }} />
@@ -204,48 +261,63 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Selected day detail */}
+      {/* Selected day — task list */}
       {selected && (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
           <h3 className="text-sm font-semibold text-gray-800 mb-3">
             {selected.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </h3>
-          {selectedGoalActivity.length === 0 ? (
-            <p className="text-sm text-gray-400">No goal activity on this day.</p>
+
+          {selectedTasks.length === 0 && selectedCheckIns.length === 0 ? (
+            <p className="text-sm text-gray-400">No tasks scheduled for this day.</p>
           ) : (
-            <ul className="space-y-2">
-              {selectedGoalActivity.map(goal => {
-                const dateStr = selected!.toISOString().split('T')[0];
-                const hasCheckIn = goal.checkIns?.some(c => c.startsWith(dateStr));
-                const c = CATEGORY_COLORS[goal.category];
-                const dayCompletions = goal.taskCompletions?.[dateStr] || {};
-                const tasks = goal.dailyTasks || [];
-                const done = tasks.filter(t => {
-                  const val = dayCompletions[t.id];
-                  return t.type === 'checkbox' ? !!val : (typeof val === 'number' && t.targetValue ? val >= t.targetValue : false);
-                }).length;
+            <div className="space-y-2">
+              {/* Recurring tasks for this day */}
+              {selectedTasks.map(({ goal, task, done, dateStr }) => {
+                const c = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
+                const key = `${goal.id}-${task.id}`;
+                const isLogging = loggingTask === key;
                 return (
-                  <li key={goal.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c.hex }} />
-                      <span className="text-sm text-gray-700">{goal.title}</span>
+                  <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                    done ? 'bg-[#D7FFB8] border-[#58CC02]/30' : 'bg-gray-50 border-gray-200'
+                  }`}>
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || '#58CC02' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                        {task.title}
+                      </p>
+                      <p className="text-xs text-gray-400 truncate">{goal.title}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {tasks.length > 0 && (
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${done === tasks.length ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'bg-gray-100 text-gray-500'}`}>
-                          {done}/{tasks.length} tasks
-                        </span>
-                      )}
-                      {hasCheckIn ? (
-                        <CheckCircle2 className="h-4 w-4 text-[#58CC02]" />
-                      ) : (
-                        <Circle className="h-4 w-4 text-gray-300" />
-                      )}
-                    </div>
-                  </li>
+                    <button
+                      onClick={() => logTask(goal.id, task.id, dateStr, !done)}
+                      disabled={isLogging}
+                      className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
+                        done
+                          ? 'bg-[#58CC02]/20 text-[#2E8B00] hover:bg-[#58CC02]/30'
+                          : 'bg-[#58CC02] text-white hover:bg-[#4CAD02]'
+                      }`}
+                    >
+                      {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                    </button>
+                  </div>
                 );
               })}
-            </ul>
+
+              {/* Check-ins for this day */}
+              {selectedCheckIns.map(goal => {
+                const c = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
+                return (
+                  <div key={goal.id} className="flex items-center gap-3 p-3 rounded-xl border bg-amber-50 border-amber-200">
+                    <div className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{goal.title}</p>
+                      <p className="text-xs text-amber-600">Checked in ✓</p>
+                    </div>
+                    <CheckCircle2 className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}

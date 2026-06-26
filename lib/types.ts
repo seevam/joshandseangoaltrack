@@ -14,6 +14,7 @@ export interface DailyTask {
   targetValue: number | null;
   unit: string;
   type: 'number' | 'checkbox';
+  daysOfWeek?: number[]; // 0=Sun … 6=Sat; empty/missing = every day
 }
 
 export interface ProgressEntry {
@@ -54,6 +55,10 @@ export const CATEGORY_COLORS: Record<Category, { bg: string; light: string; text
 };
 
 export function getGoalProgress(goal: Goal): number {
+  const subtasks = goal.subtasks || [];
+  if (subtasks.length > 0) {
+    return Math.min((subtasks.filter(s => s.completed).length / subtasks.length) * 100, 100);
+  }
   if (!goal.targetValue) return 0;
   return Math.min((goal.currentValue / goal.targetValue) * 100, 100);
 }
