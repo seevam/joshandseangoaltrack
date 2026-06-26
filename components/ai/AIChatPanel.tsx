@@ -79,7 +79,14 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
 
     const systemPrompt = `You are a warm, encouraging goal coach named ${assistantName}. Always call one of the two tools.
 Use **respond** for coaching, reviews, questions, and motivation.
-Use **create_goal** ONLY after gathering: what they want, current level, why it matters, deadline (≥4 exchanges).
+Use **create_goal** ONLY after gathering: what they want, why it matters, and a rough deadline (≥3 exchanges).
+
+CRITICAL rules for create_goal:
+- ALL recurring tasks must have type="checkbox". Include the amount IN the title (e.g. "Run 5km", "Study vocab for 20 min").
+- Choose daysOfWeek logically — training goals 3-4x/week, not daily (e.g. [1,3,5] Mon/Wed/Fri). Empty = every day.
+- Milestones (subtasks) MUST fit within the deadline. If deadline is 6 months (≈180 days), spread milestones at days 45, 90, 135, 180. Never exceed the total duration.
+- Create 4-6 milestones that represent real checkpoints (a race event, a weight milestone, a skill level, etc.).
+- Keep recurring tasks to 2-4 per goal — the most impactful habits only.
 Today: ${today}.
 ${buildGoalsContext()}`;
 
@@ -102,22 +109,33 @@ ${buildGoalsContext()}`;
             properties: {
               title:       { type: 'string' },
               category:    { type: 'string', enum: ['fitness', 'health', 'personal', 'career', 'finance', 'education'] },
-              targetValue: { type: 'number' },
-              unit:        { type: 'string' },
-              deadline:    { type: 'string', description: 'YYYY-MM-DD' },
-              why:         { type: 'string' },
-              subtasks:    { type: 'array', items: { type: 'string' } },
-              dailyTasks:  {
+              targetValue: { type: 'number', description: 'Numeric target (distance, weight, amount, etc.)' },
+              unit:        { type: 'string', description: 'Unit for the target (km, kg, $, etc.)' },
+              deadline:    { type: 'string', description: 'YYYY-MM-DD — the goal end date' },
+              why:         { type: 'string', description: "User's motivation in 1-2 sentences" },
+              subtasks: {
                 type: 'array',
+                description: '4-6 milestone checkpoints spread within the deadline. daysFromStart MUST be ≤ total duration.',
                 items: {
                   type: 'object',
                   properties: {
-                    title: { type: 'string' },
-                    targetValue: { type: 'number' },
-                    unit: { type: 'string' },
-                    type: { type: 'string', enum: ['number', 'checkbox'] },
+                    title:        { type: 'string', description: 'Specific milestone (e.g. "Run first 10km race")' },
+                    daysFromStart: { type: 'number', description: 'Day number from today. Must be ≤ days until deadline.' },
                   },
-                  required: ['title', 'type'],
+                  required: ['title', 'daysFromStart'],
+                },
+              },
+              dailyTasks: {
+                type: 'array',
+                description: '2-4 recurring habits. ALL must be type checkbox. Include amount in title.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    title:      { type: 'string', description: 'Full task description incl. amount, e.g. "Run 5km" or "Practice vocab 20 min"' },
+                    daysOfWeek: { type: 'array', items: { type: 'number' }, description: '0=Sun…6=Sat. Logical schedule, e.g. [1,3,5] for Mon/Wed/Fri. Empty = every day.' },
+                    type:       { type: 'string', enum: ['checkbox'] },
+                  },
+                  required: ['title', 'daysOfWeek', 'type'],
                 },
               },
             },
@@ -152,11 +170,20 @@ ${buildGoalsContext()}`;
           personal: '#58CC02', health: '#00CD4B', career: '#7E3AF2',
           finance: '#FBBF24', education: '#3B82F6', fitness: '#FF4B4B',
         };
-        const subtasks = (args.subtasks || []).map((text: string, i: number) => ({
-          id: Date.now() + i, title: text, description: text, daysFromStart: (i + 1) * 7, completed: false,
+        const subtasks = (args.subtasks || []).map((s: { title: string; daysFromStart: number }, i: number) => ({
+          id: Date.now() + i,
+          title: typeof s === 'string' ? s : s.title,
+          description: typeof s === 'string' ? s : s.title,
+          daysFromStart: typeof s === 'string' ? (i + 1) * 30 : s.daysFromStart,
+          completed: false,
         }));
-        const dailyTasks = (args.dailyTasks || []).map((t: { title: string; targetValue?: number; unit?: string; type: string }, i: number) => ({
-          id: Date.now() + 1000 + i, title: t.title, targetValue: t.targetValue || null, unit: t.unit || '', type: t.type,
+        const dailyTasks = (args.dailyTasks || []).map((t: { title: string; daysOfWeek?: number[]; type: string }, i: number) => ({
+          id: Date.now() + 1000 + i,
+          title: t.title,
+          targetValue: null,
+          unit: '',
+          type: 'checkbox' as const,
+          daysOfWeek: t.daysOfWeek || [],
         }));
         const saveRes = await fetch('/api/goals', {
           method: 'POST',

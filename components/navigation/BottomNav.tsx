@@ -7,12 +7,12 @@ import { useGoalStore } from '@/lib/store';
 
 export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }) {
   const pathname = usePathname();
-  const setShowAddGoal = useGoalStore(s => s.setShowAddGoal);
+  const setIsChatOpen = useGoalStore(s => s.setIsChatOpen);
 
   const items = [
     { href: '/home',     label: 'Home',     icon: Home },
     { href: '/calendar', label: 'Calendar', icon: Calendar },
-    { label: 'New Goal', icon: Plus, action: () => setShowAddGoal(true), special: true },
+    { label: 'New Goal', icon: Plus, action: () => setIsChatOpen(true), special: true },
     { label: 'AI Coach', icon: MessageCircle, action: onToggleChat },
     { href: '/profile',  label: 'Profile',  icon: User },
   ];

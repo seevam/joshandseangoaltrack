@@ -11,6 +11,9 @@ interface GoalStore {
   showAddGoal: boolean;
   setShowAddGoal: (v: boolean) => void;
 
+  isChatOpen: boolean;
+  setIsChatOpen: (v: boolean) => void;
+
   selectedGoal: Goal | null;
   setSelectedGoal: (goal: Goal | null) => void;
 }
@@ -24,6 +27,9 @@ export const useGoalStore = create<GoalStore>((set) => ({
 
   showAddGoal: false,
   setShowAddGoal: (v) => set({ showAddGoal: v }),
+
+  isChatOpen: false,
+  setIsChatOpen: (v) => set({ isChatOpen: v }),
 
   selectedGoal: null,
   setSelectedGoal: (goal) => set({ selectedGoal: goal }),
