@@ -164,7 +164,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               placeholder={tpl.placeholder}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
               required
             />
           </div>
@@ -177,7 +177,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
                 type="number" value={form.targetValue}
                 onChange={e => setForm(f => ({ ...f, targetValue: e.target.value }))}
                 placeholder={tpl.target}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
                 required
               />
             </div>
@@ -187,7 +187,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
                 placeholder={tpl.unit}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
               />
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               <input
                 type="date" value={form.startDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
               />
             </div>
             <div>
@@ -207,7 +207,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               <input
                 type="date" value={form.endDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm"
+                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
               />
             </div>
           </div>
@@ -220,20 +220,20 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               placeholder="Why is this goal important to you?"
               rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] text-sm resize-none"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm resize-none"
             />
           </div>
 
           {/* AI Subtasks */}
-          <div className="bg-gradient-to-r from-[#D7FFB8] to-[#CCFFDD] rounded-xl p-4">
+          <div className="bg-gradient-to-r from-[#D0EDDA] to-[#C3E8CE] rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[#58CC02]" />
-                <span className="text-sm font-semibold text-[#2E8B00]">AI-Powered Sub-tasks</span>
+                <Sparkles className="h-4 w-4 text-[#5DBC70]" />
+                <span className="text-sm font-semibold text-[#1F6B38]">AI-Powered Sub-tasks</span>
               </div>
               <button
                 type="button" onClick={generateSubtasks} disabled={isGenerating || !form.title}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-lg text-xs font-medium transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-lg text-xs font-medium transition-colors"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 {isGenerating ? 'Generating…' : subtasks.length > 0 ? 'Regenerate' : 'Generate'}
@@ -265,7 +265,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
             </button>
             <button
               type="submit" disabled={isSaving || !form.title || !form.targetValue}
-              className="flex-1 py-3 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl font-semibold text-sm transition-colors"
+              className="flex-1 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-xl font-semibold text-sm transition-colors"
             >
               {isSaving ? (isEditing ? 'Saving…' : 'Creating…') : (isEditing ? 'Save Changes' : 'Create Goal')}
             </button>

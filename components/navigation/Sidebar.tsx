@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Target, Home, Calendar, User, MessageCircle, Plus } from 'lucide-react';
+import { Home, Calendar, User, MessageCircle, Plus } from 'lucide-react';
+import Image from 'next/image';
 import { useGoalStore } from '@/lib/store';
 
 export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) {
@@ -19,10 +20,8 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
     <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 bg-white border-r border-gray-200 z-30">
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
-        <div className="p-2 bg-[#D7FFB8] rounded-xl">
-          <Target className="h-6 w-6 text-[#58CC02]" />
-        </div>
-        <span className="text-lg font-bold bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent">
+        <Image src="/logo-removebg-preview.png" alt="Logo" width={36} height={36} className="object-contain" />
+        <span className="text-lg font-bold bg-gradient-to-r from-[#5DBC70] to-[#1F6B38] bg-clip-text text-transparent">
           Goal Tracker
         </span>
       </div>
@@ -31,7 +30,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
       <div className="px-4 pt-5 pb-3">
         <button
           onClick={() => setIsChatOpen(true)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold rounded-xl transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white font-semibold rounded-xl transition-colors"
         >
           <Plus className="h-4 w-4" />
           New Goal
@@ -47,7 +46,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                active ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'text-gray-600 hover:bg-gray-100'
+                active ? 'bg-[#D0EDDA] text-[#1F6B38]' : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />

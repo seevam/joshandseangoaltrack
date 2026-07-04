@@ -29,7 +29,7 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
               <button
                 key={i}
                 onClick={item.action}
-                className="flex flex-col items-center justify-center w-14 h-14 -mt-5 rounded-full bg-[#58CC02] shadow-lg shadow-[#58CC02]/40 active:scale-95 transition-transform"
+                className="flex flex-col items-center justify-center w-14 h-14 -mt-5 rounded-full bg-[#5DBC70] shadow-lg shadow-[#5DBC70]/40 active:scale-95 transition-transform"
               >
                 <Plus className="h-6 w-6 text-white" />
               </button>
@@ -39,10 +39,10 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
           const content = (
             <div className="flex flex-col items-center gap-0.5 py-1 px-3 relative">
               {active && (
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#58CC02]" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#5DBC70]" />
               )}
-              <item.icon className={`h-5 w-5 transition-colors ${active ? 'text-[#58CC02]' : 'text-gray-400'}`} />
-              <span className={`text-xs font-medium transition-colors ${active ? 'text-[#58CC02]' : 'text-gray-400'}`}>
+              <item.icon className={`h-5 w-5 transition-colors ${active ? 'text-[#5DBC70]' : 'text-gray-400'}`} />
+              <span className={`text-xs font-medium transition-colors ${active ? 'text-[#5DBC70]' : 'text-gray-400'}`}>
                 {item.label}
               </span>
             </div>

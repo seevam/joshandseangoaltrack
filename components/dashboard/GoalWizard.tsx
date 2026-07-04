@@ -240,7 +240,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
     setSaving(true);
     try {
       const colorMap: Record<string, string> = {
-        personal: '#58CC02', health: '#00CD4B', career: '#7E3AF2',
+        personal: '#5DBC70', health: '#00CD4B', career: '#7E3AF2',
         finance: '#FBBF24', education: '#3B82F6', fitness: '#FF4B4B',
       };
 
@@ -273,7 +273,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
           unit: form.unit,
           startDate: new Date().toISOString().split('T')[0],
           endDate: form.endDate,
-          color: colorMap[form.category] || '#58CC02',
+          color: colorMap[form.category] || '#5DBC70',
           subtasks: form.subtasks,
           dailyTasks,
           taskCompletions: {},
@@ -325,8 +325,8 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                 return (
                   <div key={i} className="flex-1 flex flex-col gap-1">
                     <div className={`h-1 rounded-full transition-all ${
-                      stepNum < step ? 'bg-[#58CC02]' :
-                      stepNum === step ? 'bg-[#58CC02]' : 'bg-gray-200'
+                      stepNum < step ? 'bg-[#5DBC70]' :
+                      stepNum === step ? 'bg-[#5DBC70]' : 'bg-gray-200'
                     }`} />
                   </div>
                 );
@@ -385,7 +385,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                   value={form.title}
                   onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="e.g., Run a 5K without stopping"
-                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-gray-900 text-base focus:outline-none focus:border-[#58CC02] transition-colors"
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-gray-900 text-base focus:outline-none focus:border-[#5DBC70] transition-colors"
                 />
 
                 {/* Quick templates */}
@@ -406,7 +406,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                           }))}
                           className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-left transition-all ${
                             form.title === t.title
-                              ? 'border-[#58CC02] bg-[#D7FFB8]'
+                              ? 'border-[#5DBC70] bg-[#D0EDDA]'
                               : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                           }`}
                         >
@@ -432,7 +432,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                   onChange={e => setForm(f => ({ ...f, why: e.target.value }))}
                   placeholder="e.g., I want more energy to keep up with my kids..."
                   rows={2}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-gray-900 text-sm focus:outline-none focus:border-[#58CC02] transition-colors resize-none"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-gray-900 text-sm focus:outline-none focus:border-[#5DBC70] transition-colors resize-none"
                 />
                 <p className="text-xs text-gray-400 mt-1.5">Goals with a clear "why" are 3× more likely to be achieved.</p>
               </div>
@@ -458,13 +458,13 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                     value={form.target}
                     onChange={e => setForm(f => ({ ...f, target: e.target.value }))}
                     placeholder="e.g., 5"
-                    className="w-32 px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-gray-900 text-xl font-bold focus:outline-none focus:border-[#58CC02] transition-colors text-center"
+                    className="w-32 px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-gray-900 text-xl font-bold focus:outline-none focus:border-[#5DBC70] transition-colors text-center"
                   />
                   <input
                     value={form.unit}
                     onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
                     placeholder="unit  (km, $, books…)"
-                    className="flex-1 px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-gray-900 text-sm focus:outline-none focus:border-[#58CC02] transition-colors"
+                    className="flex-1 px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-gray-900 text-sm focus:outline-none focus:border-[#5DBC70] transition-colors"
                   />
                 </div>
 
@@ -491,7 +491,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                         onClick={() => setForm(f => ({ ...f, endDate: date }))}
                         className={`py-2.5 rounded-xl text-xs font-semibold transition-all ${
                           form.endDate === date
-                            ? 'bg-[#58CC02] text-white shadow-sm'
+                            ? 'bg-[#5DBC70] text-white shadow-sm'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                         }`}
                       >
@@ -504,7 +504,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                   type="date"
                   value={form.endDate}
                   onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-gray-700 text-sm focus:outline-none focus:border-[#58CC02] transition-colors"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-gray-700 text-sm focus:outline-none focus:border-[#5DBC70] transition-colors"
                 />
               </div>
             </div>
@@ -535,7 +535,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                           dailyHabitUnit: h.unit || '',
                         }))}
                         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border-2 text-left transition-all ${
-                          selected ? 'border-[#58CC02] bg-[#D7FFB8]' : 'border-gray-100 bg-gray-50 hover:border-gray-200'
+                          selected ? 'border-[#5DBC70] bg-[#D0EDDA]' : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                         }`}
                       >
                         <div>
@@ -544,7 +544,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                             <p className="text-xs text-gray-400 mt-0.5">Track: {h.target} {h.unit} per day</p>
                           )}
                         </div>
-                        {selected && <Check className="h-4 w-4 text-[#58CC02] flex-shrink-0" />}
+                        {selected && <Check className="h-4 w-4 text-[#5DBC70] flex-shrink-0" />}
                       </button>
                     );
                   })}
@@ -564,7 +564,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                     dailyHabitUnit: '',
                   }))}
                   placeholder='e.g., "Practice scales for 20 min"'
-                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#58CC02] transition-colors"
+                  className="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#5DBC70] transition-colors"
                 />
               </div>
 
@@ -587,7 +587,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                       key={w.label}
                       onClick={() => setForm(f => ({ ...f, when: f.when === w.label ? '' : w.label }))}
                       className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 text-left transition-all ${
-                        form.when === w.label ? 'border-[#58CC02] bg-[#D7FFB8]' : 'border-gray-100 bg-gray-50 hover:border-gray-200'
+                        form.when === w.label ? 'border-[#5DBC70] bg-[#D0EDDA]' : 'border-gray-100 bg-gray-50 hover:border-gray-200'
                       }`}
                     >
                       <span className="text-xl">{w.emoji}</span>
@@ -609,7 +609,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                       key={o}
                       onClick={() => setForm(f => ({ ...f, obstacle: f.obstacle === o ? '' : o }))}
                       className={`px-3.5 py-2 rounded-xl text-sm font-medium border-2 transition-all ${
-                        form.obstacle === o ? 'border-[#58CC02] bg-[#D7FFB8] text-[#2E8B00]' : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
+                        form.obstacle === o ? 'border-[#5DBC70] bg-[#D0EDDA] text-[#1F6B38]' : 'border-gray-200 bg-gray-50 text-gray-700 hover:border-gray-300'
                       }`}
                     >
                       {o}
@@ -625,7 +625,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
           {step === 5 && (
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <Sparkles className="h-6 w-6 text-[#58CC02]" />
+                <Sparkles className="h-6 w-6 text-[#5DBC70]" />
                 <h2 className="text-2xl font-bold text-gray-900">Your roadmap</h2>
               </div>
               <p className="text-gray-500 text-sm mb-5">
@@ -637,7 +637,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                 <div className="flex flex-col items-center py-12 gap-4">
                   <div className="flex gap-2">
                     {[0, 0.15, 0.3].map((d, i) => (
-                      <div key={i} className="w-3 h-3 bg-[#58CC02] rounded-full animate-bounce" style={{ animationDelay: `${d}s` }} />
+                      <div key={i} className="w-3 h-3 bg-[#5DBC70] rounded-full animate-bounce" style={{ animationDelay: `${d}s` }} />
                     ))}
                   </div>
                   <p className="text-sm text-gray-500">Building your roadmap…</p>
@@ -646,7 +646,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                 <ul className="space-y-2">
                   {form.subtasks.map((s, i) => (
                     <li key={s.id} className="flex items-center gap-3 bg-gray-50 rounded-xl px-4 py-3">
-                      <span className="h-6 w-6 rounded-full bg-[#58CC02] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
+                      <span className="h-6 w-6 rounded-full bg-[#5DBC70] text-white text-xs font-bold flex items-center justify-center flex-shrink-0">
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
@@ -662,7 +662,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
               ) : (
                 <div className="flex flex-col items-center py-10 gap-3">
                   <p className="text-sm text-gray-400 text-center">Couldn't generate milestones — you can add them anytime from the goal detail.</p>
-                  <button onClick={generateSubtasks} className="text-sm text-[#58CC02] font-semibold hover:underline">Try again</button>
+                  <button onClick={generateSubtasks} className="text-sm text-[#5DBC70] font-semibold hover:underline">Try again</button>
                 </div>
               )}
             </div>
@@ -697,8 +697,8 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
               )}
 
               {/* Commitment statement */}
-              <div className="bg-gradient-to-r from-[#D7FFB8] to-[#CCFFDD] rounded-2xl px-5 py-4 border border-[#58CC02]/30">
-                <p className="text-sm text-[#2E8B00] leading-relaxed">
+              <div className="bg-gradient-to-r from-[#D0EDDA] to-[#C3E8CE] rounded-2xl px-5 py-4 border border-[#5DBC70]/30">
+                <p className="text-sm text-[#1F6B38] leading-relaxed">
                   <span className="font-bold">I, {user?.firstName || 'I'}, commit to</span>{' '}
                   {form.title || 'this goal'}{form.target ? ` — ${form.target} ${form.unit}` : ''}{' '}
                   by <span className="font-bold">{form.endDate ? new Date(form.endDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '—'}</span>.
@@ -716,7 +716,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                   value={form.firstAction}
                   onChange={e => setForm(f => ({ ...f, firstAction: e.target.value }))}
                   placeholder='e.g., "Put on my shoes and go for a 10-min walk"'
-                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#58CC02] transition-colors"
+                  className="w-full px-4 py-3.5 border-2 border-gray-200 rounded-2xl text-sm focus:outline-none focus:border-[#5DBC70] transition-colors"
                 />
                 <p className="text-xs text-gray-400 mt-1.5">This bridges the gap between intention and action.</p>
               </div>
@@ -726,7 +726,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
           {/* ── STEP 7: Success ── */}
           {step === 7 && (
             <div className="flex flex-col items-center text-center py-6">
-              <div className="h-24 w-24 rounded-full bg-[#D7FFB8] flex items-center justify-center mb-5">
+              <div className="h-24 w-24 rounded-full bg-[#D0EDDA] flex items-center justify-center mb-5">
                 <span className="text-5xl">🎯</span>
               </div>
               <h2 className="text-2xl font-bold text-gray-900 mb-2">You're all set!</h2>
@@ -734,14 +734,14 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                 <strong className="text-gray-800">{form.title}</strong> is live on your dashboard.
               </p>
               {form.firstAction && (
-                <div className="mt-4 bg-[#D7FFB8] rounded-2xl px-4 py-3 w-full text-left">
-                  <p className="text-xs font-semibold text-[#2E8B00] mb-1">Your next step (do this now!):</p>
-                  <p className="text-sm text-[#2E8B00]">{form.firstAction}</p>
+                <div className="mt-4 bg-[#D0EDDA] rounded-2xl px-4 py-3 w-full text-left">
+                  <p className="text-xs font-semibold text-[#1F6B38] mb-1">Your next step (do this now!):</p>
+                  <p className="text-sm text-[#1F6B38]">{form.firstAction}</p>
                 </div>
               )}
               <button
                 onClick={onClose}
-                className="mt-6 w-full py-4 bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-2xl font-bold text-base transition-colors"
+                className="mt-6 w-full py-4 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white rounded-2xl font-bold text-base transition-colors"
               >
                 Let's go! 🚀
               </button>
@@ -759,7 +759,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
               <button
                 onClick={createGoal}
                 disabled={saving || !form.firstAction.trim()}
-                className="w-full py-4 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-bold text-base transition-colors"
+                className="w-full py-4 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-bold text-base transition-colors"
               >
                 {saving ? 'Creating your goal…' : 'Create Goal 🎯'}
               </button>
@@ -768,7 +768,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
                 <button
                   onClick={goNext}
                   disabled={!canAdvance[step]}
-                  className="w-full py-4 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-bold text-base transition-colors"
+                  className="w-full py-4 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-200 disabled:text-gray-400 text-white rounded-2xl font-bold text-base transition-colors"
                 >
                   Continue
                 </button>

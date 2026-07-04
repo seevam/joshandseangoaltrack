@@ -158,7 +158,7 @@ export default function CalendarView() {
           {goals.some(g => g.endDate) && (
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#58CC02] text-gray-600 hover:text-[#58CC02] rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#5DBC70] text-gray-600 hover:text-[#5DBC70] rounded-lg text-xs font-medium transition-colors"
             >
               <Download className="h-3.5 w-3.5" /> Export
             </button>
@@ -197,7 +197,7 @@ export default function CalendarView() {
 
             <button
               onClick={() => { exportICS(); setShowExportModal(false); }}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#58CC02] hover:bg-[#4CAD02] text-white font-semibold rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white font-semibold rounded-xl transition-colors"
             >
               <Download className="h-4 w-4" /> Download .ics file
             </button>
@@ -221,19 +221,19 @@ export default function CalendarView() {
             const isSelected = selected?.getTime() === cellDate.getTime();
             const isPast = cellDate < today;
             const { categories, hasCheckIn, totalTasks, doneTasks } = getActivityForDate(cellDate);
-            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#58CC02');
+            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#5DBC70');
 
             return (
               <button
                 key={i}
                 onClick={() => setSelected(cellDate)}
                 className={`h-14 border-b border-r border-gray-50 flex flex-col items-center justify-start pt-1.5 gap-1 transition-colors ${
-                  isSelected ? 'bg-[#58CC02]/10' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-[#5DBC70]/10' : 'hover:bg-gray-50'
                 }`}
               >
                 <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-[#58CC02] text-white' :
-                  isSelected ? 'text-[#58CC02] font-bold' :
+                  isToday ? 'bg-[#5DBC70] text-white' :
+                  isSelected ? 'text-[#5DBC70] font-bold' :
                   isPast ? 'text-gray-400' : 'text-gray-700'
                 }`}>{day}</span>
                 {(dotColors.length > 0 || hasCheckIn || totalTasks > 0) && (
@@ -245,7 +245,7 @@ export default function CalendarView() {
                     {totalTasks > 0 && (
                       <div
                         className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: doneTasks === totalTasks ? '#58CC02' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
+                        style={{ backgroundColor: doneTasks === totalTasks ? '#5DBC70' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
                       />
                     )}
                   </div>
@@ -269,7 +269,7 @@ export default function CalendarView() {
           <span className="text-xs text-gray-500">Check-in</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#58CC02]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#5DBC70]" />
           <span className="text-xs text-gray-500">All tasks done</span>
         </div>
       </div>
@@ -292,9 +292,9 @@ export default function CalendarView() {
                 const isLogging = loggingTask === key;
                 return (
                   <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                    done ? 'bg-[#D7FFB8] border-[#58CC02]/30' : 'bg-gray-50 border-gray-200'
+                    done ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200'
                   }`}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || '#58CC02' }} />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || '#5DBC70' }} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                         {task.title}
@@ -306,8 +306,8 @@ export default function CalendarView() {
                       disabled={isLogging}
                       className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
                         done
-                          ? 'bg-[#58CC02]/20 text-[#2E8B00] hover:bg-[#58CC02]/30'
-                          : 'bg-[#58CC02] text-white hover:bg-[#4CAD02]'
+                          ? 'bg-[#5DBC70]/20 text-[#1F6B38] hover:bg-[#5DBC70]/30'
+                          : 'bg-[#5DBC70] text-white hover:bg-[#4EAA5F]'
                       }`}
                     >
                       {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
