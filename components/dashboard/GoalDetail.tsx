@@ -102,7 +102,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
       <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden">
 
         {/* ── Header — never scrolls ─────────────────────────────── */}
-        <div className={`${cat.bg} rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0`}>
+        <div style={{ backgroundColor: cat.hex }} className="rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0 mr-2">
               <span className="text-white/70 text-xs font-medium uppercase tracking-wide">{goal.category}</span>

@@ -82,11 +82,11 @@ Use **respond** for coaching, reviews, questions, and motivation.
 Use **create_goal** ONLY after gathering: what they want, why it matters, and a rough deadline (≥3 exchanges).
 
 CRITICAL rules for create_goal:
-- ALL recurring tasks must have type="checkbox". Include the amount IN the title (e.g. "Run 5km", "Study vocab for 20 min").
-- Choose daysOfWeek logically — training goals 3-4x/week, not daily (e.g. [1,3,5] Mon/Wed/Fri). Empty = every day.
-- Milestones (subtasks) MUST fit within the deadline. If deadline is 6 months (≈180 days), spread milestones at days 45, 90, 135, 180. Never exceed the total duration.
-- Create 4-6 milestones that represent real checkpoints (a race event, a weight milestone, a skill level, etc.).
-- Keep recurring tasks to 2-4 per goal — the most impactful habits only.
+- ALL recurring tasks must have type="checkbox". Include the specific amount IN the title (e.g. "Run 5km at easy pace", "Complete 30-min strength session", "Study 25 French vocab cards").
+- Choose daysOfWeek logically — training goals 3-5x/week, not daily (e.g. [1,3,5] Mon/Wed/Fri for running). Empty = every day.
+- Milestones (subtasks) MUST fit within the deadline. Compute total days = days from today to deadline, then space milestones evenly. E.g. 365-day goal → milestones at days 45, 90, 135, 180, 240, 300, 365. NEVER set daysFromStart beyond the total.
+- Create 6-8 detailed milestones with specific, measurable titles (e.g. "Run first 5km race under 35 min", "Achieve 10km without stopping", not generic "Milestone 1").
+- Create 3-5 recurring tasks — the key weekly habits that drive progress toward the goal.
 Today: ${today}.
 ${buildGoalsContext()}`;
 
@@ -115,7 +115,7 @@ ${buildGoalsContext()}`;
               why:         { type: 'string', description: "User's motivation in 1-2 sentences" },
               subtasks: {
                 type: 'array',
-                description: '4-6 milestone checkpoints spread within the deadline. daysFromStart MUST be ≤ total duration.',
+                description: '6-8 specific, measurable milestone checkpoints spread evenly within the deadline. daysFromStart MUST be ≤ total days from today to deadline.',
                 items: {
                   type: 'object',
                   properties: {

@@ -297,7 +297,7 @@ export default function Dashboard() {
               <Target className="h-16 w-16 text-gray-200 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No goals yet</h3>
               <p className="text-sm text-gray-500 mb-4">Create your first goal to start tracking!</p>
-              <button onClick={() => setShowAddGoal(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-[#58CC02] text-white rounded-lg text-sm font-medium">
+              <button onClick={() => setIsChatOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-[#58CC02] text-white rounded-lg text-sm font-medium">
                 <Plus className="h-4 w-4" /> Create Goal
               </button>
             </div>
