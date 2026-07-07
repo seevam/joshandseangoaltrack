@@ -82,11 +82,11 @@ Use **respond** for coaching, reviews, questions, and motivation.
 Use **create_goal** ONLY after gathering: what they want, why it matters, and a rough deadline (≥3 exchanges).
 
 CRITICAL rules for create_goal:
-- ALL recurring tasks must have type="checkbox". Include the amount IN the title (e.g. "Run 5km", "Study vocab for 20 min").
-- Choose daysOfWeek logically — training goals 3-4x/week, not daily (e.g. [1,3,5] Mon/Wed/Fri). Empty = every day.
-- Milestones (subtasks) MUST fit within the deadline. If deadline is 6 months (≈180 days), spread milestones at days 45, 90, 135, 180. Never exceed the total duration.
-- Create 4-6 milestones that represent real checkpoints (a race event, a weight milestone, a skill level, etc.).
-- Keep recurring tasks to 2-4 per goal — the most impactful habits only.
+- ALL recurring tasks must have type="checkbox". Include the specific amount IN the title (e.g. "Run 5km at easy pace", "Complete 30-min strength session", "Study 25 French vocab cards").
+- Choose daysOfWeek logically — training goals 3-5x/week, not daily (e.g. [1,3,5] Mon/Wed/Fri for running). Empty = every day.
+- Milestones (subtasks) MUST fit within the deadline. Compute total days = days from today to deadline, then space milestones evenly. E.g. 365-day goal → milestones at days 45, 90, 135, 180, 240, 300, 365. NEVER set daysFromStart beyond the total.
+- Create 6-8 detailed milestones with specific, measurable titles (e.g. "Run first 5km race under 35 min", "Achieve 10km without stopping", not generic "Milestone 1").
+- Create 3-5 recurring tasks — the key weekly habits that drive progress toward the goal.
 Today: ${today}.
 ${buildGoalsContext()}`;
 
@@ -115,7 +115,7 @@ ${buildGoalsContext()}`;
               why:         { type: 'string', description: "User's motivation in 1-2 sentences" },
               subtasks: {
                 type: 'array',
-                description: '4-6 milestone checkpoints spread within the deadline. daysFromStart MUST be ≤ total duration.',
+                description: '6-8 specific, measurable milestone checkpoints spread evenly within the deadline. daysFromStart MUST be ≤ total days from today to deadline.',
                 items: {
                   type: 'object',
                   properties: {
@@ -167,7 +167,7 @@ ${buildGoalsContext()}`;
       if (toolCall?.function.name === 'create_goal') {
         const args = JSON.parse(toolCall.function.arguments);
         const categoryColors: Record<string, string> = {
-          personal: '#58CC02', health: '#00CD4B', career: '#7E3AF2',
+          personal: '#5DBC70', health: '#00CD4B', career: '#7E3AF2',
           finance: '#FBBF24', education: '#3B82F6', fitness: '#FF4B4B',
         };
         const subtasks = (args.subtasks || []).map((s: { title: string; daysFromStart: number }, i: number) => ({
@@ -192,7 +192,7 @@ ${buildGoalsContext()}`;
             title: args.title, description: args.why, category: args.category,
             targetValue: args.targetValue, currentValue: 0, unit: args.unit,
             startDate: new Date().toISOString(), endDate: new Date(args.deadline).toISOString(),
-            color: categoryColors[args.category] || '#58CC02', subtasks, dailyTasks,
+            color: categoryColors[args.category] || '#5DBC70', subtasks, dailyTasks,
             progressHistory: [{ date: new Date().toISOString(), value: 0 }],
             checkIns: [], taskCompletions: {}, milestones: [],
           }),
@@ -230,7 +230,7 @@ ${buildGoalsContext()}`;
   return (
     <>
       {showGoalCreated && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-[#58CC02] text-white px-5 py-2.5 rounded-lg shadow-xl flex items-center gap-2 text-sm font-semibold">
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] bg-[#5DBC70] text-white px-5 py-2.5 rounded-lg shadow-xl flex items-center gap-2 text-sm font-semibold">
           <Target className="h-4 w-4" /> Goal Created! 🎉
         </div>
       )}
@@ -239,7 +239,7 @@ ${buildGoalsContext()}`;
 
       <div className={`fixed right-0 top-0 bottom-0 w-full sm:w-96 bg-white shadow-2xl z-[60] flex flex-col ${isMinimized ? 'lg:w-16' : ''}`}>
         {/* Header */}
-        <div className="flex-shrink-0 bg-[#58CC02] px-4 py-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-[#5DBC70] px-4 py-4 flex items-center justify-between">
           {!isMinimized && (
             <>
               <div className="flex items-center gap-3">
@@ -275,7 +275,7 @@ ${buildGoalsContext()}`;
               {messages.map(msg => (
                 <div key={msg.id} className={`flex items-start gap-2 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
                   <div className={`h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center ${
-                    msg.type === 'user' ? 'bg-[#58CC02]' : msg.isError ? 'bg-red-100' : 'bg-[#58CC02]'
+                    msg.type === 'user' ? 'bg-[#5DBC70]' : msg.isError ? 'bg-red-100' : 'bg-[#5DBC70]'
                   }`}>
                     {msg.type === 'user'
                       ? <UserIcon className="h-5 w-5 text-white" />
@@ -283,7 +283,7 @@ ${buildGoalsContext()}`;
                     }
                   </div>
                   <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm text-sm whitespace-pre-wrap break-words ${
-                    msg.type === 'user' ? 'bg-[#58CC02] text-white ml-auto' :
+                    msg.type === 'user' ? 'bg-[#5DBC70] text-white ml-auto' :
                     msg.isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-white text-gray-800'
                   }`}>
                     {msg.content}
@@ -292,7 +292,7 @@ ${buildGoalsContext()}`;
               ))}
               {isLoading && (
                 <div className="flex items-start gap-2">
-                  <div className="h-8 w-8 rounded-full bg-[#58CC02] flex items-center justify-center">
+                  <div className="h-8 w-8 rounded-full bg-[#5DBC70] flex items-center justify-center">
                     <Bot className="h-5 w-5 text-white" />
                   </div>
                   <div className="bg-white rounded-2xl p-3 shadow-sm">
@@ -318,7 +318,7 @@ ${buildGoalsContext()}`;
                       onClick={() => send(a.action)}
                       className="flex items-center gap-2 p-3 min-h-[44px] bg-gray-50 hover:bg-gray-100 rounded-lg text-xs text-gray-700 transition-colors"
                     >
-                      <a.icon className="h-4 w-4 text-[#58CC02] flex-shrink-0" />
+                      <a.icon className="h-4 w-4 text-[#5DBC70] flex-shrink-0" />
                       {a.label}
                     </button>
                   ))}
@@ -333,7 +333,7 @@ ${buildGoalsContext()}`;
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   placeholder="Ask about your goals..."
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] resize-none text-sm"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] resize-none text-sm"
                   rows={1}
                   style={{ minHeight: '40px', maxHeight: '100px' }}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}
@@ -342,7 +342,7 @@ ${buildGoalsContext()}`;
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="h-11 w-11 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+                  className="h-11 w-11 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
                 >
                   <Send className="h-5 w-5" />
                 </button>

@@ -79,7 +79,7 @@ export default function ProfilePage() {
   ];
 
   const stats = [
-    { label: 'Total Goals', value: totalGoals, icon: Target, color: 'text-[#58CC02]', bg: 'bg-[#D7FFB8]' },
+    { label: 'Total Goals', value: totalGoals, icon: Target, color: 'text-[#5DBC70]', bg: 'bg-[#D0EDDA]' },
     { label: 'Completed', value: completedGoals, icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-50' },
     { label: 'Check-ins', value: totalCheckIns, icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50' },
     { label: 'Best Streak', value: `${maxStreak}d`, icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50' },
@@ -92,7 +92,7 @@ export default function ProfilePage() {
         {user?.imageUrl ? (
           <img src={user.imageUrl} alt="Avatar" className="h-16 w-16 rounded-full object-cover" />
         ) : (
-          <div className="h-16 w-16 rounded-full bg-[#D7FFB8] flex items-center justify-center text-2xl font-bold text-[#58CC02]">
+          <div className="h-16 w-16 rounded-full bg-[#D0EDDA] flex items-center justify-center text-2xl font-bold text-[#5DBC70]">
             {(user?.firstName?.[0] || user?.username?.[0] || '?').toUpperCase()}
           </div>
         )}
@@ -104,7 +104,7 @@ export default function ProfilePage() {
             {user?.primaryEmailAddress?.emailAddress}
           </p>
           <div className="mt-1 flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-[#58CC02]" />
+            <div className="h-2 w-2 rounded-full bg-[#5DBC70]" />
             <span className="text-xs text-gray-500">{activeGoals} active goal{activeGoals !== 1 ? 's' : ''}</span>
           </div>
         </div>
@@ -131,11 +131,11 @@ export default function ProfilePage() {
         <div className="flex items-center gap-3">
           <div className="flex-1 bg-gray-100 rounded-full h-3">
             <div
-              className="h-3 rounded-full bg-[#58CC02] transition-all"
+              className="h-3 rounded-full bg-[#5DBC70] transition-all"
               style={{ width: `${avgProgress}%` }}
             />
           </div>
-          <span className="text-sm font-bold text-[#58CC02] w-10 text-right">{avgProgress}%</span>
+          <span className="text-sm font-bold text-[#5DBC70] w-10 text-right">{avgProgress}%</span>
         </div>
         <p className="text-xs text-gray-400 mt-1">Average across all goals</p>
       </div>
@@ -152,7 +152,7 @@ export default function ProfilePage() {
                 <div key={cat} className="flex items-center gap-3">
                   <span className="text-xs text-gray-600 capitalize w-20">{cat}</span>
                   <div className="flex-1 bg-gray-100 rounded-full h-2">
-                    <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: c?.hex || '#58CC02' }} />
+                    <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: c?.hex || '#5DBC70' }} />
                   </div>
                   <span className="text-xs text-gray-400 w-8 text-right">{count}</span>
                 </div>
@@ -168,10 +168,10 @@ export default function ProfilePage() {
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {badges.map(({ icon: Icon, label, earned, desc }) => (
             <div key={label} className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-              earned ? 'border-[#58CC02] bg-[#D7FFB8]/30' : 'border-gray-100 bg-gray-50 opacity-50'
+              earned ? 'border-[#5DBC70] bg-[#D0EDDA]/30' : 'border-gray-100 bg-gray-50 opacity-50'
             }`}>
               <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                earned ? 'bg-[#58CC02]' : 'bg-gray-200'
+                earned ? 'bg-[#5DBC70]' : 'bg-gray-200'
               }`}>
                 <Icon className={`h-5 w-5 ${earned ? 'text-white' : 'text-gray-400'}`} />
               </div>
@@ -192,7 +192,7 @@ export default function ProfilePage() {
         {/* AI Assistant name */}
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
-            <Bot className="h-3.5 w-3.5 text-[#58CC02]" /> AI Coach Name
+            <Bot className="h-3.5 w-3.5 text-[#5DBC70]" /> AI Coach Name
           </label>
           <div className="flex gap-2">
             <input
@@ -200,12 +200,12 @@ export default function ProfilePage() {
               onChange={e => setAiNameInput(e.target.value)}
               placeholder="My Assistant"
               maxLength={30}
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02]"
+              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70]"
             />
             <button
               onClick={saveAiName}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                nameSaved ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'bg-[#58CC02] hover:bg-[#4CAD02] text-white'
+                nameSaved ? 'bg-[#D0EDDA] text-[#1F6B38]' : 'bg-[#5DBC70] hover:bg-[#4EAA5F] text-white'
               }`}
             >
               <Save className="h-3.5 w-3.5" />

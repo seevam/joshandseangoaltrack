@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Download, Info, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Download, X } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS } from '@/lib/types';
 
@@ -14,7 +14,7 @@ export default function CalendarView() {
   const updateGoal = useGoalStore(s => s.updateGoal);
   const [current, setCurrent] = useState(new Date());
   const [selected, setSelected] = useState<Date | null>(new Date());
-  const [showExportHelp, setShowExportHelp] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [loggingTask, setLoggingTask] = useState<string | null>(null);
 
   const year = current.getFullYear();
@@ -156,39 +156,52 @@ export default function CalendarView() {
 
           {/* Export button */}
           {goals.some(g => g.endDate) && (
-            <div className="relative">
-              <button
-                onClick={exportICS}
-                title="Export to Google Calendar / iCal"
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#58CC02] text-gray-600 hover:text-[#58CC02] rounded-lg text-xs font-medium transition-colors"
-              >
-                <Download className="h-3.5 w-3.5" /> Export
-              </button>
-              <button
-                onClick={() => setShowExportHelp(h => !h)}
-                className="absolute -top-1.5 -right-1.5 h-4 w-4 bg-gray-200 hover:bg-gray-300 rounded-full flex items-center justify-center"
-              >
-                <Info className="h-2.5 w-2.5 text-gray-600" />
-              </button>
-            </div>
+            <button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#5DBC70] text-gray-600 hover:text-[#5DBC70] rounded-lg text-xs font-medium transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" /> Export
+            </button>
           )}
         </div>
       </div>
 
-      {/* Export help modal */}
-      {showExportHelp && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 relative">
-          <button onClick={() => setShowExportHelp(false)} className="absolute top-3 right-3">
-            <X className="h-4 w-4 text-blue-400" />
-          </button>
-          <p className="text-sm font-semibold text-blue-800 mb-2">How to use the exported calendar</p>
-          <ol className="text-xs text-blue-700 space-y-1.5 list-decimal list-inside">
-            <li>Click <strong>Export</strong> — a <code>goals.ics</code> file will download.</li>
-            <li><strong>Google Calendar:</strong> Open calendar.google.com → Settings (⚙️) → Import &amp; export → Import → choose the .ics file.</li>
-            <li><strong>Apple Calendar:</strong> Double-click the .ics file on your Mac, or on iPhone open the Files app and tap the file.</li>
-            <li><strong>Outlook:</strong> File → Open &amp; Export → Import/Export → Import an iCalendar file.</li>
-          </ol>
-          <p className="text-xs text-blue-500 mt-2">Each goal's deadline appears as an all-day event in your calendar.</p>
+      {/* Export modal — shown every time Export is clicked */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex items-start justify-between mb-4">
+              <h3 className="text-base font-bold text-gray-900">Export to Calendar</h3>
+              <button onClick={() => setShowExportModal(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X className="h-4 w-4 text-gray-500" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-4">
+              This downloads a <strong>.ics file</strong> containing all your goal deadlines as calendar events.
+              Follow the steps for your calendar app:
+            </p>
+
+            <div className="space-y-3 mb-5">
+              {[
+                { app: '📅 Google Calendar', steps: 'calendar.google.com → ⚙️ Settings → Import & export → Import → select the .ics file' },
+                { app: '🍎 Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
+                { app: '📧 Outlook', steps: 'File → Open & Export → Import/Export → Import an iCalendar → select the .ics file' },
+              ].map(({ app, steps }) => (
+                <div key={app} className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs font-semibold text-gray-800 mb-0.5">{app}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed">{steps}</p>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => { exportICS(); setShowExportModal(false); }}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white font-semibold rounded-xl transition-colors"
+            >
+              <Download className="h-4 w-4" /> Download .ics file
+            </button>
+          </div>
         </div>
       )}
 
@@ -208,19 +221,19 @@ export default function CalendarView() {
             const isSelected = selected?.getTime() === cellDate.getTime();
             const isPast = cellDate < today;
             const { categories, hasCheckIn, totalTasks, doneTasks } = getActivityForDate(cellDate);
-            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#58CC02');
+            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#5DBC70');
 
             return (
               <button
                 key={i}
                 onClick={() => setSelected(cellDate)}
                 className={`h-14 border-b border-r border-gray-50 flex flex-col items-center justify-start pt-1.5 gap-1 transition-colors ${
-                  isSelected ? 'bg-[#58CC02]/10' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-[#5DBC70]/10' : 'hover:bg-gray-50'
                 }`}
               >
                 <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-[#58CC02] text-white' :
-                  isSelected ? 'text-[#58CC02] font-bold' :
+                  isToday ? 'bg-[#5DBC70] text-white' :
+                  isSelected ? 'text-[#5DBC70] font-bold' :
                   isPast ? 'text-gray-400' : 'text-gray-700'
                 }`}>{day}</span>
                 {(dotColors.length > 0 || hasCheckIn || totalTasks > 0) && (
@@ -232,7 +245,7 @@ export default function CalendarView() {
                     {totalTasks > 0 && (
                       <div
                         className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: doneTasks === totalTasks ? '#58CC02' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
+                        style={{ backgroundColor: doneTasks === totalTasks ? '#5DBC70' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
                       />
                     )}
                   </div>
@@ -256,7 +269,7 @@ export default function CalendarView() {
           <span className="text-xs text-gray-500">Check-in</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#58CC02]" />
+          <div className="w-2.5 h-2.5 rounded-full bg-[#5DBC70]" />
           <span className="text-xs text-gray-500">All tasks done</span>
         </div>
       </div>
@@ -279,9 +292,9 @@ export default function CalendarView() {
                 const isLogging = loggingTask === key;
                 return (
                   <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                    done ? 'bg-[#D7FFB8] border-[#58CC02]/30' : 'bg-gray-50 border-gray-200'
+                    done ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200'
                   }`}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || '#58CC02' }} />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || '#5DBC70' }} />
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                         {task.title}
@@ -293,8 +306,8 @@ export default function CalendarView() {
                       disabled={isLogging}
                       className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
                         done
-                          ? 'bg-[#58CC02]/20 text-[#2E8B00] hover:bg-[#58CC02]/30'
-                          : 'bg-[#58CC02] text-white hover:bg-[#4CAD02]'
+                          ? 'bg-[#5DBC70]/20 text-[#1F6B38] hover:bg-[#5DBC70]/30'
+                          : 'bg-[#5DBC70] text-white hover:bg-[#4EAA5F]'
                       }`}
                     >
                       {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}

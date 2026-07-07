@@ -46,8 +46,8 @@ export interface Goal {
 }
 
 export const CATEGORY_COLORS: Record<Category, { bg: string; light: string; text: string; hex: string }> = {
-  personal: { bg: 'bg-[#58CC02]', light: 'bg-[#D7FFB8]', text: 'text-[#2E8B00]', hex: '#58CC02' },
-  health:   { bg: 'bg-[#00CD4B]', light: 'bg-[#CCFFDD]', text: 'text-[#00A03E]', hex: '#00CD4B' },
+  personal: { bg: 'bg-[#5DBC70]', light: 'bg-[#D0EDDA]', text: 'text-[#1F6B38]', hex: '#5DBC70' },
+  health:   { bg: 'bg-[#00CD4B]', light: 'bg-[#C3E8CE]', text: 'text-[#00A03E]', hex: '#00CD4B' },
   career:   { bg: 'bg-[#7E3AF2]', light: 'bg-[#E9D5FF]', text: 'text-[#5B21B6]', hex: '#7E3AF2' },
   finance:  { bg: 'bg-[#FBBF24]', light: 'bg-[#FEF3C7]', text: 'text-[#B45309]', hex: '#FBBF24' },
   education:{ bg: 'bg-[#3B82F6]', light: 'bg-[#DBEAFE]', text: 'text-[#1E40AF]', hex: '#3B82F6' },

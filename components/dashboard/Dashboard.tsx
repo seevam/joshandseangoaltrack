@@ -169,7 +169,7 @@ export default function Dashboard() {
   if (!isLoaded || isLoadingGoals) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#F0F0F0]">
-        <Target className="h-8 w-8 text-[#58CC02] animate-spin" />
+        <Target className="h-8 w-8 text-[#5DBC70] animate-spin" />
       </div>
     );
   }
@@ -180,14 +180,14 @@ export default function Dashboard() {
       <header className="bg-[#F0F0F0] border-b border-[#E0E0E0] sticky top-0 z-10">
         <div className="px-4 py-3 sm:px-6 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Target className="h-6 w-6 text-[#58CC02]" />
-            <h1 className="text-xl font-bold bg-gradient-to-r from-[#58CC02] to-[#2E8B00] bg-clip-text text-transparent">
+            <Target className="h-6 w-6 text-[#5DBC70]" />
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[#5DBC70] to-[#1F6B38] bg-clip-text text-transparent">
               Dashboard
             </h1>
           </div>
           <button
             onClick={() => setIsChatOpen(true)}
-            className="hidden lg:flex items-center gap-1.5 px-4 py-2 bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl text-sm font-semibold transition-colors"
+            className="hidden lg:flex items-center gap-1.5 px-4 py-2 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white rounded-xl text-sm font-semibold transition-colors"
           >
             <Plus className="h-4 w-4" /> New Goal
           </button>
@@ -198,9 +198,9 @@ export default function Dashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           {[
-            { label: 'Total',   value: goals.length,   icon: Target,      bg: 'bg-[#D7FFB8]', color: 'text-[#58CC02]' },
+            { label: 'Total',   value: goals.length,   icon: Target,      bg: 'bg-[#D0EDDA]', color: 'text-[#5DBC70]' },
             { label: 'Active',  value: activeGoals,    icon: TrendingUp,  bg: 'bg-[#DBEAFE]', color: 'text-[#3B82F6]' },
-            { label: 'Done',    value: completedGoals, icon: CheckCircle, bg: 'bg-[#CCFFDD]', color: 'text-[#00CD4B]' },
+            { label: 'Done',    value: completedGoals, icon: CheckCircle, bg: 'bg-[#C3E8CE]', color: 'text-[#00CD4B]' },
             { label: 'Overdue', value: overdueGoals,   icon: Clock,       bg: 'bg-[#FECACA]', color: 'text-[#FF4B4B]' },
           ].map(s => (
             <div key={s.label} className="bg-white rounded-xl shadow-sm p-3 sm:p-4 flex items-center gap-3">
@@ -242,7 +242,7 @@ export default function Dashboard() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search goals..."
-            className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02]"
+            className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70]"
           />
           {searchQuery && (
             <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -258,7 +258,7 @@ export default function Dashboard() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activeTab === tab ? 'bg-[#58CC02] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                activeTab === tab ? 'bg-[#5DBC70] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
               }`}
             >
               {tab === 'active' ? `Active (${activeGoals})` : tab === 'completed' ? `Completed (${completedGoals})` : `All (${goals.length})`}
@@ -274,7 +274,7 @@ export default function Dashboard() {
               key={cat}
               onClick={() => setFilterCategory(cat)}
               className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                filterCategory === cat ? 'bg-[#58CC02] text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-[#58CC02]'
+                filterCategory === cat ? 'bg-[#5DBC70] text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-[#5DBC70]'
               }`}
             >
               {cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -297,7 +297,7 @@ export default function Dashboard() {
               <Target className="h-16 w-16 text-gray-200 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No goals yet</h3>
               <p className="text-sm text-gray-500 mb-4">Create your first goal to start tracking!</p>
-              <button onClick={() => setShowAddGoal(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-[#58CC02] text-white rounded-lg text-sm font-medium">
+              <button onClick={() => setIsChatOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-[#5DBC70] text-white rounded-lg text-sm font-medium">
                 <Plus className="h-4 w-4" /> Create Goal
               </button>
             </div>
@@ -367,7 +367,7 @@ export default function Dashboard() {
                           <button
                             onClick={e => { e.stopPropagation(); checkIn(goal.id); }}
                             className={`ml-1 h-10 w-10 flex items-center justify-center rounded-xl transition-colors ${
-                              checkedToday ? 'bg-[#D7FFB8] text-[#2E8B00]' : 'bg-gray-100 text-gray-600 hover:bg-[#D7FFB8] hover:text-[#2E8B00]'
+                              checkedToday ? 'bg-[#D0EDDA] text-[#1F6B38]' : 'bg-gray-100 text-gray-600 hover:bg-[#D0EDDA] hover:text-[#1F6B38]'
                             }`}
                           >
                             <CheckCircle className="h-5 w-5" />
@@ -407,7 +407,7 @@ export default function Dashboard() {
             <p className="text-gray-600 mb-6">{celebratingGoal.title}</p>
             <button
               onClick={() => setCelebratingGoal(null)}
-              className="px-6 py-2.5 bg-[#58CC02] text-white rounded-xl font-semibold hover:bg-[#4CAD02]"
+              className="px-6 py-2.5 bg-[#5DBC70] text-white rounded-xl font-semibold hover:bg-[#4EAA5F]"
             >
               Awesome! 🎉
             </button>

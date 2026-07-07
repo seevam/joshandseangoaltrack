@@ -52,13 +52,13 @@ export default function OnboardingPage() {
       subtitle: 'GoalTrack helps you set, track, and crush your goals with AI-powered coaching.',
       content: (
         <div className="flex flex-col items-center gap-6 py-4">
-          <div className="h-24 w-24 rounded-full bg-[#D7FFB8] flex items-center justify-center">
-            <Target className="h-12 w-12 text-[#58CC02]" />
+          <div className="h-24 w-24 rounded-full bg-[#D0EDDA] flex items-center justify-center">
+            <Target className="h-12 w-12 text-[#5DBC70]" />
           </div>
           <ul className="space-y-3 text-left w-full max-w-xs">
             {['Set goals with targets & deadlines', 'Log check-ins & track streaks', 'Get AI coaching & motivation'].map(t => (
               <li key={t} className="flex items-center gap-3">
-                <CheckCircle2 className="h-5 w-5 text-[#58CC02] flex-shrink-0" />
+                <CheckCircle2 className="h-5 w-5 text-[#5DBC70] flex-shrink-0" />
                 <span className="text-sm text-gray-700">{t}</span>
               </li>
             ))}
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
               key={value}
               onClick={() => setMotivation(value)}
               className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                motivation === value ? 'border-[#58CC02] bg-[#D7FFB8]/30' : 'border-gray-200 bg-white'
+                motivation === value ? 'border-[#5DBC70] bg-[#D0EDDA]/30' : 'border-gray-200 bg-white'
               }`}
             >
               <span className="text-3xl">{emoji}</span>
@@ -112,7 +112,7 @@ export default function OnboardingPage() {
                 <p className="font-semibold text-gray-900">{label}</p>
                 <p className="text-xs text-gray-500">{desc}</p>
               </div>
-              {motivation === value && <CheckCircle2 className="h-5 w-5 text-[#58CC02] ml-auto" />}
+              {motivation === value && <CheckCircle2 className="h-5 w-5 text-[#5DBC70] ml-auto" />}
             </button>
           ))}
         </div>
@@ -123,8 +123,8 @@ export default function OnboardingPage() {
       subtitle: 'Your goal tracking journey starts now.',
       content: (
         <div className="flex flex-col items-center gap-6 py-4">
-          <div className="h-24 w-24 rounded-full bg-[#D7FFB8] flex items-center justify-center">
-            <CheckCircle2 className="h-12 w-12 text-[#58CC02]" />
+          <div className="h-24 w-24 rounded-full bg-[#D0EDDA] flex items-center justify-center">
+            <CheckCircle2 className="h-12 w-12 text-[#5DBC70]" />
           </div>
           <p className="text-sm text-gray-500 text-center max-w-xs leading-relaxed">
             {selected.length > 0
@@ -133,7 +133,7 @@ export default function OnboardingPage() {
           </p>
           <button
             onClick={handleCreateFirst}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-[#58CC02] hover:bg-[#4CAD02] text-white rounded-xl font-semibold transition-colors"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white rounded-xl font-semibold transition-colors"
           >
             Create my first goal <ArrowRight className="h-4 w-4" />
           </button>
@@ -150,7 +150,7 @@ export default function OnboardingPage() {
         {/* Progress bar */}
         <div className="h-1 bg-gray-100">
           <div
-            className="h-1 bg-[#58CC02] transition-all duration-500"
+            className="h-1 bg-[#5DBC70] transition-all duration-500"
             style={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
           />
         </div>
@@ -176,7 +176,7 @@ export default function OnboardingPage() {
               <button
                 onClick={() => step === STEPS.length - 2 ? setStep(s => s + 1) : setStep(s => s + 1)}
                 disabled={step === 1 && selected.length === 0}
-                className="flex-1 py-3 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
+                className="flex-1 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-colors"
               >
                 {step === 0 ? 'Get Started' : 'Continue'} <ArrowRight className="h-4 w-4" />
               </button>
@@ -193,7 +193,7 @@ export default function OnboardingPage() {
         {/* Step dots */}
         <div className="flex justify-center gap-1.5 pb-4">
           {STEPS.map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all ${i === step ? 'w-4 bg-[#58CC02]' : 'w-1.5 bg-gray-200'}`} />
+            <div key={i} className={`h-1.5 rounded-full transition-all ${i === step ? 'w-4 bg-[#5DBC70]' : 'w-1.5 bg-gray-200'}`} />
           ))}
         </div>
       </div>

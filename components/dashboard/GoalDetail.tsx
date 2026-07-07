@@ -102,7 +102,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
       <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden">
 
         {/* ── Header — never scrolls ─────────────────────────────── */}
-        <div className={`${cat.bg} rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0`}>
+        <div style={{ backgroundColor: cat.hex }} className="rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0 mr-2">
               <span className="text-white/70 text-xs font-medium uppercase tracking-wide">{goal.category}</span>
@@ -142,14 +142,14 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* AI Coach card */}
             <button
               onClick={() => setShowChat(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-[#D7FFB8] to-[#CCFFDD] border border-[#58CC02]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
+              className="w-full flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-[#D0EDDA] to-[#C3E8CE] border border-[#5DBC70]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
             >
-              <div className="h-10 w-10 rounded-full bg-[#58CC02] flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 rounded-full bg-[#5DBC70] flex items-center justify-center flex-shrink-0">
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#2E8B00]">Talk to your AI Coach</p>
-                <p className="text-xs text-[#58CC02] truncate">
+                <p className="text-sm font-semibold text-[#1F6B38]">Talk to your AI Coach</p>
+                <p className="text-xs text-[#5DBC70] truncate">
                   {status === 'completed' ? 'Celebrate and plan what\'s next 🏆' :
                    status === 'overdue' ? 'Get a recovery plan for this goal 💪' :
                    progress >= 75 ? 'You\'re almost there — finish strong! 🔥' :
@@ -157,7 +157,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                    'Get tips, motivation, and a plan'}
                 </p>
               </div>
-              <Sparkles className="h-5 w-5 text-[#58CC02] flex-shrink-0" />
+              <Sparkles className="h-5 w-5 text-[#5DBC70] flex-shrink-0" />
             </button>
 
             {/* Stats row */}
@@ -186,8 +186,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               disabled={checkedToday}
               className={`w-full py-3 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${
                 checkedToday
-                  ? 'bg-[#D7FFB8] text-[#2E8B00] cursor-default'
-                  : 'bg-[#58CC02] hover:bg-[#4CAD02] text-white'
+                  ? 'bg-[#D0EDDA] text-[#1F6B38] cursor-default'
+                  : 'bg-[#5DBC70] hover:bg-[#4EAA5F] text-white'
               }`}
             >
               <CheckCircle className="h-4 w-4" />
@@ -202,7 +202,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
                 >
                   <span className="flex items-center gap-1.5">
-                    <RepeatIcon className="h-4 w-4 text-[#58CC02]" />
+                    <RepeatIcon className="h-4 w-4 text-[#5DBC70]" />
                     Recurring Tasks
                     {todaysTasks.length > 0 && (
                       <span className="text-xs font-normal text-gray-400 ml-1">
@@ -220,7 +220,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       const done = !!todayCompletions[task.id];
                       return (
                         <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${
-                          done ? 'bg-[#D7FFB8] border-[#58CC02]/30' :
+                          done ? 'bg-[#D0EDDA] border-[#5DBC70]/30' :
                           scheduledToday ? 'bg-gray-50 border-gray-200' :
                           'bg-gray-50/50 border-gray-100 opacity-60'
                         }`}>
@@ -238,8 +238,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                               onClick={() => onLogTask(goal.id, task.id, !done)}
                               className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
                                 done
-                                  ? 'bg-[#58CC02]/20 text-[#2E8B00]'
-                                  : 'bg-[#58CC02] text-white hover:bg-[#4CAD02]'
+                                  ? 'bg-[#5DBC70]/20 text-[#1F6B38]'
+                                  : 'bg-[#5DBC70] text-white hover:bg-[#4EAA5F]'
                               }`}
                             >
                               {done ? '✓ Done' : 'Complete'}
@@ -266,7 +266,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   {MILESTONE_BADGES.map(b => {
                     const earned = progress >= b.pct;
                     return (
-                      <div key={b.pct} className={`flex flex-col items-center p-2 rounded-xl ${earned ? 'bg-[#D7FFB8]' : 'bg-gray-100 opacity-40'}`}>
+                      <div key={b.pct} className={`flex flex-col items-center p-2 rounded-xl ${earned ? 'bg-[#D0EDDA]' : 'bg-gray-100 opacity-40'}`}>
                         <span className="text-2xl">{b.emoji}</span>
                         <span className="text-xs font-medium text-gray-600 mt-1 text-center leading-tight">{b.label}</span>
                         <span className="text-xs text-gray-400">{b.pct}%</span>
@@ -284,7 +284,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   onClick={() => setShowHistory(!showHistory)}
                   className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
                 >
-                  <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-[#58CC02]" /> Progress History</span>
+                  <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-[#5DBC70]" /> Progress History</span>
                   {showHistory ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                 </button>
                 {showHistory && (
@@ -312,11 +312,11 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                         key={i}
                         onClick={() => onToggleSubtask(goal.id, i)}
                         className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                          s.completed ? 'bg-[#D7FFB8] border-[#58CC02]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                          s.completed ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                         }`}
                       >
                         {s.completed
-                          ? <CheckCircle className="h-4 w-4 text-[#58CC02] flex-shrink-0" />
+                          ? <CheckCircle className="h-4 w-4 text-[#5DBC70] flex-shrink-0" />
                           : <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
                         }
                         <span className={`text-sm flex-1 ${s.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{s.title}</span>
@@ -337,8 +337,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                 className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
               >
                 <span className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-[#58CC02]" /> Accountability Partners
-                  {partners.length > 0 && <span className="ml-1 text-xs bg-[#58CC02] text-white rounded-full px-1.5 py-0.5">{partners.length}</span>}
+                  <Users className="h-4 w-4 text-[#5DBC70]" /> Accountability Partners
+                  {partners.length > 0 && <span className="ml-1 text-xs bg-[#5DBC70] text-white rounded-full px-1.5 py-0.5">{partners.length}</span>}
                 </span>
                 {showShare ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
               </button>
@@ -367,12 +367,12 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       onChange={e => setShareEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addPartner()}
                       placeholder="Partner's email address"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02]"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70]"
                     />
                     <button
                       onClick={addPartner}
                       disabled={shareLoading || !shareEmail.trim()}
-                      className="px-3 py-2 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-300 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5"
+                      className="px-3 py-2 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5"
                     >
                       <UserPlus className="h-4 w-4" />
                     </button>

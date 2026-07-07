@@ -152,7 +152,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
       <div className="flex flex-col w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-3xl sm:overflow-hidden bg-white">
 
         {/* Header */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-[#58CC02] to-[#2E8B00] px-4 py-4 flex items-center gap-3">
+        <div className="flex-shrink-0 bg-gradient-to-r from-[#5DBC70] to-[#1F6B38] px-4 py-4 flex items-center gap-3">
           <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors">
             <X className="h-5 w-5 text-white" />
           </button>
@@ -174,13 +174,13 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
           {messages.map(msg => (
             <div key={msg.id} className={`flex items-end gap-2 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
               {msg.type === 'ai' && (
-                <div className="h-7 w-7 rounded-full bg-[#58CC02] flex items-center justify-center flex-shrink-0 mb-0.5">
+                <div className="h-7 w-7 rounded-full bg-[#5DBC70] flex items-center justify-center flex-shrink-0 mb-0.5">
                   <Bot className="h-4 w-4 text-white" />
                 </div>
               )}
               <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                 msg.type === 'user'
-                  ? 'bg-[#58CC02] text-white rounded-br-sm'
+                  ? 'bg-[#5DBC70] text-white rounded-br-sm'
                   : msg.isError
                   ? 'bg-red-50 text-red-700 border border-red-100'
                   : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'
@@ -197,7 +197,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
 
           {isLoading && (
             <div className="flex items-end gap-2">
-              <div className="h-7 w-7 rounded-full bg-[#58CC02] flex items-center justify-center flex-shrink-0">
+              <div className="h-7 w-7 rounded-full bg-[#5DBC70] flex items-center justify-center flex-shrink-0">
                 <Bot className="h-4 w-4 text-white" />
               </div>
               <div className="bg-white shadow-sm rounded-2xl rounded-bl-sm px-3.5 py-3 flex gap-1.5">
@@ -221,10 +221,10 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
                 <button
                   key={i}
                   onClick={() => send(prompt)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-[#D7FFB8] rounded-xl text-sm text-gray-700 font-medium transition-colors text-left group"
+                  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-[#D0EDDA] rounded-xl text-sm text-gray-700 font-medium transition-colors text-left group"
                 >
                   <span>{prompt}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-[#58CC02] flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-[#5DBC70] flex-shrink-0" />
                 </button>
               ))}
             </div>
@@ -241,12 +241,12 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
               onChange={e => setInput(e.target.value)}
               placeholder="Ask your coach anything…"
               disabled={isLoading}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#58CC02] focus:border-[#58CC02] bg-gray-50"
+              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] bg-gray-50"
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="h-10 w-10 bg-[#58CC02] hover:bg-[#4CAD02] disabled:bg-gray-200 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+              className="h-10 w-10 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-200 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
             >
               <Send className="h-4 w-4" />
             </button>
