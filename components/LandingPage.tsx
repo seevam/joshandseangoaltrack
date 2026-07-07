@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { Target, TrendingUp, Bot, Award, CheckCircle2, ArrowRight } from 'lucide-react';
+import Image from 'next/image';
+import { TrendingUp, Bot, Award, CheckCircle2, ArrowRight } from 'lucide-react';
 
 const FEATURES = [
-  { icon: Target,      title: 'Set Smart Goals',    desc: 'Create goals with targets, deadlines, and categories tailored to your life.' },
+  { icon: TrendingUp,  title: 'Set Smart Goals',    desc: 'Create goals with targets, deadlines, and categories tailored to your life.' },
   { icon: TrendingUp,  title: 'Track Progress',     desc: 'Log check-ins, update progress, and visualise your journey over time.' },
   { icon: Bot,         title: 'AI Goal Coach',      desc: 'Chat with your personal AI coach to stay motivated and plan your next steps.' },
   { icon: Award,       title: 'Earn Badges',        desc: 'Celebrate consistency and milestones with achievements along the way.' },
@@ -22,9 +23,7 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-[#5DBC70] flex items-center justify-center">
-            <Target className="h-5 w-5 text-white" />
-          </div>
+          <Image src="/logo-removebg-preview.png" alt="GoalTrack Logo" width={36} height={36} className="object-contain" />
           <span className="font-bold text-gray-900 text-lg">GoalTrack</span>
         </div>
         <div className="flex items-center gap-3">
