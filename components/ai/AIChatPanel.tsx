@@ -5,6 +5,7 @@ import { useUser } from '@clerk/nextjs';
 import { X, Minimize2, Bot, User as UserIcon, Send, Target, TrendingUp, Lightbulb, Award, MessageCircle } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { getGoalProgress } from '@/lib/types';
+import MarkdownText from '@/components/ui/MarkdownText';
 
 interface Message {
   id: number;
@@ -80,6 +81,14 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
     const systemPrompt = `You are a warm, encouraging goal coach named ${assistantName}. Always call one of the two tools.
 Use **respond** for coaching, reviews, questions, and motivation.
 Use **create_goal** ONLY after gathering: what they want, why it matters, and a rough deadline (≥3 exchanges).
+
+FORMATTING: Make your responses visually engaging and easy to scan.
+- Use **bold** for key numbers, goal names, and important actions.
+- Use *italic* for emphasis and emotional tone.
+- Use bullet lists (- item) when giving options, tips, or steps.
+- Use numbered lists (1. item) for sequences or action plans.
+- Include relevant emojis naturally (🎯 for goals, 💪 for effort, 🔥 for streaks, ✅ for completion, etc.).
+- Keep paragraphs short — 1-2 sentences max before a list or break.
 
 CRITICAL rules for create_goal:
 - ALL recurring tasks must have type="checkbox". Include the specific amount IN the title (e.g. "Run 5km at easy pace", "Complete 30-min strength session", "Study 25 French vocab cards").
@@ -282,11 +291,14 @@ ${buildGoalsContext()}`;
                       : <Bot className={`h-5 w-5 ${msg.isError ? 'text-red-600' : 'text-white'}`} />
                     }
                   </div>
-                  <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm text-sm whitespace-pre-wrap break-words ${
-                    msg.type === 'user' ? 'bg-[#5DBC70] text-white ml-auto' :
-                    msg.isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-white text-gray-800'
+                  <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm break-words ${
+                    msg.type === 'user' ? 'bg-[#5DBC70] text-white ml-auto text-sm' :
+                    msg.isError ? 'bg-red-50 text-red-800 border border-red-200 text-sm' : 'bg-white text-gray-800'
                   }`}>
-                    {msg.content}
+                    {msg.type === 'user' || msg.isError
+                      ? <span className="text-sm whitespace-pre-wrap">{msg.content}</span>
+                      : <MarkdownText content={msg.content} />
+                    }
                   </div>
                 </div>
               ))}

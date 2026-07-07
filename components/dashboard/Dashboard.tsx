@@ -176,24 +176,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#F0F0F0] pb-24 lg:pb-8">
-      {/* Header */}
-      <header className="bg-[#F0F0F0] border-b border-[#E0E0E0] sticky top-0 z-10">
-        <div className="px-4 py-3 sm:px-6 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Target className="h-6 w-6 text-[#5DBC70]" />
-            <h1 className="text-xl font-bold bg-gradient-to-r from-[#5DBC70] to-[#1F6B38] bg-clip-text text-transparent">
-              Dashboard
-            </h1>
-          </div>
-          <button
-            onClick={() => setIsChatOpen(true)}
-            className="hidden lg:flex items-center gap-1.5 px-4 py-2 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white rounded-xl text-sm font-semibold transition-colors"
-          >
-            <Plus className="h-4 w-4" /> New Goal
-          </button>
-        </div>
-      </header>
-
       <div className="px-4 py-4 sm:px-6">
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

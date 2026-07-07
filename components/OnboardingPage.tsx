@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import Image from 'next/image';
 import { Target, Flame, Briefcase, BookOpen, DollarSign, Heart, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { CATEGORY_COLORS, type Category } from '@/lib/types';
 import { useGoalStore } from '@/lib/store';
@@ -53,7 +54,7 @@ export default function OnboardingPage() {
       content: (
         <div className="flex flex-col items-center gap-6 py-4">
           <div className="h-24 w-24 rounded-full bg-[#D0EDDA] flex items-center justify-center">
-            <Target className="h-12 w-12 text-[#5DBC70]" />
+            <Image src="/logo-removebg-preview.png" alt="GoalTrack Logo" width={64} height={64} className="object-contain" />
           </div>
           <ul className="space-y-3 text-left w-full max-w-xs">
             {['Set goals with targets & deadlines', 'Log check-ins & track streaks', 'Get AI coaching & motivation'].map(t => (

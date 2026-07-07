@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bot, User as UserIcon, Send, X, Sparkles, ChevronRight } from 'lucide-react';
 import { type Goal } from '@/lib/types';
 import { getGoalProgress, getGoalStatus, getStreak } from '@/lib/types';
+import MarkdownText from '@/components/ui/MarkdownText';
 
 interface Message {
   id: number;
@@ -50,7 +51,16 @@ function buildGoalContext(goal: Goal): {
   const expectedProgress = totalDuration && totalDuration > 0 ? Math.min((elapsed / totalDuration) * 100, 100) : null;
   const isBehind = expectedProgress !== null && progress < expectedProgress - 15;
 
-  const systemPrompt = `You are an empathetic, practical goal coach. Be warm but concise — replies under 120 words unless asked for detail.
+  const systemPrompt = `You are an empathetic, practical goal coach. Be warm but concise — replies under 150 words unless asked for detail.
+
+FORMATTING: Make responses easy to scan.
+- Use **bold** for key numbers, goal names, and key actions.
+- Use *italic* for emotional emphasis.
+- Use bullet lists (- item) for tips, options, or multiple steps.
+- Use numbered lists (1. item) for ordered action plans.
+- Include emojis naturally: 🎯 goals, 💪 effort, 🔥 streaks, ✅ done, 📈 progress, ⚡ energy.
+- Keep paragraphs to 1-2 sentences before breaking into a list.
+
 
 GOAL: "${goal.title}" (${goal.category})
 PROGRESS: ${goal.currentValue} / ${goal.targetValue} ${goal.unit} (${progress.toFixed(0)}%)
@@ -178,14 +188,17 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
                   <Bot className="h-4 w-4 text-white" />
                 </div>
               )}
-              <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
+              <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl break-words ${
                 msg.type === 'user'
-                  ? 'bg-[#5DBC70] text-white rounded-br-sm'
+                  ? 'bg-[#5DBC70] text-white rounded-br-sm text-sm leading-relaxed'
                   : msg.isError
-                  ? 'bg-red-50 text-red-700 border border-red-100'
+                  ? 'bg-red-50 text-red-700 border border-red-100 text-sm leading-relaxed'
                   : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'
               }`}>
-                {msg.content}
+                {msg.type === 'user' || msg.isError
+                  ? <span className="whitespace-pre-wrap">{msg.content}</span>
+                  : <MarkdownText content={msg.content} />
+                }
               </div>
               {msg.type === 'user' && (
                 <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 mb-0.5">
