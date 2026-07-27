@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Pencil, TrendingUp, Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon } from 'lucide-react';
+import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Pencil, TrendingUp, Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon, CalendarDays } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import GoalChatPanel from './GoalChatPanel';
 import GoalForm from './GoalForm';
@@ -39,6 +39,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   const [showEdit, setShowEdit] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showShare, setShowShare] = useState(false);
+  const [expandedMilestone, setExpandedMilestone] = useState<number | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState('');
@@ -302,29 +303,82 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   onClick={() => setShowSubtasks(!showSubtasks)}
                   className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
                 >
-                  <span>Program ({goal.subtasks.filter(s => s.completed).length}/{goal.subtasks.length} done)</span>
+                  <span>🗺️ Milestones ({goal.subtasks.filter(s => s.completed).length}/{goal.subtasks.length} done)</span>
                   {showSubtasks ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                 </button>
                 {showSubtasks && (
                   <ul className="space-y-2">
-                    {goal.subtasks.map((s, i) => (
-                      <li
-                        key={i}
-                        onClick={() => onToggleSubtask(goal.id, i)}
-                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                          s.completed ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                        }`}
-                      >
-                        {s.completed
-                          ? <CheckCircle className="h-4 w-4 text-[#5DBC70] flex-shrink-0" />
-                          : <Circle className="h-4 w-4 text-gray-400 flex-shrink-0" />
-                        }
-                        <span className={`text-sm flex-1 ${s.completed ? 'line-through text-gray-400' : 'text-gray-700'}`}>{s.title}</span>
-                        {s.daysFromStart && (
-                          <span className="text-xs text-gray-400 flex-shrink-0">Day {s.daysFromStart}</span>
-                        )}
-                      </li>
-                    ))}
+                    {goal.subtasks.map((s, i) => {
+                      const isExpanded = expandedMilestone === i;
+                      const targetDate = goal.startDate
+                        ? new Date(new Date(goal.startDate).getTime() + s.daysFromStart * 86400000)
+                        : null;
+                      const dateStr = targetDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      return (
+                        <li
+                          key={i}
+                          className={`rounded-xl border overflow-hidden transition-all ${
+                            s.completed ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          {/* Row */}
+                          <div
+                            className="flex items-center gap-3 p-3 cursor-pointer"
+                            onClick={() => setExpandedMilestone(isExpanded ? null : i)}
+                          >
+                            <button
+                              onClick={e => { e.stopPropagation(); onToggleSubtask(goal.id, i); }}
+                              className="flex-shrink-0"
+                            >
+                              {s.completed
+                                ? <CheckCircle className="h-5 w-5 text-[#5DBC70]" />
+                                : <Circle className="h-5 w-5 text-gray-400 hover:text-[#5DBC70] transition-colors" />
+                              }
+                            </button>
+                            <span className={`text-sm flex-1 font-medium ${s.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                              {s.title}
+                            </span>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {dateStr && (
+                                <span className="text-xs text-gray-400 hidden sm:flex items-center gap-1">
+                                  <CalendarDays className="h-3 w-3" />{dateStr}
+                                </span>
+                              )}
+                              {isExpanded
+                                ? <ChevronUp className="h-4 w-4 text-gray-400" />
+                                : <ChevronDown className="h-4 w-4 text-gray-400" />
+                              }
+                            </div>
+                          </div>
+                          {/* Expanded detail */}
+                          {isExpanded && (
+                            <div className="px-4 pb-3 pt-0 space-y-2">
+                              {dateStr && (
+                                <div className="flex items-center gap-1.5 text-xs text-gray-500 sm:hidden">
+                                  <CalendarDays className="h-3 w-3" />
+                                  <span>Target: {dateStr} (Day {s.daysFromStart})</span>
+                                </div>
+                              )}
+                              {s.description && s.description !== s.title && (
+                                <p className="text-xs text-gray-600 leading-relaxed bg-white rounded-lg p-2.5 border border-gray-100">
+                                  {s.description}
+                                </p>
+                              )}
+                              <button
+                                onClick={e => { e.stopPropagation(); onToggleSubtask(goal.id, i); }}
+                                className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors ${
+                                  s.completed
+                                    ? 'bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600'
+                                    : 'bg-[#5DBC70] text-white hover:bg-[#4EAA5F]'
+                                }`}
+                              >
+                                {s.completed ? '↩ Mark Incomplete' : '✓ Mark Complete'}
+                              </button>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </div>

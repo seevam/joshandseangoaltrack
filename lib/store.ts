@@ -13,6 +13,8 @@ interface GoalStore {
 
   isChatOpen: boolean;
   setIsChatOpen: (v: boolean) => void;
+  chatSessionId: number;
+  openChat: () => void; // increments session so panel resets
 
   selectedGoal: Goal | null;
   setSelectedGoal: (goal: Goal | null) => void;
@@ -30,7 +32,10 @@ export const useGoalStore = create<GoalStore>((set) => ({
 
   isChatOpen: false,
   setIsChatOpen: (v) => set({ isChatOpen: v }),
+  chatSessionId: 0,
+  openChat: () => set(s => ({ isChatOpen: true, chatSessionId: s.chatSessionId + 1 })),
 
   selectedGoal: null,
   setSelectedGoal: (goal) => set({ selectedGoal: goal }),
 }));
+

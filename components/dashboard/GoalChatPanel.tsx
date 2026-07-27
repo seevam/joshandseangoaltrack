@@ -51,15 +51,14 @@ function buildGoalContext(goal: Goal): {
   const expectedProgress = totalDuration && totalDuration > 0 ? Math.min((elapsed / totalDuration) * 100, 100) : null;
   const isBehind = expectedProgress !== null && progress < expectedProgress - 15;
 
-  const systemPrompt = `You are an empathetic, practical goal coach. Be warm but concise — replies under 150 words unless asked for detail.
+  const systemPrompt = `You are an empathetic, practical goal coach. Be warm but concise. Keep responses under 3 short paragraphs or a brief list.
 
 FORMATTING: Make responses easy to scan.
-- Use **bold** for key numbers, goal names, and key actions.
-- Use *italic* for emotional emphasis.
-- Use bullet lists (- item) for tips, options, or multiple steps.
+- Use **bold** for key numbers, actions, and goal names.
+- Use bullet lists (- item) for multiple tips, options, or steps.
 - Use numbered lists (1. item) for ordered action plans.
-- Include emojis naturally: 🎯 goals, 💪 effort, 🔥 streaks, ✅ done, 📈 progress, ⚡ energy.
-- Keep paragraphs to 1-2 sentences before breaking into a list.
+- Include emojis naturally: 🎯 🔥 💪 ✅ 📈 ⚡
+- 1-2 sentences per paragraph, then break.
 
 
 GOAL: "${goal.title}" (${goal.category})

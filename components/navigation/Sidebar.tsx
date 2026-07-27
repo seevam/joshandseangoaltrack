@@ -8,7 +8,7 @@ import { useGoalStore } from '@/lib/store';
 
 export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) {
   const pathname = usePathname();
-  const setIsChatOpen = useGoalStore(s => s.setIsChatOpen);
+  const openChat = useGoalStore(s => s.openChat);
 
   const navItems = [
     { href: '/home',     label: 'Dashboard', icon: Home },
@@ -29,7 +29,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
       {/* New Goal button */}
       <div className="px-4 pt-5 pb-3">
         <button
-          onClick={() => setIsChatOpen(true)}
+          onClick={() => openChat()}
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white font-semibold rounded-xl transition-colors"
         >
           <Plus className="h-4 w-4" />
