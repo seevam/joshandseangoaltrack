@@ -20,7 +20,7 @@ const MILESTONE_BADGES = [
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
-  const { goals, setGoals, updateGoal, removeGoal, showAddGoal, setShowAddGoal, selectedGoal, setSelectedGoal, setIsChatOpen } = useGoalStore();
+  const { goals, setGoals, updateGoal, removeGoal, showAddGoal, setShowAddGoal, selectedGoal, setSelectedGoal, openChat } = useGoalStore();
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState('deadline');
@@ -279,7 +279,7 @@ export default function Dashboard() {
               <Target className="h-16 w-16 text-gray-200 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No goals yet</h3>
               <p className="text-sm text-gray-500 mb-4">Create your first goal to start tracking!</p>
-              <button onClick={() => setIsChatOpen(true)} className="inline-flex items-center gap-2 px-4 py-2 bg-[#5DBC70] text-white rounded-lg text-sm font-medium">
+              <button onClick={() => openChat()} className="inline-flex items-center gap-2 px-4 py-2 bg-[#5DBC70] text-white rounded-lg text-sm font-medium">
                 <Plus className="h-4 w-4" /> Create Goal
               </button>
             </div>
@@ -303,7 +303,7 @@ export default function Dashboard() {
                   onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
                   className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
                 >
-                  <div className={`h-2 ${cat.bg} rounded-t-xl`} />
+                  <div className="h-2 rounded-t-xl" style={{ backgroundColor: cat.hex }} />
                   <div className="p-4 sm:p-5">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0 mr-2">
@@ -319,11 +319,14 @@ export default function Dashboard() {
                     {/* Progress bar */}
                     <div className="space-y-1 mb-3">
                       <div className="flex justify-between text-xs text-gray-500">
-                        <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
+                        {(goal.subtasks || []).length > 0
+                          ? <span>{goal.subtasks.filter(s => s.completed).length} / {goal.subtasks.length} milestones</span>
+                          : <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
+                        }
                         <span>{progress.toFixed(0)}%</span>
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className={`h-full ${cat.bg} rounded-full transition-all`} style={{ width: `${progress}%` }} />
+                        <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: cat.hex }} />
                       </div>
                     </div>
 

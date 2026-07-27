@@ -50,11 +50,11 @@ export default function OnboardingPage() {
   const STEPS = [
     {
       title: `Welcome, ${user?.firstName || 'friend'}! 👋`,
-      subtitle: 'GoalTrack helps you set, track, and crush your goals with AI-powered coaching.',
+      subtitle: 'Goal Quest helps you set, track, and crush your goals with AI-powered coaching.',
       content: (
         <div className="flex flex-col items-center gap-6 py-4">
           <div className="h-24 w-24 rounded-full bg-[#D0EDDA] flex items-center justify-center">
-            <Image src="/logo-removebg-preview.png" alt="GoalTrack Logo" width={64} height={64} className="object-contain" />
+            <Image src="/logo-removebg-preview.png" alt="Goal Quest Logo" width={64} height={64} className="object-contain" />
           </div>
           <ul className="space-y-3 text-left w-full max-w-xs">
             {['Set goals with targets & deadlines', 'Log check-ins & track streaks', 'Get AI coaching & motivation'].map(t => (

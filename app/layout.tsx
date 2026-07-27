@@ -3,7 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Goal Tracker',
+  title: 'Goal Quest',
   description: 'Track your goals with AI coaching',
 };
 
