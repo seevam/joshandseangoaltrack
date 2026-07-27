@@ -23,8 +23,8 @@ export default function LandingPage() {
       {/* Nav */}
       <header className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2">
-          <Image src="/logo-removebg-preview.png" alt="GoalTrack Logo" width={36} height={36} className="object-contain" />
-          <span className="font-bold text-gray-900 text-lg">GoalTrack</span>
+          <Image src="/logo-removebg-preview.png" alt="Goal Quest Logo" width={36} height={36} className="object-contain" />
+          <span className="font-bold text-gray-900 text-lg">Goal Quest</span>
         </div>
         <div className="flex items-center gap-3">
           <Link href="/sign-in" className="text-sm font-medium text-gray-600 hover:text-gray-900">Sign in</Link>
@@ -104,7 +104,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-gray-400">
-        © {new Date().getFullYear()} GoalTrack. Built with Next.js, Clerk, and OpenAI.
+        © {new Date().getFullYear()} Goal Quest. Built with Next.js, Clerk, and OpenAI.
       </footer>
     </div>
   );

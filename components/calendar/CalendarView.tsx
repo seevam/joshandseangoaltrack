@@ -96,13 +96,13 @@ export default function CalendarView() {
     const lines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//GoalTracker//EN',
+      'PRODID:-//Goal Quest//EN',
       'CALSCALE:GREGORIAN',
     ];
     goals.forEach(g => {
       if (!g.endDate) return;
       const dt = g.endDate.replace(/-/g, '');
-      const uid = `goal-${g.id}@goaltracker`;
+      const uid = `goal-${g.id}@goalquest`;
       const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
       lines.push(
         'BEGIN:VEVENT',
