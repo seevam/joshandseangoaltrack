@@ -21,7 +21,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
       {/* Logo */}
       <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
         <Image src="/logo-removebg-preview.png" alt="Logo" width={36} height={36} className="object-contain" />
-        <span className="text-lg font-bold bg-gradient-to-r from-[#5DBC70] to-[#1F6B38] bg-clip-text text-transparent">
+        <span className="text-lg font-bold text-[#5DBC70]">
           Goal Quest
         </span>
       </div>

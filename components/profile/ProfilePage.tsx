@@ -14,10 +14,20 @@ export default function ProfilePage() {
   const [aiName, setAiName] = useState('My Assistant');
   const [aiNameInput, setAiNameInput] = useState('My Assistant');
   const [nameSaved, setNameSaved] = useState(false);
+  const [persona, setPersona] = useState<'energetic' | 'calm' | 'direct'>('calm');
+  const [personaSaved, setPersonaSaved] = useState(false);
+
+  const PERSONAS = [
+    { value: 'energetic' as const, emoji: '🔥', label: 'Energetic', desc: 'High-energy motivator' },
+    { value: 'calm'      as const, emoji: '🌊', label: 'Calm',      desc: 'Steady, supportive coach' },
+    { value: 'direct'    as const, emoji: '🎯', label: 'Direct',    desc: 'No-nonsense, action-focused' },
+  ];
 
   useEffect(() => {
     const stored = localStorage.getItem('ai_assistant_name');
     if (stored) { setAiName(stored); setAiNameInput(stored); }
+    const storedPersona = localStorage.getItem('ai_coach_persona') as 'energetic' | 'calm' | 'direct' | null;
+    if (storedPersona) setPersona(storedPersona);
   }, []);
 
   const exportCSV = () => {
@@ -51,6 +61,13 @@ export default function ProfilePage() {
     setAiName(name);
     setNameSaved(true);
     setTimeout(() => setNameSaved(false), 2000);
+  };
+
+  const savePersona = (p: 'energetic' | 'calm' | 'direct') => {
+    localStorage.setItem('ai_coach_persona', p);
+    setPersona(p);
+    setPersonaSaved(true);
+    setTimeout(() => setPersonaSaved(false), 2000);
   };
 
   const totalGoals = goals.length;
@@ -213,6 +230,32 @@ export default function ProfilePage() {
             </button>
           </div>
           <p className="text-xs text-gray-400">This name appears in the AI chat panel header.</p>
+        </div>
+
+        {/* Coach persona */}
+        <div className="space-y-2 mt-4 pt-4 border-t border-gray-100">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+            <Bot className="h-3.5 w-3.5 text-[#5DBC70]" /> Coach Personality
+          </label>
+          <div className="grid grid-cols-3 gap-2">
+            {PERSONAS.map(p => (
+              <button
+                key={p.value}
+                onClick={() => savePersona(p.value)}
+                className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${
+                  persona === p.value
+                    ? 'border-[#5DBC70] bg-[#D0EDDA]/40'
+                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                }`}
+              >
+                <span className="text-xl">{p.emoji}</span>
+                <span className={`text-xs font-semibold ${persona === p.value ? 'text-[#1F6B38]' : 'text-gray-700'}`}>{p.label}</span>
+                <span className="text-xs text-gray-400 text-center leading-tight">{p.desc}</span>
+              </button>
+            ))}
+          </div>
+          {personaSaved && <p className="text-xs text-[#5DBC70] font-medium">Persona saved!</p>}
+          <p className="text-xs text-gray-400">Changes how the AI coach communicates with you.</p>
         </div>
       </div>
 

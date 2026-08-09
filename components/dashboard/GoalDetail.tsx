@@ -40,6 +40,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   const [showHistory, setShowHistory] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(null);
+  const [animatingTasks, setAnimatingTasks] = useState<Set<number>>(new Set());
+  const [animatingMilestone, setAnimatingMilestone] = useState<number | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState('');
@@ -78,6 +80,23 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
       // best effort
     } finally {
       setShareLoading(false);
+    }
+  };
+
+  const handleLogTask = (goalId: string, taskId: number, value: boolean) => {
+    onLogTask(goalId, taskId, value);
+    if (value) {
+      setAnimatingTasks(prev => new Set(prev).add(taskId));
+      setTimeout(() => setAnimatingTasks(prev => { const n = new Set(prev); n.delete(taskId); return n; }), 400);
+    }
+  };
+
+  const handleToggleMilestone = (goalId: string, idx: number) => {
+    const wasCompleted = (goal.subtasks || [])[idx]?.completed;
+    onToggleSubtask(goalId, idx);
+    if (!wasCompleted) {
+      setAnimatingMilestone(idx);
+      setTimeout(() => setAnimatingMilestone(null), 400);
     }
   };
 
@@ -220,7 +239,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       const scheduledToday = !task.daysOfWeek || task.daysOfWeek.length === 0 || task.daysOfWeek.includes(todayDow);
                       const done = !!todayCompletions[task.id];
                       return (
-                        <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${
+                        <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${animatingTasks.has(task.id) ? 'task-complete-anim' : ''} ${
                           done ? 'bg-[#D0EDDA] border-[#5DBC70]/30' :
                           scheduledToday ? 'bg-gray-50 border-gray-200' :
                           'bg-gray-50/50 border-gray-100 opacity-60'
@@ -236,7 +255,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                           </div>
                           {scheduledToday ? (
                             <button
-                              onClick={() => onLogTask(goal.id, task.id, !done)}
+                              onClick={() => handleLogTask(goal.id, task.id, !done)}
                               className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
                                 done
                                   ? 'bg-[#5DBC70]/20 text-[#1F6B38]'
@@ -317,7 +336,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       return (
                         <li
                           key={i}
-                          className={`rounded-xl border overflow-hidden transition-all ${
+                          className={`rounded-xl border overflow-hidden transition-all ${animatingMilestone === i ? 'task-complete-anim' : ''} ${
                             s.completed ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200'
                           }`}
                         >
@@ -327,7 +346,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                             onClick={() => setExpandedMilestone(isExpanded ? null : i)}
                           >
                             <button
-                              onClick={e => { e.stopPropagation(); onToggleSubtask(goal.id, i); }}
+                              onClick={e => { e.stopPropagation(); handleToggleMilestone(goal.id, i); }}
                               className="flex-shrink-0"
                             >
                               {s.completed
@@ -365,7 +384,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                                 </p>
                               )}
                               <button
-                                onClick={e => { e.stopPropagation(); onToggleSubtask(goal.id, i); }}
+                                onClick={e => { e.stopPropagation(); handleToggleMilestone(goal.id, i); }}
                                 className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors ${
                                   s.completed
                                     ? 'bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600'

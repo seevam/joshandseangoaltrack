@@ -13,6 +13,7 @@ interface Message {
   content: string;
   timestamp: Date;
   isError?: boolean;
+  options?: { label: string; value: string }[];
 }
 
 const QUICK_ACTIONS = [
@@ -36,11 +37,14 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [showGoalCreated, setShowGoalCreated] = useState(false);
   const [assistantName, setAssistantName] = useState('My Assistant');
+  const [persona, setPersona] = useState<'energetic' | 'calm' | 'direct'>('calm');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const stored = localStorage.getItem('ai_assistant_name');
     if (stored) setAssistantName(stored);
+    const storedPersona = localStorage.getItem('ai_coach_persona') as 'energetic' | 'calm' | 'direct' | null;
+    if (storedPersona) setPersona(storedPersona);
   }, [isOpen]);
 
   // Reset chat whenever a new goal-creation session starts
@@ -90,40 +94,48 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
     const updatedHistory = [...history, { role: 'user', content }];
     const today = new Date().toISOString().split('T')[0];
 
-    const systemPrompt = `You are ${assistantName}, a sharp, friendly goal coach. Always call one of the two tools. Keep replies to 2-3 sentences max.
+    const personaStyle = persona === 'energetic'
+      ? 'You are enthusiastic and high-energy — use exclamation marks, energising emojis (🔥💪🚀), and motivational language.'
+      : persona === 'direct'
+      ? 'You are concise and no-nonsense — cut to the point, skip filler praise, give clear action steps.'
+      : 'You are calm and supportive — use steady, reassuring language, gentle encouragement, and a thoughtful tone.';
 
-CONVERSATION RULES:
-- Ask EXACTLY ONE question per message — never two.
-- Questions must be SPECIFIC to the exact goal type:
-  • Running/fitness: ask about current fitness level (e.g. "Can you run 5km comfortably?")
-  • Guitar/music: ask about current level (e.g. "Complete beginner or know some chords?")
-  • Reading: ask current reading pace (e.g. "How many books do you finish per month?")
-  • Language learning: ask current level
-  • Finance/savings: ask current monthly savings
-  • Career/skills: ask current skill level
-  • Other: ask the single most relevant specific detail for that goal
-- NEVER ask "why does this matter" or "what motivates you" — skip motivation entirely.
-- NEVER ask for a deadline — you calculate it yourself (see below).
-- After gathering the goal + ONE key detail (2 exchanges), call create_goal immediately.
-- If user is vague or says "I don't know", pick a reasonable assumption and create the goal.
+    const systemPrompt = `You are ${assistantName}, an expert goal coach. ${personaStyle}
+Always call one of the two tools. Keep replies to 2-3 sentences max.
 
-DEADLINE CALCULATION (never ask the user — infer from goal type):
-- Marathon training: 12 months
-- 5km/10km run: 3 months
-- Learn guitar (beginner): 6 months; (knows basics): 4 months
-- Read N books: max(30 * N / 2, 30) days (e.g. 10 books = 150 days)
-- Learn a language: 8 months
-- Lose/gain weight: 6 months
-- Save/finance goal: 12 months
-- Career/promotion/skill: 6 months
-- Default: 6 months from today (${today})
+EXPERT ROLE: Adopt the specific expert role based on the goal type:
+- Running/marathon/triathlon → elite running coach
+- Gym/strength/weight loss → certified personal trainer & nutritionist
+- Reading/books → learning & speed-reading coach
+- Guitar/music/instrument → music teacher
+- Language learning → language acquisition specialist
+- Finance/savings/investing → certified financial planner
+- Career/promotion/skills → executive career coach
+- Mental health/meditation → mindfulness & wellbeing coach
+- Other → general performance coach
 
-FORMATTING: Use **bold** for emphasis, bullet lists for options, emojis naturally. Keep it brief.
+CONVERSATION FLOW — ask these 3 questions in order before creating the goal. Provide A/B/C options for each:
+
+Q1 (Timeline): "What's your timeline?"
+  — provide 3 realistic options for the goal type (e.g. "**A)** 3 months **B)** 6 months **C)** 12 months")
+
+Q2 (Experience): "What's your current level/experience?"
+  — provide 3 options specific to the domain (e.g. "**A)** Complete beginner **B)** Some experience **C)** Intermediate")
+
+Q3 (Constraints): "Any constraints or limitations?"
+  — provide 3 relevant options (e.g. "**A)** No constraints **B)** Limited time (under 5h/week) **C)** Injury/health consideration")
+
+After Q3 (3 exchanges total), call create_goal immediately.
+If user is vague or picks an option label ("A", "B", or "C"), map it to the option you listed and proceed.
+NEVER ask for a deadline — use the timeline from Q1.
+NEVER ask "why does this matter" — skip motivation questions entirely.
+
+FORMATTING: Use **bold** for emphasis, emojis naturally. Format options as "**A)** ... **B)** ... **C)** ..." on separate lines.
 
 GOAL CREATION RULES (for create_goal):
-- Create 10-12 milestones spaced every 2-3 weeks — must be highly specific and measurable (NOT generic "Milestone 1")
+- Create 10-12 milestones spaced every 2-3 weeks — highly specific and measurable
 - Each milestone MUST include a 2-3 sentence description: practical action guide for that phase
-- Create 3-5 recurring tasks with exact amounts in the title (e.g. "Run 5km at easy pace", "Practice 20 chord transitions")
+- Create 3-5 recurring tasks with exact amounts in the title (e.g. "Run 5km at easy pace")
 - ALL tasks type="checkbox". Schedule logically (physical goals 3-5x/week, not daily).
 - daysFromStart MUST be ≤ total days from today to deadline. Space them evenly.
 Today: ${today}.
@@ -135,7 +147,25 @@ ${buildGoalsContext()}`;
         function: {
           name: 'respond',
           description: 'Send a coaching message, ask a clarifying question, give motivation.',
-          parameters: { type: 'object', properties: { message: { type: 'string' } }, required: ['message'] },
+          parameters: {
+            type: 'object',
+            properties: {
+              message: { type: 'string' },
+              options: {
+                type: 'array',
+                description: 'Up to 3 quick-reply chips (A/B/C). Include when asking a multiple-choice question.',
+                items: {
+                  type: 'object',
+                  properties: {
+                    label: { type: 'string', description: 'Short chip label (e.g. "3 months", "Beginner")' },
+                    value: { type: 'string', description: 'Full reply text sent when user taps this chip' },
+                  },
+                  required: ['label', 'value'],
+                },
+              },
+            },
+            required: ['message'],
+          },
         },
       },
       {
@@ -249,6 +279,12 @@ ${buildGoalsContext()}`;
         const args = JSON.parse(toolCall.function.arguments);
         aiText = args.message;
         setHistory([...updatedHistory, { role: 'assistant', content: args.message }]);
+        setMessages(prev => [...prev, {
+          id: Date.now() + 1, type: 'ai', content: aiText, timestamp: new Date(),
+          options: args.options || undefined,
+        }]);
+        setIsLoading(false);
+        return;
       } else {
         aiText = 'What goal would you like to work on?';
         setHistory(updatedHistory);
@@ -387,22 +423,43 @@ ${buildGoalsContext()}`;
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
           {messages.map(msg => (
             <div key={msg.id} className={`flex items-start gap-2 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
-              <div className={`h-8 w-8 rounded-full flex-shrink-0 flex items-center justify-center ${
+              {/* Avatar */}
+              <div className={`h-8 w-8 rounded-full flex-shrink-0 overflow-hidden flex items-center justify-center ${
                 msg.type === 'user' ? 'bg-[#5DBC70]' : msg.isError ? 'bg-red-100' : 'bg-[#5DBC70]'
               }`}>
-                {msg.type === 'user'
-                  ? <UserIcon className="h-5 w-5 text-white" />
-                  : <Bot className={`h-5 w-5 ${msg.isError ? 'text-red-600' : 'text-white'}`} />
-                }
+                {msg.type === 'user' ? (
+                  user?.imageUrl
+                    ? <img src={user.imageUrl} alt="avatar" className="h-full w-full object-cover" />
+                    : <UserIcon className="h-5 w-5 text-white" />
+                ) : (
+                  <Bot className={`h-5 w-5 ${msg.isError ? 'text-red-600' : 'text-white'}`} />
+                )}
               </div>
-              <div className={`max-w-[80%] p-3 rounded-2xl shadow-sm break-words ${
-                msg.type === 'user' ? 'bg-[#5DBC70] text-white ml-auto' :
-                msg.isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-white text-gray-800'
-              }`}>
-                {msg.type === 'user' || msg.isError
-                  ? <span className="text-sm whitespace-pre-wrap">{msg.content}</span>
-                  : <MarkdownText content={msg.content} />
-                }
+              <div className="flex flex-col gap-2 max-w-[80%]">
+                <div className={`p-3 rounded-2xl shadow-sm break-words ${
+                  msg.type === 'user' ? 'bg-[#5DBC70] text-white ml-auto' :
+                  msg.isError ? 'bg-red-50 text-red-800 border border-red-200' : 'bg-white text-gray-800'
+                }`}>
+                  {msg.type === 'user' || msg.isError
+                    ? <span className="text-sm whitespace-pre-wrap">{msg.content}</span>
+                    : <MarkdownText content={msg.content} />
+                  }
+                </div>
+                {/* A/B/C quick-reply chips */}
+                {msg.options && msg.options.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {msg.options.map((opt, i) => (
+                      <button
+                        key={i}
+                        onClick={() => send(opt.value)}
+                        disabled={isLoading}
+                        className="px-3 py-1.5 bg-white border border-[#5DBC70] text-[#1F6B38] rounded-full text-xs font-semibold hover:bg-[#D0EDDA] transition-colors disabled:opacity-40"
+                      >
+                        {String.fromCharCode(65 + i)}) {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
