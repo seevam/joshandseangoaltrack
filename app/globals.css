@@ -15,3 +15,14 @@ body {
 /* Hide scrollbar but keep scroll functionality */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Task completion pop animation */
+@keyframes task-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.06); }
+  70%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+.task-complete-anim {
+  animation: task-pop 0.35s ease-out;
+}
