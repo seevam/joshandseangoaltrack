@@ -11,10 +11,14 @@ export default function ProfilePage() {
   const { signOut } = useClerk();
   const goals = useGoalStore(s => s.goals);
 
-  const [aiName, setAiName] = useState('My Assistant');
-  const [aiNameInput, setAiNameInput] = useState('My Assistant');
+  const coachName = useGoalStore(s => s.coachName);
+  const persona = useGoalStore(s => s.coachPersona);
+  const setCoachName = useGoalStore(s => s.setCoachName);
+  const setCoachPersona = useGoalStore(s => s.setCoachPersona);
+  const hydrateCoachSettings = useGoalStore(s => s.hydrateCoachSettings);
+
+  const [aiNameInput, setAiNameInput] = useState(coachName);
   const [nameSaved, setNameSaved] = useState(false);
-  const [persona, setPersona] = useState<'energetic' | 'calm' | 'direct'>('calm');
   const [personaSaved, setPersonaSaved] = useState(false);
 
   const PERSONAS = [
@@ -23,12 +27,8 @@ export default function ProfilePage() {
     { value: 'direct'    as const, emoji: '🎯', label: 'Direct',    desc: 'No-nonsense, action-focused' },
   ];
 
-  useEffect(() => {
-    const stored = localStorage.getItem('ai_assistant_name');
-    if (stored) { setAiName(stored); setAiNameInput(stored); }
-    const storedPersona = localStorage.getItem('ai_coach_persona') as 'energetic' | 'calm' | 'direct' | null;
-    if (storedPersona) setPersona(storedPersona);
-  }, []);
+  useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
+  useEffect(() => { setAiNameInput(coachName); }, [coachName]);
 
   const exportCSV = () => {
     const headers = ['Title', 'Category', 'Progress (%)', 'Current', 'Target', 'Unit', 'Status', 'Start Date', 'End Date', 'Check-ins', 'Streak (days)'];
@@ -56,16 +56,13 @@ export default function ProfilePage() {
   };
 
   const saveAiName = () => {
-    const name = aiNameInput.trim() || 'My Assistant';
-    localStorage.setItem('ai_assistant_name', name);
-    setAiName(name);
+    setCoachName(aiNameInput);
     setNameSaved(true);
     setTimeout(() => setNameSaved(false), 2000);
   };
 
   const savePersona = (p: 'energetic' | 'calm' | 'direct') => {
-    localStorage.setItem('ai_coach_persona', p);
-    setPersona(p);
+    setCoachPersona(p);
     setPersonaSaved(true);
     setTimeout(() => setPersonaSaved(false), 2000);
   };

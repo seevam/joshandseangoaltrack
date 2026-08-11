@@ -16,11 +16,13 @@ interface Message {
   options?: { label: string; value: string }[];
 }
 
+// Starters must name a CONCRETE goal — a vague "I want to create a goal" leaves
+// the AI with nothing to work from and it will invent one.
 const QUICK_ACTIONS = [
-  { icon: Target,     label: 'Create a Goal',   action: 'I want to create a new goal' },
-  { icon: TrendingUp, label: 'Review Progress',  action: 'Review my goal progress' },
-  { icon: Lightbulb,  label: 'Get Motivated',    action: 'I need motivation to keep going' },
-  { icon: Award,      label: 'Celebrate a Win',  action: 'I want to celebrate an achievement' },
+  { icon: Target,     label: 'Get fit',        action: 'I want to get fit and build a consistent workout habit' },
+  { icon: TrendingUp, label: 'Review progress', action: 'Review my goal progress' },
+  { icon: Lightbulb,  label: 'Learn a skill',  action: 'I want to learn a new skill' },
+  { icon: Award,      label: 'Save money',     action: 'I want to save money' },
 ];
 
 export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -36,16 +38,12 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const [isMinimized, setIsMinimized] = useState(false);
   const [isIconOnly, setIsIconOnly] = useState(false);
   const [showGoalCreated, setShowGoalCreated] = useState(false);
-  const [assistantName, setAssistantName] = useState('My Assistant');
-  const [persona, setPersona] = useState<'energetic' | 'calm' | 'direct'>('calm');
+  const assistantName = useGoalStore(s => s.coachName);
+  const persona = useGoalStore(s => s.coachPersona);
+  const hydrateCoachSettings = useGoalStore(s => s.hydrateCoachSettings);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('ai_assistant_name');
-    if (stored) setAssistantName(stored);
-    const storedPersona = localStorage.getItem('ai_coach_persona') as 'energetic' | 'calm' | 'direct' | null;
-    if (storedPersona) setPersona(storedPersona);
-  }, [isOpen]);
+  useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
 
   // Reset chat whenever a new goal-creation session starts
   useEffect(() => {
@@ -114,7 +112,22 @@ EXPERT ROLE: Adopt the specific expert role based on the goal type:
 - Mental health/meditation → mindfulness & wellbeing coach
 - Other → general performance coach
 
-CONVERSATION FLOW — ask these 3 questions in order before creating the goal. Provide A/B/C options for each:
+CONVERSATION FLOW
+
+STEP 0 — ESTABLISH THE GOAL FIRST. This is mandatory.
+You must know WHAT the user is actually trying to achieve before anything else.
+- If the user's message is vague ("I want to create a goal", "help me", "I want to get fit",
+  "learn a skill", "save money"), your ONLY job is to ask what specifically they want to achieve,
+  with A/B/C examples relevant to what they hinted at.
+  e.g. for "get fit" → "**A)** Run a 5k **B)** Build strength in the gym **C)** Lose weight"
+  e.g. for "learn a skill" → "**A)** Play guitar **B)** Learn Spanish **C)** Learn to code"
+- NEVER invent or assume a goal the user did not state. NEVER name a goal for them.
+- Do NOT ask about timeline, experience, or constraints until the user has named a
+  specific, concrete goal. Asking "what's your timeline?" when you don't yet know the
+  goal is always wrong.
+
+Only once the goal is concrete, ask these 3 questions in order, one per message,
+each with A/B/C options:
 
 Q1 (Timeline): "What's your timeline?"
   — provide 3 realistic options for the goal type (e.g. "**A)** 3 months **B)** 6 months **C)** 12 months")
@@ -125,7 +138,7 @@ Q2 (Experience): "What's your current level/experience?"
 Q3 (Constraints): "Any constraints or limitations?"
   — provide 3 relevant options (e.g. "**A)** No constraints **B)** Limited time (under 5h/week) **C)** Injury/health consideration")
 
-After Q3 (3 exchanges total), call create_goal immediately.
+After Q3, call create_goal immediately — using the goal the USER named, never one you invented.
 If user is vague or picks an option label ("A", "B", or "C"), map it to the option you listed and proceed.
 NEVER ask for a deadline — use the timeline from Q1.
 NEVER ask "why does this matter" — skip motivation questions entirely.

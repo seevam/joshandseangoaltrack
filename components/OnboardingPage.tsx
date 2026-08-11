@@ -29,6 +29,7 @@ export default function OnboardingPage() {
   const { user } = useUser();
   const router = useRouter();
   const setShowAddGoal = useGoalStore(s => s.setShowAddGoal);
+  const setCoachPersona = useGoalStore(s => s.setCoachPersona);
 
   const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<Category[]>([]);
@@ -37,7 +38,7 @@ export default function OnboardingPage() {
 
   const choosePersona = (p: 'energetic' | 'calm' | 'direct') => {
     setPersona(p);
-    localStorage.setItem('ai_coach_persona', p);
+    setCoachPersona(p);
   };
 
   const toggleCat = (cat: Category) => {

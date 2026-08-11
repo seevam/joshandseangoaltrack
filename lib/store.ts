@@ -18,7 +18,16 @@ interface GoalStore {
 
   selectedGoal: Goal | null;
   setSelectedGoal: (goal: Goal | null) => void;
+
+  // AI coach settings — kept in the store so changes propagate instantly
+  coachName: string;
+  coachPersona: CoachPersona;
+  setCoachName: (name: string) => void;
+  setCoachPersona: (p: CoachPersona) => void;
+  hydrateCoachSettings: () => void;
 }
+
+export type CoachPersona = 'energetic' | 'calm' | 'direct';
 
 export const useGoalStore = create<GoalStore>((set) => ({
   goals: [],
@@ -37,5 +46,26 @@ export const useGoalStore = create<GoalStore>((set) => ({
 
   selectedGoal: null,
   setSelectedGoal: (goal) => set({ selectedGoal: goal }),
+
+  coachName: 'My Assistant',
+  coachPersona: 'calm',
+  setCoachName: (name) => {
+    const v = name.trim() || 'My Assistant';
+    if (typeof window !== 'undefined') localStorage.setItem('ai_assistant_name', v);
+    set({ coachName: v });
+  },
+  setCoachPersona: (p) => {
+    if (typeof window !== 'undefined') localStorage.setItem('ai_coach_persona', p);
+    set({ coachPersona: p });
+  },
+  hydrateCoachSettings: () => {
+    if (typeof window === 'undefined') return;
+    const name = localStorage.getItem('ai_assistant_name');
+    const persona = localStorage.getItem('ai_coach_persona') as CoachPersona | null;
+    set({
+      ...(name ? { coachName: name } : {}),
+      ...(persona ? { coachPersona: persona } : {}),
+    });
+  },
 }));
 
