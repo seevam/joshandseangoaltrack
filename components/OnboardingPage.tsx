@@ -7,6 +7,7 @@ import Image from 'next/image';
 import { Target, Flame, Briefcase, BookOpen, DollarSign, Heart, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { CATEGORY_COLORS, type Category } from '@/lib/types';
 import { useGoalStore } from '@/lib/store';
+import { IconTile } from '@/components/ui/icons';
 
 const CATEGORY_META: Record<Category, { icon: typeof Target; label: string; desc: string }> = {
   fitness:   { icon: Flame,     label: 'Fitness',    desc: 'Exercise, running, sports' },
@@ -20,9 +21,9 @@ const CATEGORY_META: Record<Category, { icon: typeof Target; label: string; desc
 const CATEGORIES = Object.keys(CATEGORY_META) as Category[];
 
 const MOTIVATION_LEVELS = [
-  { value: 'low', label: 'Low', emoji: '😴', desc: 'Just getting started' },
-  { value: 'medium', label: 'Medium', emoji: '💪', desc: 'Ready to put in work' },
-  { value: 'high', label: 'High', emoji: '🔥', desc: 'All in — let\'s go!' },
+  { value: 'low', label: 'Low', icon: 'moon', color: '#8A9B93', desc: 'Just getting started' },
+  { value: 'medium', label: 'Medium', icon: 'dumbbell', color: '#3B82F6', desc: 'Ready to put in work' },
+  { value: 'high', label: 'High', icon: 'flame', color: '#FB923C', desc: 'All in — let\'s go!' },
 ];
 
 export default function OnboardingPage() {
@@ -107,7 +108,7 @@ export default function OnboardingPage() {
       subtitle: 'We\'ll tailor your experience to your energy level.',
       content: (
         <div className="space-y-3 py-2">
-          {MOTIVATION_LEVELS.map(({ value, label, emoji, desc }) => (
+          {MOTIVATION_LEVELS.map(({ value, label, icon, color, desc }) => (
             <button
               key={value}
               onClick={() => setMotivation(value)}
@@ -115,7 +116,7 @@ export default function OnboardingPage() {
                 motivation === value ? 'border-[var(--brand)] bg-[var(--brand-light)]/30' : 'border-line bg-card'
               }`}
             >
-              <span className="text-3xl">{emoji}</span>
+              <IconTile name={icon} color={color} size="md" />
               <div>
                 <p className="font-semibold text-fg">{label}</p>
                 <p className="text-xs text-muted">{desc}</p>
@@ -132,10 +133,10 @@ export default function OnboardingPage() {
       content: (
         <div className="space-y-3 py-2">
           {[
-            { value: 'energetic' as const, emoji: '🔥', label: 'Energetic', desc: 'High-energy motivator, lots of hype' },
-            { value: 'calm'      as const, emoji: '🌊', label: 'Calm',      desc: 'Steady, supportive, reassuring' },
-            { value: 'direct'    as const, emoji: '🎯', label: 'Direct',    desc: 'No-nonsense, straight to the action' },
-          ].map(({ value, emoji, label, desc }) => (
+            { value: 'energetic' as const, icon: 'flame',  color: '#FB923C', label: 'Energetic', desc: 'High-energy motivator, lots of hype' },
+            { value: 'calm'      as const, icon: 'waves',  color: '#3B82F6', label: 'Calm',      desc: 'Steady, supportive, reassuring' },
+            { value: 'direct'    as const, icon: 'target', color: '#5DBC70', label: 'Direct',    desc: 'No-nonsense, straight to the action' },
+          ].map(({ value, icon, color, label, desc }) => (
             <button
               key={value}
               onClick={() => choosePersona(value)}
@@ -143,7 +144,7 @@ export default function OnboardingPage() {
                 persona === value ? 'border-[var(--brand)] bg-[var(--brand-light)]/30' : 'border-line bg-card'
               }`}
             >
-              <span className="text-3xl">{emoji}</span>
+              <IconTile name={icon} color={color} size="md" />
               <div>
                 <p className="font-semibold text-fg">{label}</p>
                 <p className="text-xs text-muted">{desc}</p>

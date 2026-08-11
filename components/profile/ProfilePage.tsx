@@ -2,8 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
-import { LogOut, Target, TrendingUp, Award, Flame, Trophy, Star, Settings, Bot, Save, Download } from 'lucide-react';
+import { LogOut, Settings, Bot, Save, Download } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
+import { IconTile, Icon, categoryIcon } from '@/components/ui/icons';
+import { XPBar, BadgeTile } from '@/components/ui/GameUI';
+import { computeStats, earnedBadges } from '@/lib/xp';
 import { getGoalProgress, getGoalStatus, getStreak, CATEGORY_COLORS } from '@/lib/types';
 
 export default function ProfilePage() {
@@ -22,9 +25,9 @@ export default function ProfilePage() {
   const [personaSaved, setPersonaSaved] = useState(false);
 
   const PERSONAS = [
-    { value: 'energetic' as const, emoji: '🔥', label: 'Energetic', desc: 'High-energy motivator' },
-    { value: 'calm'      as const, emoji: '🌊', label: 'Calm',      desc: 'Steady, supportive coach' },
-    { value: 'direct'    as const, emoji: '🎯', label: 'Direct',    desc: 'No-nonsense, action-focused' },
+    { value: 'energetic' as const, icon: 'flame',  color: '#FB923C', label: 'Energetic', desc: 'High-energy motivator' },
+    { value: 'calm'      as const, icon: 'waves',  color: '#3B82F6', label: 'Calm',      desc: 'Steady, supportive coach' },
+    { value: 'direct'    as const, icon: 'target', color: '#5DBC70', label: 'Direct',    desc: 'No-nonsense, action-focused' },
   ];
 
   useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
@@ -83,20 +86,14 @@ export default function ProfilePage() {
     }, {} as Record<string, number>)
   ).sort((a, b) => b[1] - a[1]);
 
-  const badges = [
-    { icon: Target, label: 'Goal Setter', earned: totalGoals >= 1, desc: 'Created your first goal' },
-    { icon: Flame, label: 'Consistent', earned: maxStreak >= 7, desc: '7-day streak' },
-    { icon: TrendingUp, label: 'Achiever', earned: completedGoals >= 1, desc: 'Completed a goal' },
-    { icon: Star, label: 'Dedicated', earned: totalCheckIns >= 10, desc: '10 check-ins' },
-    { icon: Award, label: 'Multi-Tasker', earned: activeGoals >= 3, desc: '3+ active goals' },
-    { icon: Trophy, label: 'Champion', earned: completedGoals >= 5, desc: 'Completed 5 goals' },
-  ];
+  const xpStats = computeStats(goals);
+  const badges = earnedBadges(xpStats, goals);
 
   const stats = [
-    { label: 'Total Goals', value: totalGoals, icon: Target, color: 'text-[var(--brand)]', bg: 'bg-[var(--brand-light)]' },
-    { label: 'Completed', value: completedGoals, icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { label: 'Check-ins', value: totalCheckIns, icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50' },
-    { label: 'Best Streak', value: `${maxStreak}d`, icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50' },
+    { label: 'Total Goals', value: totalGoals,        icon: 'target',   color: '#5DBC70' },
+    { label: 'Completed',   value: completedGoals,    icon: 'trophy',   color: '#FBBF24' },
+    { label: 'Check-ins',   value: totalCheckIns,     icon: 'trending', color: '#3B82F6' },
+    { label: 'Best Streak', value: `${maxStreak}d`,   icon: 'flame',    color: '#FB923C' },
   ];
 
   return (
@@ -126,11 +123,9 @@ export default function ProfilePage() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
-        {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-card rounded-2xl border border-line shadow-sm p-4 flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
-              <Icon className={`h-5 w-5 ${color}`} />
-            </div>
+        {stats.map(({ label, value, icon, color }) => (
+          <div key={label} className="bg-card rounded-2xl border border-line p-4 flex items-center gap-3">
+            <IconTile name={icon} color={color} size="md" />
             <div>
               <p className="text-xl font-bold text-fg">{value}</p>
               <p className="text-xs text-muted">{label}</p>
@@ -164,7 +159,10 @@ export default function ProfilePage() {
               const pct = Math.round((count / totalGoals) * 100);
               return (
                 <div key={cat} className="flex items-center gap-3">
-                  <span className="text-xs text-muted capitalize w-20">{cat}</span>
+                  <span className="flex items-center gap-1.5 text-xs text-muted capitalize w-24 flex-shrink-0">
+                    <Icon name={categoryIcon(cat)} className="h-3.5 w-3.5" style={{ color: c?.hex }} />
+                    {cat}
+                  </span>
                   <div className="flex-1 bg-elevated rounded-full h-2">
                     <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: c?.hex || 'var(--brand)' }} />
                   </div>
@@ -176,22 +174,22 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Badges */}
-      <div className="bg-card rounded-2xl border border-line shadow-sm p-4">
-        <h3 className="text-sm font-semibold text-fg mb-3">Badges</h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {badges.map(({ icon: Icon, label, earned, desc }) => (
-            <div key={label} className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-              earned ? 'border-[var(--brand)] bg-[var(--brand-light)]/30' : 'border-line bg-elevated opacity-50'
-            }`}>
-              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                earned ? 'bg-[var(--brand)]' : 'bg-line'
-              }`}>
-                <Icon className={`h-5 w-5 ${earned ? 'text-white' : 'text-muted'}`} />
-              </div>
-              <span className="text-xs font-semibold text-fg text-center leading-tight">{label}</span>
-              <span className="text-xs text-muted text-center leading-tight">{desc}</span>
-            </div>
+      {/* Rank & XP */}
+      <div className="bg-card rounded-2xl border border-line p-4">
+        <XPBar stats={xpStats} />
+      </div>
+
+      {/* Badges — same source of truth as the dashboard */}
+      <div className="bg-card rounded-2xl border border-line p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-fg">Badges</h3>
+          <span className="text-xs text-muted">
+            {badges.filter(b => b.isEarned).length} of {badges.length} unlocked
+          </span>
+        </div>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          {badges.map(b => (
+            <BadgeTile key={b.id} icon={b.icon} name={b.name} description={b.description} color={b.color} earned={b.isEarned} />
           ))}
         </div>
       </div>
@@ -245,7 +243,7 @@ export default function ProfilePage() {
                     : 'border-line bg-elevated hover:border-line'
                 }`}
               >
-                <span className="text-xl">{p.emoji}</span>
+                <IconTile name={p.icon} color={p.color} size="sm" muted={persona !== p.value} />
                 <span className={`text-xs font-semibold ${persona === p.value ? 'text-[var(--brand)]' : 'text-fg'}`}>{p.label}</span>
                 <span className="text-xs text-muted text-center leading-tight">{p.desc}</span>
               </button>

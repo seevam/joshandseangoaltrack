@@ -176,19 +176,19 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
 
         {/* Header */}
         <div className="flex-shrink-0 bg-[var(--brand)] px-4 py-4 flex items-center gap-3">
-          <button onClick={onClose} className="p-2 bg-card/20 hover:bg-card/30 rounded-xl transition-colors">
-            <X className="h-5 w-5 text-white" />
+          <button onClick={onClose} className="p-2 bg-black/15 hover:bg-black/25 rounded-xl transition-colors">
+            <X className="h-5 w-5 text-black" />
           </button>
-          <div className="h-9 w-9 rounded-full bg-card/20 flex items-center justify-center flex-shrink-0">
-            <Bot className="h-5 w-5 text-white" />
+          <div className="h-9 w-9 rounded-full bg-black/20 flex items-center justify-center flex-shrink-0">
+            <Bot className="h-5 w-5 text-black" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm truncate">{coachName}</p>
-            <p className="text-white/70 text-xs truncate">{goal.title}</p>
+            <p className="text-black font-semibold text-sm truncate">{coachName}</p>
+            <p className="text-black/60 text-xs truncate">{goal.title}</p>
           </div>
           <div className="flex-shrink-0 text-right">
-            <p className="text-white font-bold text-sm">{getGoalProgress(goal).toFixed(0)}%</p>
-            <p className="text-white/70 text-xs">complete</p>
+            <p className="text-black font-bold text-sm">{getGoalProgress(goal).toFixed(0)}%</p>
+            <p className="text-black/60 text-xs">complete</p>
           </div>
         </div>
 

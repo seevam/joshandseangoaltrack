@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Download, X } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS } from '@/lib/types';
+import { Icon } from '@/components/ui/icons';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
@@ -117,7 +118,7 @@ export default function CalendarView() {
         `DTSTAMP:${now}Z`,
         `DTSTART;VALUE=DATE:${dt}`,
         `DTEND;VALUE=DATE:${dt}`,
-        `SUMMARY:🎯 ${g.title}`,
+        `SUMMARY:${g.title}`,
         `DESCRIPTION:Goal: ${g.title}\\nCategory: ${g.category}`,
         'END:VEVENT',
       );
@@ -191,12 +192,14 @@ export default function CalendarView() {
 
             <div className="space-y-3 mb-5">
               {[
-                { app: '📅 Google Calendar', steps: 'calendar.google.com → ⚙️ Settings → Import & export → Import → select the .ics file' },
-                { app: '🍎 Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
-                { app: '📧 Outlook', steps: 'File → Open & Export → Import/Export → Import an iCalendar → select the .ics file' },
-              ].map(({ app, steps }) => (
+                { icon: 'calendar', app: 'Google Calendar', steps: 'calendar.google.com → Settings → Import & export → Import → select the .ics file' },
+                { icon: 'apple', app: 'Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
+                { icon: 'mail', app: 'Outlook', steps: 'File → Open & Export → Import/Export → Import an iCalendar → select the .ics file' },
+              ].map(({ icon, app, steps }) => (
                 <div key={app} className="bg-elevated rounded-xl p-3">
-                  <p className="text-xs font-semibold text-fg mb-0.5">{app}</p>
+                  <p className="text-xs font-semibold text-fg mb-0.5 flex items-center gap-1.5">
+                    <Icon name={icon} className="h-3.5 w-3.5 text-brand" />{app}
+                  </p>
                   <p className="text-xs text-muted leading-relaxed">{steps}</p>
                 </div>
               ))}
@@ -331,7 +334,7 @@ export default function CalendarView() {
                     <div className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-400" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-fg">{goal.title}</p>
-                      <p className="text-xs text-amber-600">Checked in ✓</p>
+                      <p className="text-xs text-amber-400 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Checked in</p>
                     </div>
                     <CheckCircle2 className="h-4 w-4 text-amber-500 flex-shrink-0" />
                   </div>

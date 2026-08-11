@@ -32,13 +32,14 @@ export function milestoneXp(difficulty?: string): number {
   return taskXp(difficulty) * 5;
 }
 
+/** `icon` is a key into the registry in components/ui/icons.tsx, not an emoji. */
 export const RANK_TIERS = [
-  { name: 'Novice',    minXp: 0,     icon: '🌱', color: '#8A9B93' },
-  { name: 'Apprentice', minXp: 500,  icon: '⚡', color: '#5DBC70' },
-  { name: 'Adept',     minXp: 1500,  icon: '🔥', color: '#3B82F6' },
-  { name: 'Expert',    minXp: 4000,  icon: '💎', color: '#7E3AF2' },
-  { name: 'Master',    minXp: 10000, icon: '👑', color: '#FBBF24' },
-  { name: 'Legend',    minXp: 25000, icon: '🏆', color: '#F87171' },
+  { name: 'Novice',     minXp: 0,     icon: 'sprout', color: '#8A9B93' },
+  { name: 'Apprentice', minXp: 500,   icon: 'zap',    color: '#5DBC70' },
+  { name: 'Adept',      minXp: 1500,  icon: 'flame',  color: '#3B82F6' },
+  { name: 'Expert',     minXp: 4000,  icon: 'gem',    color: '#7E3AF2' },
+  { name: 'Master',     minXp: 10000, icon: 'crown',  color: '#FBBF24' },
+  { name: 'Legend',     minXp: 25000, icon: 'trophy', color: '#F87171' },
 ];
 
 /** Each level costs 250 XP more than the last: 0, 250, 750, 1500, 2500 … */
@@ -157,23 +158,25 @@ export interface BadgeDef {
   id: string;
   name: string;
   icon: string;
+  color: string;
   description: string;
   earned: (s: UserStats, goals: Goal[]) => boolean;
 }
 
+/** `icon` is a key into the registry in components/ui/icons.tsx, not an emoji. */
 export const BADGES: BadgeDef[] = [
-  { id: 'first-goal',   name: 'Goal Setter',  icon: '🎯', description: 'Create your first goal',       earned: (_s, g) => g.length >= 1 },
-  { id: 'first-task',   name: 'First Step',   icon: '👟', description: 'Complete your first task',     earned: s => s.tasksCompleted >= 1 },
-  { id: 'streak-7',     name: 'Consistent',   icon: '🔥', description: 'Hit a 7-day streak',           earned: s => s.longestStreak >= 7 },
-  { id: 'streak-30',    name: 'Unstoppable',  icon: '⚡', description: 'Hit a 30-day streak',          earned: s => s.longestStreak >= 30 },
-  { id: 'milestone-10', name: 'Trailblazer',  icon: '🏁', description: 'Clear 10 milestones',          earned: s => s.milestonesCompleted >= 10 },
-  { id: 'tasks-50',     name: 'Grinder',      icon: '💪', description: 'Complete 50 tasks',            earned: s => s.tasksCompleted >= 50 },
-  { id: 'tasks-200',    name: 'Machine',      icon: '🤖', description: 'Complete 200 tasks',           earned: s => s.tasksCompleted >= 200 },
-  { id: 'goal-done',    name: 'Finisher',     icon: '🏆', description: 'Complete a goal',              earned: s => s.goalsCompleted >= 1 },
-  { id: 'goal-5',       name: 'Champion',     icon: '👑', description: 'Complete 5 goals',             earned: s => s.goalsCompleted >= 5 },
-  { id: 'level-10',     name: 'Veteran',      icon: '💎', description: 'Reach level 10',               earned: s => s.level >= 10 },
-  { id: 'multi',        name: 'Juggler',      icon: '🎪', description: 'Run 3 goals at once',          earned: (_s, g) => g.length >= 3 },
-  { id: 'xp-5000',      name: 'XP Hoarder',   icon: '⭐', description: 'Bank 5,000 XP',                earned: s => s.totalXp >= 5000 },
+  { id: 'first-goal',   name: 'Goal Setter', icon: 'target',     color: '#5DBC70', description: 'Create your first goal',   earned: (_s, g) => g.length >= 1 },
+  { id: 'first-task',   name: 'First Step',  icon: 'footprints', color: '#5DBC70', description: 'Complete your first task', earned: s => s.tasksCompleted >= 1 },
+  { id: 'streak-7',     name: 'Consistent',  icon: 'flame',      color: '#FB923C', description: 'Hit a 7-day streak',       earned: s => s.longestStreak >= 7 },
+  { id: 'streak-30',    name: 'Unstoppable', icon: 'zap',        color: '#FB923C', description: 'Hit a 30-day streak',      earned: s => s.longestStreak >= 30 },
+  { id: 'milestone-10', name: 'Trailblazer', icon: 'flag',       color: '#3B82F6', description: 'Clear 10 milestones',      earned: s => s.milestonesCompleted >= 10 },
+  { id: 'tasks-50',     name: 'Grinder',     icon: 'dumbbell',   color: '#3B82F6', description: 'Complete 50 tasks',        earned: s => s.tasksCompleted >= 50 },
+  { id: 'tasks-200',    name: 'Machine',     icon: 'cpu',        color: '#7E3AF2', description: 'Complete 200 tasks',       earned: s => s.tasksCompleted >= 200 },
+  { id: 'goal-done',    name: 'Finisher',    icon: 'trophy',     color: '#FBBF24', description: 'Complete a goal',          earned: s => s.goalsCompleted >= 1 },
+  { id: 'goal-5',       name: 'Champion',    icon: 'crown',      color: '#FBBF24', description: 'Complete 5 goals',         earned: s => s.goalsCompleted >= 5 },
+  { id: 'level-10',     name: 'Veteran',     icon: 'gem',        color: '#7E3AF2', description: 'Reach level 10',           earned: s => s.level >= 10 },
+  { id: 'multi',        name: 'Juggler',     icon: 'layers',     color: '#5DBC70', description: 'Run 3 goals at once',      earned: (_s, g) => g.length >= 3 },
+  { id: 'xp-5000',      name: 'XP Hoarder',  icon: 'star',       color: '#F87171', description: 'Bank 5,000 XP',            earned: s => s.totalXp >= 5000 },
 ];
 
 export function earnedBadges(stats: UserStats, goals: Goal[]) {

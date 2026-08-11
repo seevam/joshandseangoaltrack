@@ -10,6 +10,7 @@ import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import { computeStats, earnedBadges, taskXp, milestoneXp } from '@/lib/xp';
 import { XPBar, CategoryBadge, BadgeTile, DifficultyPill, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
+import { IconTile } from '@/components/ui/icons';
 import GoalDetail from './GoalDetail';
 
 
@@ -381,7 +382,7 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
             {badges.map(b => (
-              <BadgeTile key={b.id} icon={b.icon} name={b.name} description={b.description} earned={b.isEarned} compact />
+              <BadgeTile key={b.id} icon={b.icon} name={b.name} description={b.description} color={b.color} earned={b.isEarned} compact />
             ))}
           </div>
         </div>
@@ -547,7 +548,7 @@ export default function Dashboard() {
           <Confetti />
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[85] p-4 animate-fade-in">
             <div className="card-glow rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-pop-in">
-              <div className="text-6xl mb-4">🏆</div>
+              <IconTile name="trophy" color="#FBBF24" size="lg" className="mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-fg mb-2">Goal Complete!</h2>
               <p className="text-muted mb-1">{celebratingGoal.title}</p>
               <p className="text-brand font-semibold mb-6 flex items-center justify-center gap-1">
@@ -557,7 +558,7 @@ export default function Dashboard() {
                 onClick={() => setCelebratingGoal(null)}
                 className="px-6 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl font-semibold"
               >
-                Awesome! 🎉
+                Awesome!
               </button>
             </div>
           </div>
