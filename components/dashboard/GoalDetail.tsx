@@ -119,7 +119,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-40 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden">
+      <div className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden">
 
         {/* ── Header — never scrolls ─────────────────────────────── */}
         <div style={{ backgroundColor: cat.hex }} className="rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0">
@@ -130,10 +130,10 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               {goal.description && <p className="text-white/80 text-sm mt-1 line-clamp-2">{goal.description}</p>}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowEdit(true)} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg" title="Edit Goal">
+              <button onClick={() => setShowEdit(true)} className="p-2 bg-card/20 hover:bg-card/30 rounded-lg" title="Edit Goal">
                 <Pencil className="h-4 w-4" />
               </button>
-              <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
+              <button onClick={onClose} className="p-2 bg-card/20 hover:bg-card/30 rounded-lg">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -149,8 +149,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               </span>
               <span className="font-semibold">{progress.toFixed(0)}%</span>
             </div>
-            <div className="h-3 bg-white/30 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progress}%` }} />
+            <div className="h-3 bg-card/30 rounded-full overflow-hidden">
+              <div className="h-full bg-card rounded-full transition-all" style={{ width: `${progress}%` }} />
             </div>
           </div>
         </div>
@@ -162,14 +162,14 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* AI Coach card */}
             <button
               onClick={() => setShowChat(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 bg-[#D0EDDA] border border-[#5DBC70]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
+              className="w-full flex items-center gap-3 px-4 py-3.5 bg-[var(--brand-light)] border border-[var(--brand)]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
             >
-              <div className="h-10 w-10 rounded-full bg-[#5DBC70] flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 rounded-full bg-[var(--brand)] flex items-center justify-center flex-shrink-0">
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-[#1F6B38]">Talk to your AI Coach</p>
-                <p className="text-xs text-[#5DBC70] truncate">
+                <p className="text-sm font-semibold text-[var(--brand)]">Talk to your AI Coach</p>
+                <p className="text-xs text-[var(--brand)] truncate">
                   {status === 'completed' ? 'Celebrate and plan what\'s next 🏆' :
                    status === 'overdue' ? 'Get a recovery plan for this goal 💪' :
                    progress >= 75 ? 'You\'re almost there — finish strong! 🔥' :
@@ -177,26 +177,26 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                    'Get tips, motivation, and a plan'}
                 </p>
               </div>
-              <Sparkles className="h-5 w-5 text-[#5DBC70] flex-shrink-0" />
+              <Sparkles className="h-5 w-5 text-[var(--brand)] flex-shrink-0" />
             </button>
 
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-gray-50 rounded-xl p-3 text-center">
+              <div className="bg-elevated rounded-xl p-3 text-center">
                 <div className="text-lg font-bold text-orange-500 flex items-center justify-center gap-1">
                   <Flame className="h-4 w-4" /> {streak}
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Day Streak</p>
+                <p className="text-xs text-muted mt-0.5">Day Streak</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-3 text-center">
-                <div className="text-lg font-bold text-gray-800">{(goal.checkIns || []).length}</div>
-                <p className="text-xs text-gray-500 mt-0.5">Check-ins</p>
+              <div className="bg-elevated rounded-xl p-3 text-center">
+                <div className="text-lg font-bold text-fg">{(goal.checkIns || []).length}</div>
+                <p className="text-xs text-muted mt-0.5">Check-ins</p>
               </div>
-              <div className="bg-gray-50 rounded-xl p-3 text-center">
-                <div className={`text-lg font-bold ${daysLeft !== null && daysLeft < 0 ? 'text-red-500' : 'text-gray-800'}`}>
+              <div className="bg-elevated rounded-xl p-3 text-center">
+                <div className={`text-lg font-bold ${daysLeft !== null && daysLeft < 0 ? 'text-red-500' : 'text-fg'}`}>
                   {daysLeft !== null ? (daysLeft < 0 ? 'Overdue' : `${daysLeft}d`) : '∞'}
                 </div>
-                <p className="text-xs text-gray-500 mt-0.5">Remaining</p>
+                <p className="text-xs text-muted mt-0.5">Remaining</p>
               </div>
             </div>
 
@@ -206,8 +206,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               disabled={checkedToday}
               className={`w-full py-3 rounded-xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${
                 checkedToday
-                  ? 'bg-[#D0EDDA] text-[#1F6B38] cursor-default'
-                  : 'bg-[#5DBC70] hover:bg-[#4EAA5F] text-white'
+                  ? 'bg-[var(--brand-light)] text-[var(--brand)] cursor-default'
+                  : 'bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black'
               }`}
             >
               <CheckCircle className="h-4 w-4" />
@@ -219,18 +219,18 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               <div>
                 <button
                   onClick={() => setShowTasks(!showTasks)}
-                  className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
+                  className="flex items-center justify-between w-full text-sm font-semibold text-fg mb-2"
                 >
                   <span className="flex items-center gap-1.5">
-                    <RepeatIcon className="h-4 w-4 text-[#5DBC70]" />
+                    <RepeatIcon className="h-4 w-4 text-[var(--brand)]" />
                     Recurring Tasks
                     {todaysTasks.length > 0 && (
-                      <span className="text-xs font-normal text-gray-400 ml-1">
+                      <span className="text-xs font-normal text-muted ml-1">
                         · {todaysTasks.filter(t => !!todayCompletions[t.id]).length}/{todaysTasks.length} done today
                       </span>
                     )}
                   </span>
-                  {showTasks ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                  {showTasks ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
                 </button>
 
                 {showTasks && (
@@ -240,15 +240,15 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       const done = !!todayCompletions[task.id];
                       return (
                         <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${animatingTasks.has(task.id) ? 'task-complete-anim' : ''} ${
-                          done ? 'bg-[#D0EDDA] border-[#5DBC70]/30' :
-                          scheduledToday ? 'bg-gray-50 border-gray-200' :
-                          'bg-gray-50/50 border-gray-100 opacity-60'
+                          done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' :
+                          scheduledToday ? 'bg-elevated border-line' :
+                          'bg-elevated/50 border-line opacity-60'
                         }`}>
                           <div className="flex-1 min-w-0">
-                            <p className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                            <p className={`text-sm font-medium ${done ? 'line-through text-muted' : 'text-fg'}`}>
                               {task.title}
                             </p>
-                            <p className="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+                            <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
                               <RepeatIcon className="h-3 w-3" />
                               {formatSchedule(task.daysOfWeek)}
                             </p>
@@ -258,17 +258,17 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                               onClick={() => handleLogTask(goal.id, task.id, !done)}
                               className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
                                 done
-                                  ? 'bg-[#5DBC70]/20 text-[#1F6B38]'
-                                  : 'bg-[#5DBC70] text-white hover:bg-[#4EAA5F]'
+                                  ? 'bg-[var(--brand)]/20 text-[var(--brand)]'
+                                  : 'bg-[var(--brand)] text-black hover:bg-[var(--brand-dark)]'
                               }`}
                             >
                               {done ? '✓ Done' : 'Complete'}
                             </button>
                           ) : (
-                            <span className="text-xs text-gray-400 flex-shrink-0">Not today</span>
+                            <span className="text-xs text-muted flex-shrink-0">Not today</span>
                           )}
                           <button onClick={() => onRemoveDailyTask(goal.id, task.id)} className="flex-shrink-0">
-                            <X className="h-3.5 w-3.5 text-gray-300 hover:text-red-400" />
+                            <X className="h-3.5 w-3.5 text-muted hover:text-red-400" />
                           </button>
                         </div>
                       );
@@ -281,15 +281,15 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* Milestone badges */}
             {earnedBadges.length > 0 && (
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Milestone Badges</p>
+                <p className="text-sm font-semibold text-fg mb-2">Milestone Badges</p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {MILESTONE_BADGES.map(b => {
                     const earned = progress >= b.pct;
                     return (
-                      <div key={b.pct} className={`flex flex-col items-center p-2 rounded-xl ${earned ? 'bg-[#D0EDDA]' : 'bg-gray-100 opacity-40'}`}>
+                      <div key={b.pct} className={`flex flex-col items-center p-2 rounded-xl ${earned ? 'bg-[var(--brand-light)]' : 'bg-elevated opacity-40'}`}>
                         <span className="text-2xl">{b.emoji}</span>
-                        <span className="text-xs font-medium text-gray-600 mt-1 text-center leading-tight">{b.label}</span>
-                        <span className="text-xs text-gray-400">{b.pct}%</span>
+                        <span className="text-xs font-medium text-muted mt-1 text-center leading-tight">{b.label}</span>
+                        <span className="text-xs text-muted">{b.pct}%</span>
                       </div>
                     );
                   })}
@@ -302,13 +302,13 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               <div>
                 <button
                   onClick={() => setShowHistory(!showHistory)}
-                  className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
+                  className="flex items-center justify-between w-full text-sm font-semibold text-fg mb-2"
                 >
-                  <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-[#5DBC70]" /> Progress History</span>
-                  {showHistory ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                  <span className="flex items-center gap-1.5"><TrendingUp className="h-4 w-4 text-[var(--brand)]" /> Progress History</span>
+                  {showHistory ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
                 </button>
                 {showHistory && (
-                  <div className="bg-gray-50 rounded-xl p-3">
+                  <div className="bg-elevated rounded-xl p-3">
                     <Sparkline history={goal.progressHistory} target={goal.targetValue} color={cat.hex} />
                   </div>
                 )}
@@ -320,10 +320,10 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               <div>
                 <button
                   onClick={() => setShowSubtasks(!showSubtasks)}
-                  className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
+                  className="flex items-center justify-between w-full text-sm font-semibold text-fg mb-2"
                 >
                   <span>🗺️ Milestones ({goal.subtasks.filter(s => s.completed).length}/{goal.subtasks.length} done)</span>
-                  {showSubtasks ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                  {showSubtasks ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
                 </button>
                 {showSubtasks && (
                   <ul className="space-y-2">
@@ -337,7 +337,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                         <li
                           key={i}
                           className={`rounded-xl border overflow-hidden transition-all ${animatingMilestone === i ? 'task-complete-anim' : ''} ${
-                            s.completed ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200'
+                            s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line'
                           }`}
                         >
                           {/* Row */}
@@ -350,22 +350,22 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                               className="flex-shrink-0"
                             >
                               {s.completed
-                                ? <CheckCircle className="h-5 w-5 text-[#5DBC70]" />
-                                : <Circle className="h-5 w-5 text-gray-400 hover:text-[#5DBC70] transition-colors" />
+                                ? <CheckCircle className="h-5 w-5 text-[var(--brand)]" />
+                                : <Circle className="h-5 w-5 text-muted hover:text-[var(--brand)] transition-colors" />
                               }
                             </button>
-                            <span className={`text-sm flex-1 font-medium ${s.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                            <span className={`text-sm flex-1 font-medium ${s.completed ? 'line-through text-muted' : 'text-fg'}`}>
                               {s.title}
                             </span>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {dateStr && (
-                                <span className="text-xs text-gray-400 hidden sm:flex items-center gap-1">
+                                <span className="text-xs text-muted hidden sm:flex items-center gap-1">
                                   <CalendarDays className="h-3 w-3" />{dateStr}
                                 </span>
                               )}
                               {isExpanded
-                                ? <ChevronUp className="h-4 w-4 text-gray-400" />
-                                : <ChevronDown className="h-4 w-4 text-gray-400" />
+                                ? <ChevronUp className="h-4 w-4 text-muted" />
+                                : <ChevronDown className="h-4 w-4 text-muted" />
                               }
                             </div>
                           </div>
@@ -373,13 +373,13 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                           {isExpanded && (
                             <div className="px-4 pb-3 pt-0 space-y-2">
                               {dateStr && (
-                                <div className="flex items-center gap-1.5 text-xs text-gray-500 sm:hidden">
+                                <div className="flex items-center gap-1.5 text-xs text-muted sm:hidden">
                                   <CalendarDays className="h-3 w-3" />
                                   <span>Target: {dateStr} (Day {s.daysFromStart})</span>
                                 </div>
                               )}
                               {s.description && s.description !== s.title && (
-                                <p className="text-xs text-gray-600 leading-relaxed bg-white rounded-lg p-2.5 border border-gray-100">
+                                <p className="text-xs text-muted leading-relaxed bg-card rounded-lg p-2.5 border border-line">
                                   {s.description}
                                 </p>
                               )}
@@ -387,8 +387,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                                 onClick={e => { e.stopPropagation(); handleToggleMilestone(goal.id, i); }}
                                 className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors ${
                                   s.completed
-                                    ? 'bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600'
-                                    : 'bg-[#5DBC70] text-white hover:bg-[#4EAA5F]'
+                                    ? 'bg-elevated text-muted hover:bg-red-50 hover:text-red-600'
+                                    : 'bg-[var(--brand)] text-black hover:bg-[var(--brand-dark)]'
                                 }`}
                               >
                                 {s.completed ? '↩ Mark Incomplete' : '✓ Mark Complete'}
@@ -407,13 +407,13 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             <div>
               <button
                 onClick={() => setShowShare(!showShare)}
-                className="flex items-center justify-between w-full text-sm font-semibold text-gray-700 mb-2"
+                className="flex items-center justify-between w-full text-sm font-semibold text-fg mb-2"
               >
                 <span className="flex items-center gap-1.5">
-                  <Users className="h-4 w-4 text-[#5DBC70]" /> Accountability Partners
-                  {partners.length > 0 && <span className="ml-1 text-xs bg-[#5DBC70] text-white rounded-full px-1.5 py-0.5">{partners.length}</span>}
+                  <Users className="h-4 w-4 text-[var(--brand)]" /> Accountability Partners
+                  {partners.length > 0 && <span className="ml-1 text-xs bg-[var(--brand)] text-black rounded-full px-1.5 py-0.5">{partners.length}</span>}
                 </span>
-                {showShare ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                {showShare ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
               </button>
 
               {showShare && (
@@ -421,13 +421,13 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   {partners.length > 0 && (
                     <ul className="space-y-2">
                       {partners.map(email => (
-                        <li key={email} className="flex items-center justify-between gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                        <li key={email} className="flex items-center justify-between gap-2 bg-elevated rounded-xl px-3 py-2">
                           <div className="flex items-center gap-2">
-                            <Mail className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
-                            <span className="text-sm text-gray-700 truncate">{email}</span>
+                            <Mail className="h-3.5 w-3.5 text-muted flex-shrink-0" />
+                            <span className="text-sm text-fg truncate">{email}</span>
                           </div>
                           <button onClick={() => removePartner(email)} className="flex-shrink-0">
-                            <X className="h-4 w-4 text-gray-400 hover:text-red-500" />
+                            <X className="h-4 w-4 text-muted hover:text-red-500" />
                           </button>
                         </li>
                       ))}
@@ -440,18 +440,18 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       onChange={e => setShareEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addPartner()}
                       placeholder="Partner's email address"
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70]"
+                      className="flex-1 px-3 py-2 border border-line rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)]"
                     />
                     <button
                       onClick={addPartner}
                       disabled={shareLoading || !shareEmail.trim()}
-                      className="px-3 py-2 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-xl text-sm font-semibold flex items-center gap-1.5"
+                      className="px-3 py-2 bg-[var(--brand)] hover:bg-[var(--brand-dark)] disabled:bg-line text-black rounded-xl text-sm font-semibold flex items-center gap-1.5"
                     >
                       <UserPlus className="h-4 w-4" />
                     </button>
                   </div>
                   {shareError && <p className="text-xs text-red-500">{shareError}</p>}
-                  <p className="text-xs text-gray-400">Partners can view this goal's progress when they log in.</p>
+                  <p className="text-xs text-muted">Partners can view this goal's progress when they log in.</p>
                 </div>
               )}
             </div>

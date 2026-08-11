@@ -6,6 +6,8 @@ export interface Subtask {
   description?: string;
   daysFromStart: number;
   completed: boolean;
+  /** Assigned by the AI from task difficulty — drives XP. Never user-editable. */
+  difficulty?: 'easy' | 'medium' | 'hard' | 'epic';
 }
 
 export interface DailyTask {
@@ -15,6 +17,8 @@ export interface DailyTask {
   unit: string;
   type: 'number' | 'checkbox';
   daysOfWeek?: number[]; // 0=Sun … 6=Sat; empty/missing = every day
+  /** Assigned by the AI from task difficulty — drives XP. Never user-editable. */
+  difficulty?: 'easy' | 'medium' | 'hard' | 'epic';
 }
 
 export interface ProgressEntry {
@@ -45,13 +49,17 @@ export interface Goal {
   sharedWith: string[];
 }
 
+/**
+ * Dark-theme palette: `light` is a translucent tint of the hue that sits on the
+ * dark surface, `text` is the hue itself (already bright enough to read on it).
+ */
 export const CATEGORY_COLORS: Record<Category, { bg: string; light: string; text: string; hex: string }> = {
-  personal: { bg: 'bg-[#5DBC70]', light: 'bg-[#D0EDDA]', text: 'text-[#1F6B38]', hex: '#5DBC70' },
-  health:   { bg: 'bg-[#00CD4B]', light: 'bg-[#C3E8CE]', text: 'text-[#00A03E]', hex: '#00CD4B' },
-  career:   { bg: 'bg-[#7E3AF2]', light: 'bg-[#E9D5FF]', text: 'text-[#5B21B6]', hex: '#7E3AF2' },
-  finance:  { bg: 'bg-[#FBBF24]', light: 'bg-[#FEF3C7]', text: 'text-[#B45309]', hex: '#FBBF24' },
-  education:{ bg: 'bg-[#3B82F6]', light: 'bg-[#DBEAFE]', text: 'text-[#1E40AF]', hex: '#3B82F6' },
-  fitness:  { bg: 'bg-[#FF4B4B]', light: 'bg-[#FECACA]', text: 'text-[#DC2626]', hex: '#FF4B4B' },
+  personal: { bg: 'bg-[#5DBC70]', light: 'bg-[#5DBC70]/15', text: 'text-[#7FD394]', hex: '#5DBC70' },
+  health:   { bg: 'bg-[#00CD4B]', light: 'bg-[#00CD4B]/15', text: 'text-[#3BE07C]', hex: '#00CD4B' },
+  career:   { bg: 'bg-[#7E3AF2]', light: 'bg-[#7E3AF2]/15', text: 'text-[#A78BFA]', hex: '#7E3AF2' },
+  finance:  { bg: 'bg-[#FBBF24]', light: 'bg-[#FBBF24]/15', text: 'text-[#FCD34D]', hex: '#FBBF24' },
+  education:{ bg: 'bg-[#3B82F6]', light: 'bg-[#3B82F6]/15', text: 'text-[#93B4FC]', hex: '#3B82F6' },
+  fitness:  { bg: 'bg-[#FF4B4B]', light: 'bg-[#FF4B4B]/15', text: 'text-[#FF8080]', hex: '#FF4B4B' },
 };
 
 export function getGoalProgress(goal: Goal): number {

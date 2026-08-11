@@ -9,10 +9,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: '#5DBC70',
-        'brand-dark': '#4EAA5F',
-        'brand-light': '#D0EDDA',
-        surface: '#F0F0F0',
+        // Semantic tokens — all resolve to the CSS vars in globals.css so the
+        // whole app can be re-themed from one place.
+        bg: 'var(--bg)',
+        card: 'var(--card)',
+        elevated: 'var(--elevated)',
+        line: 'var(--line)',
+        fg: 'var(--fg)',
+        muted: 'var(--muted)',
+        brand: 'var(--brand)',
+        'brand-dark': 'var(--brand-dark)',
+        'brand-light': 'var(--brand-light)',
       },
     },
   },

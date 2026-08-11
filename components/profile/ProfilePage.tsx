@@ -93,7 +93,7 @@ export default function ProfilePage() {
   ];
 
   const stats = [
-    { label: 'Total Goals', value: totalGoals, icon: Target, color: 'text-[#5DBC70]', bg: 'bg-[#D0EDDA]' },
+    { label: 'Total Goals', value: totalGoals, icon: Target, color: 'text-[var(--brand)]', bg: 'bg-[var(--brand-light)]' },
     { label: 'Completed', value: completedGoals, icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-50' },
     { label: 'Check-ins', value: totalCheckIns, icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50' },
     { label: 'Best Streak', value: `${maxStreak}d`, icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50' },
@@ -102,24 +102,24 @@ export default function ProfilePage() {
   return (
     <div className="max-w-lg mx-auto px-4 py-6 space-y-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 6rem)' }}>
       {/* Profile card */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex items-center gap-4">
+      <div className="bg-card rounded-2xl shadow-sm border border-line p-6 flex items-center gap-4">
         {user?.imageUrl ? (
           <img src={user.imageUrl} alt="Avatar" className="h-16 w-16 rounded-full object-cover" />
         ) : (
-          <div className="h-16 w-16 rounded-full bg-[#D0EDDA] flex items-center justify-center text-2xl font-bold text-[#5DBC70]">
+          <div className="h-16 w-16 rounded-full bg-[var(--brand-light)] flex items-center justify-center text-2xl font-bold text-[var(--brand)]">
             {(user?.firstName?.[0] || user?.username?.[0] || '?').toUpperCase()}
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold text-gray-900 truncate">
+          <h2 className="text-xl font-bold text-fg truncate">
             {user?.fullName || user?.username || 'User'}
           </h2>
-          <p className="text-sm text-gray-500 truncate">
+          <p className="text-sm text-muted truncate">
             {user?.primaryEmailAddress?.emailAddress}
           </p>
           <div className="mt-1 flex items-center gap-1.5">
-            <div className="h-2 w-2 rounded-full bg-[#5DBC70]" />
-            <span className="text-xs text-gray-500">{activeGoals} active goal{activeGoals !== 1 ? 's' : ''}</span>
+            <div className="h-2 w-2 rounded-full bg-[var(--brand)]" />
+            <span className="text-xs text-muted">{activeGoals} active goal{activeGoals !== 1 ? 's' : ''}</span>
           </div>
         </div>
       </div>
@@ -127,48 +127,48 @@ export default function ProfilePage() {
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3">
         {stats.map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3">
+          <div key={label} className="bg-card rounded-2xl border border-line shadow-sm p-4 flex items-center gap-3">
             <div className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
               <Icon className={`h-5 w-5 ${color}`} />
             </div>
             <div>
-              <p className="text-xl font-bold text-gray-900">{value}</p>
-              <p className="text-xs text-gray-500">{label}</p>
+              <p className="text-xl font-bold text-fg">{value}</p>
+              <p className="text-xs text-muted">{label}</p>
             </div>
           </div>
         ))}
       </div>
 
       {/* Progress overview */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <h3 className="text-sm font-semibold text-gray-800 mb-3">Overall Progress</h3>
+      <div className="bg-card rounded-2xl border border-line shadow-sm p-4">
+        <h3 className="text-sm font-semibold text-fg mb-3">Overall Progress</h3>
         <div className="flex items-center gap-3">
-          <div className="flex-1 bg-gray-100 rounded-full h-3">
+          <div className="flex-1 bg-elevated rounded-full h-3">
             <div
-              className="h-3 rounded-full bg-[#5DBC70] transition-all"
+              className="h-3 rounded-full bg-[var(--brand)] transition-all"
               style={{ width: `${avgProgress}%` }}
             />
           </div>
-          <span className="text-sm font-bold text-[#5DBC70] w-10 text-right">{avgProgress}%</span>
+          <span className="text-sm font-bold text-[var(--brand)] w-10 text-right">{avgProgress}%</span>
         </div>
-        <p className="text-xs text-gray-400 mt-1">Average across all goals</p>
+        <p className="text-xs text-muted mt-1">Average across all goals</p>
       </div>
 
       {/* Category breakdown */}
       {categoryBreakdown.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">Goal Categories</h3>
+        <div className="bg-card rounded-2xl border border-line shadow-sm p-4">
+          <h3 className="text-sm font-semibold text-fg mb-3">Goal Categories</h3>
           <div className="space-y-2">
             {categoryBreakdown.map(([cat, count]) => {
               const c = CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS];
               const pct = Math.round((count / totalGoals) * 100);
               return (
                 <div key={cat} className="flex items-center gap-3">
-                  <span className="text-xs text-gray-600 capitalize w-20">{cat}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-2">
-                    <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: c?.hex || '#5DBC70' }} />
+                  <span className="text-xs text-muted capitalize w-20">{cat}</span>
+                  <div className="flex-1 bg-elevated rounded-full h-2">
+                    <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: c?.hex || 'var(--brand)' }} />
                   </div>
-                  <span className="text-xs text-gray-400 w-8 text-right">{count}</span>
+                  <span className="text-xs text-muted w-8 text-right">{count}</span>
                 </div>
               );
             })}
@@ -177,36 +177,36 @@ export default function ProfilePage() {
       )}
 
       {/* Badges */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-        <h3 className="text-sm font-semibold text-gray-800 mb-3">Badges</h3>
+      <div className="bg-card rounded-2xl border border-line shadow-sm p-4">
+        <h3 className="text-sm font-semibold text-fg mb-3">Badges</h3>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {badges.map(({ icon: Icon, label, earned, desc }) => (
             <div key={label} className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all ${
-              earned ? 'border-[#5DBC70] bg-[#D0EDDA]/30' : 'border-gray-100 bg-gray-50 opacity-50'
+              earned ? 'border-[var(--brand)] bg-[var(--brand-light)]/30' : 'border-line bg-elevated opacity-50'
             }`}>
               <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                earned ? 'bg-[#5DBC70]' : 'bg-gray-200'
+                earned ? 'bg-[var(--brand)]' : 'bg-line'
               }`}>
-                <Icon className={`h-5 w-5 ${earned ? 'text-white' : 'text-gray-400'}`} />
+                <Icon className={`h-5 w-5 ${earned ? 'text-white' : 'text-muted'}`} />
               </div>
-              <span className="text-xs font-semibold text-gray-700 text-center leading-tight">{label}</span>
-              <span className="text-xs text-gray-400 text-center leading-tight">{desc}</span>
+              <span className="text-xs font-semibold text-fg text-center leading-tight">{label}</span>
+              <span className="text-xs text-muted text-center leading-tight">{desc}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Settings */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+      <div className="bg-card rounded-2xl border border-line shadow-sm p-4">
         <div className="flex items-center gap-2 mb-4">
-          <Settings className="h-4 w-4 text-gray-500" />
-          <h3 className="text-sm font-semibold text-gray-800">Settings</h3>
+          <Settings className="h-4 w-4 text-muted" />
+          <h3 className="text-sm font-semibold text-fg">Settings</h3>
         </div>
 
         {/* AI Assistant name */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
-            <Bot className="h-3.5 w-3.5 text-[#5DBC70]" /> AI Coach Name
+          <label className="flex items-center gap-2 text-xs font-medium text-muted">
+            <Bot className="h-3.5 w-3.5 text-[var(--brand)]" /> AI Coach Name
           </label>
           <div className="flex gap-2">
             <input
@@ -214,25 +214,25 @@ export default function ProfilePage() {
               onChange={e => setAiNameInput(e.target.value)}
               placeholder="My Assistant"
               maxLength={30}
-              className="flex-1 px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70]"
+              className="flex-1 px-3 py-2 border border-line rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)]"
             />
             <button
               onClick={saveAiName}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-                nameSaved ? 'bg-[#D0EDDA] text-[#1F6B38]' : 'bg-[#5DBC70] hover:bg-[#4EAA5F] text-white'
+                nameSaved ? 'bg-[var(--brand-light)] text-[var(--brand)]' : 'bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black'
               }`}
             >
               <Save className="h-3.5 w-3.5" />
               {nameSaved ? 'Saved!' : 'Save'}
             </button>
           </div>
-          <p className="text-xs text-gray-400">This name appears in the AI chat panel header.</p>
+          <p className="text-xs text-muted">This name appears in the AI chat panel header.</p>
         </div>
 
         {/* Coach persona */}
-        <div className="space-y-2 mt-4 pt-4 border-t border-gray-100">
-          <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
-            <Bot className="h-3.5 w-3.5 text-[#5DBC70]" /> Coach Personality
+        <div className="space-y-2 mt-4 pt-4 border-t border-line">
+          <label className="flex items-center gap-2 text-xs font-medium text-muted">
+            <Bot className="h-3.5 w-3.5 text-[var(--brand)]" /> Coach Personality
           </label>
           <div className="grid grid-cols-3 gap-2">
             {PERSONAS.map(p => (
@@ -241,18 +241,18 @@ export default function ProfilePage() {
                 onClick={() => savePersona(p.value)}
                 className={`flex flex-col items-center gap-1 p-3 rounded-xl border-2 transition-all ${
                   persona === p.value
-                    ? 'border-[#5DBC70] bg-[#D0EDDA]/40'
-                    : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                    ? 'border-[var(--brand)] bg-[var(--brand-light)]/40'
+                    : 'border-line bg-elevated hover:border-line'
                 }`}
               >
                 <span className="text-xl">{p.emoji}</span>
-                <span className={`text-xs font-semibold ${persona === p.value ? 'text-[#1F6B38]' : 'text-gray-700'}`}>{p.label}</span>
-                <span className="text-xs text-gray-400 text-center leading-tight">{p.desc}</span>
+                <span className={`text-xs font-semibold ${persona === p.value ? 'text-[var(--brand)]' : 'text-fg'}`}>{p.label}</span>
+                <span className="text-xs text-muted text-center leading-tight">{p.desc}</span>
               </button>
             ))}
           </div>
-          {personaSaved && <p className="text-xs text-[#5DBC70] font-medium">Persona saved!</p>}
-          <p className="text-xs text-gray-400">Changes how the AI coach communicates with you.</p>
+          {personaSaved && <p className="text-xs text-[var(--brand)] font-medium">Persona saved!</p>}
+          <p className="text-xs text-muted">Changes how the AI coach communicates with you.</p>
         </div>
       </div>
 
@@ -260,7 +260,7 @@ export default function ProfilePage() {
       {goals.length > 0 && (
         <button
           onClick={exportCSV}
-          className="w-full py-3 border border-gray-200 text-gray-600 rounded-xl font-semibold text-sm hover:bg-gray-50 flex items-center justify-center gap-2 transition-colors"
+          className="w-full py-3 border border-line text-muted rounded-xl font-semibold text-sm hover:bg-elevated flex items-center justify-center gap-2 transition-colors"
         >
           <Download className="h-4 w-4" />
           Export Goals as CSV

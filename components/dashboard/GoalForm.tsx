@@ -129,12 +129,12 @@ export default function GoalForm({ onClose, editGoal }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-bold text-gray-900">{isEditing ? 'Edit Goal' : 'Create New Goal'}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-            <X className="h-5 w-5 text-gray-500" />
+        <div className="sticky top-0 bg-card border-b border-line px-5 py-4 flex items-center justify-between z-10">
+          <h2 className="text-lg font-bold text-fg">{isEditing ? 'Edit Goal' : 'Create New Goal'}</h2>
+          <button onClick={onClose} className="p-2 hover:bg-elevated rounded-lg">
+            <X className="h-5 w-5 text-muted" />
           </button>
         </div>
 
@@ -148,7 +148,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
                   key={cat} type="button"
                   onClick={() => setForm(f => ({ ...f, category: cat }))}
                   className={`py-2 px-3 rounded-xl text-xs font-medium border-2 transition-all ${
-                    form.category === cat ? `${c.light} ${c.text} border-transparent` : 'bg-white border-gray-200 text-gray-600'
+                    form.category === cat ? `${c.light} ${c.text} border-transparent` : 'bg-card border-line text-muted'
                   }`}
                 >
                   {cat.charAt(0).toUpperCase() + cat.slice(1)}
@@ -159,12 +159,12 @@ export default function GoalForm({ onClose, editGoal }: Props) {
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Goal Title *</label>
+            <label className="block text-sm font-medium text-fg mb-1">Goal Title *</label>
             <input
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               placeholder={tpl.placeholder}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
+              className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
               required
             />
           </div>
@@ -172,22 +172,22 @@ export default function GoalForm({ onClose, editGoal }: Props) {
           {/* Target + Unit */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Target *</label>
+              <label className="block text-sm font-medium text-fg mb-1">Target *</label>
               <input
                 type="number" value={form.targetValue}
                 onChange={e => setForm(f => ({ ...f, targetValue: e.target.value }))}
                 placeholder={tpl.target}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
+                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
                 required
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+              <label className="block text-sm font-medium text-fg mb-1">Unit</label>
               <input
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
                 placeholder={tpl.unit}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
+                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
               />
             </div>
           </div>
@@ -195,45 +195,45 @@ export default function GoalForm({ onClose, editGoal }: Props) {
           {/* Dates */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+              <label className="block text-sm font-medium text-fg mb-1">Start Date</label>
               <input
                 type="date" value={form.startDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
+                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+              <label className="block text-sm font-medium text-fg mb-1">End Date</label>
               <input
                 type="date" value={form.endDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm"
+                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
               />
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-fg mb-1">Description</label>
             <textarea
               value={form.description}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               placeholder="Why is this goal important to you?"
               rows={2}
-              className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] text-sm resize-none"
+              className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm resize-none"
             />
           </div>
 
           {/* AI Subtasks */}
-          <div className="bg-[#D0EDDA] rounded-xl p-4">
+          <div className="bg-[var(--brand-light)] rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[#5DBC70]" />
-                <span className="text-sm font-semibold text-[#1F6B38]">AI-Powered Sub-tasks</span>
+                <Sparkles className="h-4 w-4 text-[var(--brand)]" />
+                <span className="text-sm font-semibold text-[var(--brand)]">AI-Powered Sub-tasks</span>
               </div>
               <button
                 type="button" onClick={generateSubtasks} disabled={isGenerating || !form.title}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-lg text-xs font-medium transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] disabled:bg-line text-black rounded-lg text-xs font-medium transition-colors"
               >
                 <Sparkles className="h-3.5 w-3.5" />
                 {isGenerating ? 'Generating…' : subtasks.length > 0 ? 'Regenerate' : 'Generate'}
@@ -242,10 +242,10 @@ export default function GoalForm({ onClose, editGoal }: Props) {
             {subtasks.length > 0 && (
               <ul className="space-y-1.5 mt-3">
                 {subtasks.map((s, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 bg-white/70 rounded-lg px-3 py-2 text-xs text-gray-700">
+                  <li key={i} className="flex items-center justify-between gap-2 bg-card/70 rounded-lg px-3 py-2 text-xs text-fg">
                     <span className="truncate">{s.title}</span>
                     <button type="button" onClick={() => setSubtasks(prev => prev.filter((_, idx) => idx !== i))}>
-                      <X className="h-3.5 w-3.5 text-gray-400 hover:text-red-500" />
+                      <X className="h-3.5 w-3.5 text-muted hover:text-red-500" />
                     </button>
                   </li>
                 ))}
@@ -259,13 +259,13 @@ export default function GoalForm({ onClose, editGoal }: Props) {
           <div className="flex gap-3 pt-2">
             <button
               type="button" onClick={onClose}
-              className="flex-1 py-3 border border-gray-300 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 text-sm"
+              className="flex-1 py-3 border border-line text-muted rounded-xl font-semibold hover:bg-elevated text-sm"
             >
               Cancel
             </button>
             <button
               type="submit" disabled={isSaving || !form.title || !form.targetValue}
-              className="flex-1 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-300 text-white rounded-xl font-semibold text-sm transition-colors"
+              className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] disabled:bg-line text-black rounded-xl font-semibold text-sm transition-colors"
             >
               {isSaving ? (isEditing ? 'Saving…' : 'Creating…') : (isEditing ? 'Save Changes' : 'Create Goal')}
             </button>

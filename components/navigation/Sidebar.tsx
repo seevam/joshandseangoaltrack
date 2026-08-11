@@ -8,7 +8,7 @@ import { useGoalStore } from '@/lib/store';
 
 export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) {
   const pathname = usePathname();
-  const openChat = useGoalStore(s => s.openChat);
+  const setShowCreateGoal = useGoalStore(s => s.setShowCreateGoal);
 
   const navItems = [
     { href: '/home',     label: 'Dashboard', icon: Home },
@@ -17,11 +17,11 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
   ];
 
   return (
-    <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 bg-white border-r border-gray-200 z-30">
+    <aside className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 bg-card border-r border-line z-30">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+      <div className="flex items-center gap-3 px-6 py-5 border-b border-line">
         <Image src="/logo-removebg-preview.png" alt="Logo" width={36} height={36} className="object-contain" />
-        <span className="text-lg font-bold text-[#5DBC70]">
+        <span className="text-lg font-bold text-[var(--brand)]">
           Goal Quest
         </span>
       </div>
@@ -29,8 +29,8 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
       {/* New Goal button */}
       <div className="px-4 pt-5 pb-3">
         <button
-          onClick={() => openChat()}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white font-semibold rounded-xl transition-colors"
+          onClick={() => setShowCreateGoal(true)}
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black font-semibold rounded-xl transition-colors"
         >
           <Plus className="h-4 w-4" />
           New Goal
@@ -46,7 +46,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
               key={item.href}
               href={item.href}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                active ? 'bg-[#D0EDDA] text-[#1F6B38]' : 'text-gray-600 hover:bg-gray-100'
+                active ? 'bg-[var(--brand-light)] text-[var(--brand)]' : 'text-muted hover:bg-elevated'
               }`}
             >
               <item.icon className="h-5 w-5 flex-shrink-0" />
@@ -57,7 +57,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
 
         <button
           onClick={onToggleChat}
-          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted hover:bg-elevated transition-colors"
         >
           <MessageCircle className="h-5 w-5 flex-shrink-0" />
           AI Coach

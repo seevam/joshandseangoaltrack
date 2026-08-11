@@ -148,24 +148,24 @@ export default function CalendarView() {
     <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
+        <h1 className="text-2xl font-bold text-fg">Calendar</h1>
         <div className="flex items-center gap-2">
           {/* Month nav */}
-          <button onClick={prev} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ChevronLeft className="h-5 w-5 text-gray-600" />
+          <button onClick={prev} className="p-2 hover:bg-elevated rounded-lg transition-colors">
+            <ChevronLeft className="h-5 w-5 text-muted" />
           </button>
-          <span className="text-sm font-semibold text-gray-800 min-w-[7rem] text-center">
+          <span className="text-sm font-semibold text-fg min-w-[7rem] text-center">
             {MONTHS[month]} {year}
           </span>
-          <button onClick={next} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-            <ChevronRight className="h-5 w-5 text-gray-600" />
+          <button onClick={next} className="p-2 hover:bg-elevated rounded-lg transition-colors">
+            <ChevronRight className="h-5 w-5 text-muted" />
           </button>
 
           {/* Export button */}
           {goals.some(g => g.endDate) && (
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-gray-200 hover:border-[#5DBC70] text-gray-600 hover:text-[#5DBC70] rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-card border border-line hover:border-[var(--brand)] text-muted hover:text-[var(--brand)] rounded-lg text-xs font-medium transition-colors"
             >
               <Download className="h-3.5 w-3.5" /> Export
             </button>
@@ -176,15 +176,15 @@ export default function CalendarView() {
       {/* Export modal — shown every time Export is clicked */}
       {showExportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+          <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6">
             <div className="flex items-start justify-between mb-4">
-              <h3 className="text-base font-bold text-gray-900">Export to Calendar</h3>
-              <button onClick={() => setShowExportModal(false)} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X className="h-4 w-4 text-gray-500" />
+              <h3 className="text-base font-bold text-fg">Export to Calendar</h3>
+              <button onClick={() => setShowExportModal(false)} className="p-1 hover:bg-elevated rounded-lg">
+                <X className="h-4 w-4 text-muted" />
               </button>
             </div>
 
-            <p className="text-sm text-gray-600 mb-4">
+            <p className="text-sm text-muted mb-4">
               This downloads a <strong>.ics file</strong> containing all your goal deadlines as calendar events.
               Follow the steps for your calendar app:
             </p>
@@ -195,16 +195,16 @@ export default function CalendarView() {
                 { app: '🍎 Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
                 { app: '📧 Outlook', steps: 'File → Open & Export → Import/Export → Import an iCalendar → select the .ics file' },
               ].map(({ app, steps }) => (
-                <div key={app} className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs font-semibold text-gray-800 mb-0.5">{app}</p>
-                  <p className="text-xs text-gray-500 leading-relaxed">{steps}</p>
+                <div key={app} className="bg-elevated rounded-xl p-3">
+                  <p className="text-xs font-semibold text-fg mb-0.5">{app}</p>
+                  <p className="text-xs text-muted leading-relaxed">{steps}</p>
                 </div>
               ))}
             </div>
 
             <button
               onClick={() => { exportICS(); setShowExportModal(false); }}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white font-semibold rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black font-semibold rounded-xl transition-colors"
             >
               <Download className="h-4 w-4" /> Download .ics file
             </button>
@@ -213,10 +213,10 @@ export default function CalendarView() {
       )}
 
       {/* Calendar grid */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-100">
+      <div className="bg-card rounded-2xl shadow-sm border border-line overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-line">
           {WEEKDAYS.map(d => (
-            <div key={d} className="py-2 text-center text-xs font-semibold text-gray-500">{d}</div>
+            <div key={d} className="py-2 text-center text-xs font-semibold text-muted">{d}</div>
           ))}
         </div>
         <div className="grid grid-cols-7">
@@ -228,20 +228,20 @@ export default function CalendarView() {
             const isSelected = selected?.getTime() === cellDate.getTime();
             const isPast = cellDate < today;
             const { categories, hasCheckIn, totalTasks, doneTasks } = getActivityForDate(cellDate);
-            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || '#5DBC70');
+            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || 'var(--brand)');
 
             return (
               <button
                 key={i}
                 onClick={() => setSelected(cellDate)}
                 className={`h-14 border-b border-r border-gray-50 flex flex-col items-center justify-start pt-1.5 gap-1 transition-colors ${
-                  isSelected ? 'bg-[#5DBC70]/10' : 'hover:bg-gray-50'
+                  isSelected ? 'bg-[var(--brand)]/10' : 'hover:bg-elevated'
                 }`}
               >
                 <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-[#5DBC70] text-white' :
-                  isSelected ? 'text-[#5DBC70] font-bold' :
-                  isPast ? 'text-gray-400' : 'text-gray-700'
+                  isToday ? 'bg-[var(--brand)] text-black' :
+                  isSelected ? 'text-[var(--brand)] font-bold' :
+                  isPast ? 'text-muted' : 'text-fg'
                 }`}>{day}</span>
                 {(dotColors.length > 0 || hasCheckIn || totalTasks > 0) && (
                   <div className="flex gap-0.5 items-center">
@@ -252,7 +252,7 @@ export default function CalendarView() {
                     {totalTasks > 0 && (
                       <div
                         className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: doneTasks === totalTasks ? '#5DBC70' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
+                        style={{ backgroundColor: doneTasks === totalTasks ? 'var(--brand)' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
                       />
                     )}
                   </div>
@@ -268,28 +268,28 @@ export default function CalendarView() {
         {Object.entries(CATEGORY_COLORS).map(([cat, colors]) => (
           <div key={cat} className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.hex }} />
-            <span className="text-xs text-gray-500 capitalize">{cat}</span>
+            <span className="text-xs text-muted capitalize">{cat}</span>
           </div>
         ))}
         <div className="flex items-center gap-1.5">
           <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-          <span className="text-xs text-gray-500">Check-in</span>
+          <span className="text-xs text-muted">Check-in</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#5DBC70]" />
-          <span className="text-xs text-gray-500">All tasks done</span>
+          <div className="w-2.5 h-2.5 rounded-full bg-[var(--brand)]" />
+          <span className="text-xs text-muted">All tasks done</span>
         </div>
       </div>
 
       {/* Selected day — task list */}
       {selected && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4">
-          <h3 className="text-sm font-semibold text-gray-800 mb-3">
+        <div className="bg-card rounded-2xl shadow-sm border border-line p-4">
+          <h3 className="text-sm font-semibold text-fg mb-3">
             {selected.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </h3>
 
           {selectedTasks.length === 0 && selectedCheckIns.length === 0 ? (
-            <p className="text-sm text-gray-400">No tasks scheduled for this day.</p>
+            <p className="text-sm text-muted">No tasks scheduled for this day.</p>
           ) : (
             <div className="space-y-2">
               {/* Recurring tasks for this day */}
@@ -299,22 +299,22 @@ export default function CalendarView() {
                 const isLogging = loggingTask === key;
                 return (
                   <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${animatingTask === key ? 'task-complete-anim' : ''} ${
-                    done ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200'
+                    done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line'
                   }`}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || '#5DBC70' }} />
+                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || 'var(--brand)' }} />
                     <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${done ? 'line-through text-gray-400' : 'text-gray-800'}`}>
+                      <p className={`text-sm font-medium ${done ? 'line-through text-muted' : 'text-fg'}`}>
                         {task.title}
                       </p>
-                      <p className="text-xs text-gray-400 truncate">{goal.title}</p>
+                      <p className="text-xs text-muted truncate">{goal.title}</p>
                     </div>
                     <button
                       onClick={() => logTask(goal.id, task.id, dateStr, !done)}
                       disabled={isLogging}
                       className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
                         done
-                          ? 'bg-[#5DBC70]/20 text-[#1F6B38] hover:bg-[#5DBC70]/30'
-                          : 'bg-[#5DBC70] text-white hover:bg-[#4EAA5F]'
+                          ? 'bg-[var(--brand)]/20 text-[var(--brand)] hover:bg-[var(--brand)]/30'
+                          : 'bg-[var(--brand)] text-black hover:bg-[var(--brand-dark)]'
                       }`}
                     >
                       {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
@@ -330,7 +330,7 @@ export default function CalendarView() {
                   <div key={goal.id} className="flex items-center gap-3 p-3 rounded-xl border bg-amber-50 border-amber-200">
                     <div className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-400" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-800">{goal.title}</p>
+                      <p className="text-sm font-medium text-fg">{goal.title}</p>
                       <p className="text-xs text-amber-600">Checked in ✓</p>
                     </div>
                     <CheckCircle2 className="h-4 w-4 text-amber-500 flex-shrink-0" />

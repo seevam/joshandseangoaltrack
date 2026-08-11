@@ -7,18 +7,18 @@ import { useGoalStore } from '@/lib/store';
 
 export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }) {
   const pathname = usePathname();
-  const openChat = useGoalStore(s => s.openChat);
+  const setShowCreateGoal = useGoalStore(s => s.setShowCreateGoal);
 
   const items = [
     { href: '/home',     label: 'Home',     icon: Home },
     { href: '/calendar', label: 'Calendar', icon: Calendar },
-    { label: 'New Goal', icon: Plus, action: () => openChat(), special: true },
+    { label: 'New Goal', icon: Plus, action: () => setShowCreateGoal(true), special: true },
     { label: 'AI Coach', icon: MessageCircle, action: onToggleChat },
     { href: '/profile',  label: 'Profile',  icon: User },
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-white border-t border-gray-200 z-30"
+    <nav className="lg:hidden fixed bottom-0 inset-x-0 bg-card border-t border-line z-30"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
       <div className="flex items-center justify-around px-1 pt-1 pb-1">
         {items.map((item, i) => {
@@ -29,7 +29,7 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
               <button
                 key={i}
                 onClick={item.action}
-                className="flex flex-col items-center justify-center w-14 h-14 -mt-5 rounded-full bg-[#5DBC70] shadow-lg shadow-[#5DBC70]/40 active:scale-95 transition-transform"
+                className="flex flex-col items-center justify-center w-14 h-14 -mt-5 rounded-full bg-[var(--brand)] shadow-lg shadow-[var(--brand)]/40 active:scale-95 transition-transform"
               >
                 <Plus className="h-6 w-6 text-white" />
               </button>
@@ -39,10 +39,10 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
           const content = (
             <div className="flex flex-col items-center gap-0.5 py-1 px-3 relative">
               {active && (
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#5DBC70]" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--brand)]" />
               )}
-              <item.icon className={`h-5 w-5 transition-colors ${active ? 'text-[#5DBC70]' : 'text-gray-400'}`} />
-              <span className={`text-xs font-medium transition-colors ${active ? 'text-[#5DBC70]' : 'text-gray-400'}`}>
+              <item.icon className={`h-5 w-5 transition-colors ${active ? 'text-[var(--brand)]' : 'text-muted'}`} />
+              <span className={`text-xs font-medium transition-colors ${active ? 'text-[var(--brand)]' : 'text-muted'}`}>
                 {item.label}
               </span>
             </div>
