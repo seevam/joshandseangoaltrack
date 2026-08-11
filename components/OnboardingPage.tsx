@@ -33,6 +33,12 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [selected, setSelected] = useState<Category[]>([]);
   const [motivation, setMotivation] = useState('medium');
+  const [persona, setPersona] = useState<'energetic' | 'calm' | 'direct'>('calm');
+
+  const choosePersona = (p: 'energetic' | 'calm' | 'direct') => {
+    setPersona(p);
+    localStorage.setItem('ai_coach_persona', p);
+  };
 
   const toggleCat = (cat: Category) => {
     setSelected(prev => prev.includes(cat) ? prev.filter(c => c !== cat) : [...prev, cat]);
@@ -114,6 +120,34 @@ export default function OnboardingPage() {
                 <p className="text-xs text-gray-500">{desc}</p>
               </div>
               {motivation === value && <CheckCircle2 className="h-5 w-5 text-[#5DBC70] ml-auto" />}
+            </button>
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: 'Pick your coach style',
+      subtitle: 'How should your AI coach talk to you?',
+      content: (
+        <div className="space-y-3 py-2">
+          {[
+            { value: 'energetic' as const, emoji: '🔥', label: 'Energetic', desc: 'High-energy motivator, lots of hype' },
+            { value: 'calm'      as const, emoji: '🌊', label: 'Calm',      desc: 'Steady, supportive, reassuring' },
+            { value: 'direct'    as const, emoji: '🎯', label: 'Direct',    desc: 'No-nonsense, straight to the action' },
+          ].map(({ value, emoji, label, desc }) => (
+            <button
+              key={value}
+              onClick={() => choosePersona(value)}
+              className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
+                persona === value ? 'border-[#5DBC70] bg-[#D0EDDA]/30' : 'border-gray-200 bg-white'
+              }`}
+            >
+              <span className="text-3xl">{emoji}</span>
+              <div>
+                <p className="font-semibold text-gray-900">{label}</p>
+                <p className="text-xs text-gray-500">{desc}</p>
+              </div>
+              {persona === value && <CheckCircle2 className="h-5 w-5 text-[#5DBC70] ml-auto" />}
             </button>
           ))}
         </div>

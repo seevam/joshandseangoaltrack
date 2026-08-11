@@ -162,7 +162,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* AI Coach card */}
             <button
               onClick={() => setShowChat(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 bg-gradient-to-r from-[#D0EDDA] to-[#C3E8CE] border border-[#5DBC70]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
+              className="w-full flex items-center gap-3 px-4 py-3.5 bg-[#D0EDDA] border border-[#5DBC70]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
             >
               <div className="h-10 w-10 rounded-full bg-[#5DBC70] flex items-center justify-center flex-shrink-0">
                 <Bot className="h-5 w-5 text-white" />
