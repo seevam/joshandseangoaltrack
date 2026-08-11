@@ -161,7 +161,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
       <div className="flex flex-col w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-3xl sm:overflow-hidden bg-white">
 
         {/* Header */}
-        <div className="flex-shrink-0 bg-gradient-to-r from-[#5DBC70] to-[#1F6B38] px-4 py-4 flex items-center gap-3">
+        <div className="flex-shrink-0 bg-[#5DBC70] px-4 py-4 flex items-center gap-3">
           <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors">
             <X className="h-5 w-5 text-white" />
           </button>
