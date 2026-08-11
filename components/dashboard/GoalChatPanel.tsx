@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { Bot, User as UserIcon, Send, X, Sparkles, ChevronRight } from 'lucide-react';
 import { type Goal } from '@/lib/types';
 import { getGoalProgress, getGoalStatus, getStreak } from '@/lib/types';
+import { useGoalStore, type CoachPersona } from '@/lib/store';
 import MarkdownText from '@/components/ui/MarkdownText';
 
 interface Message {
@@ -13,7 +15,7 @@ interface Message {
   isError?: boolean;
 }
 
-function buildGoalContext(goal: Goal): {
+function buildGoalContext(goal: Goal, coachName: string, persona: CoachPersona): {
   systemPrompt: string;
   openingMessage: string;
   quickPrompts: string[];
@@ -51,7 +53,13 @@ function buildGoalContext(goal: Goal): {
   const expectedProgress = totalDuration && totalDuration > 0 ? Math.min((elapsed / totalDuration) * 100, 100) : null;
   const isBehind = expectedProgress !== null && progress < expectedProgress - 15;
 
-  const systemPrompt = `You are an empathetic, practical goal coach. Be warm but concise. Keep responses under 3 short paragraphs or a brief list.
+  const personaStyle = persona === 'energetic'
+    ? 'You are enthusiastic and high-energy — exclamation marks, energising emojis (🔥💪🚀), motivational language.'
+    : persona === 'direct'
+    ? 'You are concise and no-nonsense — cut to the point, skip filler praise, give clear action steps.'
+    : 'You are calm and supportive — steady, reassuring language and gentle encouragement.';
+
+  const systemPrompt = `You are ${coachName}, a practical goal coach. ${personaStyle} Be concise. Keep responses under 3 short paragraphs or a brief list.
 
 FORMATTING: Make responses easy to scan.
 - Use **bold** for key numbers, actions, and goal names.
@@ -100,7 +108,13 @@ Coach based on this real data. Be specific — reference actual numbers, streak,
 }
 
 export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: () => void }) {
-  const { systemPrompt, openingMessage, quickPrompts } = buildGoalContext(goal);
+  const { user } = useUser();
+  const coachName = useGoalStore(s => s.coachName);
+  const persona = useGoalStore(s => s.coachPersona);
+  const hydrateCoachSettings = useGoalStore(s => s.hydrateCoachSettings);
+  useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
+
+  const { systemPrompt, openingMessage, quickPrompts } = buildGoalContext(goal, coachName, persona);
 
   const [messages, setMessages] = useState<Message[]>([
     { id: 0, type: 'ai', content: openingMessage },
@@ -169,7 +183,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
             <Bot className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white font-semibold text-sm truncate">AI Coach</p>
+            <p className="text-white font-semibold text-sm truncate">{coachName}</p>
             <p className="text-white/70 text-xs truncate">{goal.title}</p>
           </div>
           <div className="flex-shrink-0 text-right">
@@ -200,8 +214,11 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
                 }
               </div>
               {msg.type === 'user' && (
-                <div className="h-7 w-7 rounded-full bg-gray-300 flex items-center justify-center flex-shrink-0 mb-0.5">
-                  <UserIcon className="h-4 w-4 text-gray-600" />
+                <div className="h-7 w-7 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center flex-shrink-0 mb-0.5">
+                  {user?.imageUrl
+                    ? <img src={user.imageUrl} alt="avatar" className="h-full w-full object-cover" />
+                    : <UserIcon className="h-4 w-4 text-gray-600" />
+                  }
                 </div>
               )}
             </div>
