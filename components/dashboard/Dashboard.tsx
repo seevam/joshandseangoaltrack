@@ -1,35 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
-  Target, Plus, TrendingUp, Clock, CheckCircle, AlertTriangle,
-  Filter, SortAsc, ChevronRight, Flame, Search, X,
+  Target, Plus, CheckCircle, AlertTriangle, ChevronRight, Search, X,
+  Zap, Trophy, Flame, ListChecks, Loader2, Circle,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
+import { computeStats, earnedBadges, taskXp, milestoneXp } from '@/lib/xp';
+import { XPBar, CategoryBadge, BadgeTile, DifficultyPill, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
 import GoalDetail from './GoalDetail';
-import GoalForm from './GoalForm';
 
-const MILESTONE_BADGES = [
-  { pct: 25,  label: 'First Quarter', emoji: '🌱' },
-  { pct: 50,  label: 'Halfway There', emoji: '⚡' },
-  { pct: 75,  label: 'Almost There',  emoji: '🔥' },
-  { pct: 100, label: 'Completed!',    emoji: '🏆' },
-];
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
-  const { goals, setGoals, updateGoal, removeGoal, showAddGoal, setShowAddGoal, selectedGoal, setSelectedGoal, openChat } = useGoalStore();
+  const { goals, setGoals, updateGoal, removeGoal, selectedGoal, setSelectedGoal } = useGoalStore();
+  const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [sortBy, setSortBy] = useState('deadline');
   const [celebratingGoal, setCelebratingGoal] = useState<Goal | null>(null);
   const [showGoalDetails, setShowGoalDetails] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
+  const [xpToast, setXpToast] = useState<{ id: number; amount: number } | null>(null);
+  const [flashTask, setFlashTask] = useState<string | null>(null);
 
-  // Load goals
   useEffect(() => {
     if (!user || !isLoaded) return;
     const load = async () => {
@@ -58,6 +55,11 @@ export default function Dashboard() {
     return res.json();
   };
 
+  const fireXp = (amount: number) => {
+    setXpToast({ id: Date.now(), amount });
+    setTimeout(() => setXpToast(null), 1300);
+  };
+
   const deleteGoal = async (id: string) => {
     try {
       await apiCall(`/api/goals/${id}`, 'DELETE');
@@ -73,6 +75,7 @@ export default function Dashboard() {
     try {
       const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { checkIns: [...(goal.checkIns || []), today] });
       updateGoal(saved);
+      fireXp(5);
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
     } catch (err) { console.error('Failed to check in:', err); }
   };
@@ -93,11 +96,15 @@ export default function Dashboard() {
   const toggleSubtask = async (goalId: string, idx: number) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
+    const wasComplete = getGoalProgress(goal) >= 100;
+    const target = goal.subtasks[idx];
     const subtasks = goal.subtasks.map((s, i) => i === idx ? { ...s, completed: !s.completed } : s);
     try {
       const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { subtasks });
       updateGoal(saved);
+      if (!target.completed) fireXp(milestoneXp(target.difficulty));
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
+      if (!wasComplete && getGoalProgress(saved) >= 100) { setShowGoalDetails(false); setCelebratingGoal(saved); }
     } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
@@ -112,6 +119,12 @@ export default function Dashboard() {
     try {
       const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { taskCompletions });
       updateGoal(saved);
+      if (value) {
+        const task = (goal.dailyTasks || []).find(t => t.id === taskId);
+        fireXp(taskXp(task?.difficulty));
+        setFlashTask(`${goalId}-${taskId}`);
+        setTimeout(() => setFlashTask(null), 650);
+      }
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
     } catch (err) { console.error('Failed to log task:', err); }
   };
@@ -138,221 +151,366 @@ export default function Dashboard() {
     } catch (err) { console.error('Failed to remove task:', err); }
   };
 
-  const activeGoals    = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
+  // ── Derived data ──────────────────────────────────────────────────────────
+  const stats = useMemo(() => computeStats(goals), [goals]);
+  const badges = useMemo(() => earnedBadges(stats, goals), [stats, goals]);
+  const earnedCount = badges.filter(b => b.isEarned).length;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayDow = new Date().getDay();
+
+  /** Every recurring task scheduled for today, flattened across goals. */
+  const todaysTasks = useMemo(() => {
+    const out: { goal: Goal; task: Goal['dailyTasks'][0]; done: boolean }[] = [];
+    for (const goal of goals) {
+      if (getGoalStatus(goal) === 'completed') continue;
+      const completions = (goal.taskCompletions || {})[todayStr] || {};
+      for (const task of goal.dailyTasks || []) {
+        const days = task.daysOfWeek;
+        if (!days || days.length === 0 || days.includes(todayDow)) {
+          out.push({ goal, task, done: !!completions[task.id] });
+        }
+      }
+    }
+    return out.sort((a, b) => Number(a.done) - Number(b.done));
+  }, [goals, todayStr, todayDow]);
+
+  /** Upcoming milestones across all goals, soonest first. */
+  const upcomingMilestones = useMemo(() => {
+    const out: { goal: Goal; title: string; date: Date; idx: number; difficulty?: string }[] = [];
+    for (const goal of goals) {
+      if (!goal.startDate) continue;
+      (goal.subtasks || []).forEach((s, idx) => {
+        if (s.completed) return;
+        out.push({
+          goal, title: s.title, idx, difficulty: s.difficulty,
+          date: new Date(new Date(goal.startDate!).getTime() + s.daysFromStart * 86400000),
+        });
+      });
+    }
+    return out.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 5);
+  }, [goals]);
+
+  const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
   const completedGoals = goals.filter(g => getGoalStatus(g) === 'completed').length;
-  const overdueGoals   = goals.filter(g => getGoalStatus(g) === 'overdue').length;
+  const doneToday = todaysTasks.filter(t => t.done).length;
 
   const dueSoon = goals.filter(g => {
     if (!g.endDate || getGoalStatus(g) !== 'in-progress') return false;
     return (new Date(g.endDate).getTime() - Date.now()) / 86400000 <= 7;
   });
 
-  const filtered = goals
-    .filter(g => {
-      if (filterCategory !== 'all' && g.category !== filterCategory) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        if (!g.title.toLowerCase().includes(q) && !g.description?.toLowerCase().includes(q) && !g.category.toLowerCase().includes(q)) return false;
-      }
-      const status = getGoalStatus(g);
-      if (activeTab === 'active') return status !== 'completed';
-      if (activeTab === 'completed') return status === 'completed';
-      return true;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'deadline') return new Date(a.endDate || '9999').getTime() - new Date(b.endDate || '9999').getTime();
-      if (sortBy === 'progress') return getGoalProgress(b) - getGoalProgress(a);
-      if (sortBy === 'name') return a.title.localeCompare(b.title);
-      return 0;
-    });
+  const filtered = goals.filter(g => {
+    if (filterCategory !== 'all' && g.category !== filterCategory) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      if (!g.title.toLowerCase().includes(q) && !g.description?.toLowerCase().includes(q) && !g.category.toLowerCase().includes(q)) return false;
+    }
+    const status = getGoalStatus(g);
+    if (activeTab === 'active') return status !== 'completed';
+    if (activeTab === 'completed') return status === 'completed';
+    return true;
+  });
 
   if (!isLoaded || isLoadingGoals) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F0F0F0]">
-        <Target className="h-8 w-8 text-[#5DBC70] animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-bg">
+        <Loader2 className="h-8 w-8 text-brand animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#F0F0F0] pb-24 lg:pb-8">
-      <div className="px-4 py-4 sm:px-6">
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          {[
-            { label: 'Total',   value: goals.length,   icon: Target,      bg: 'bg-[#D0EDDA]', color: 'text-[#5DBC70]' },
-            { label: 'Active',  value: activeGoals,    icon: TrendingUp,  bg: 'bg-[#DBEAFE]', color: 'text-[#3B82F6]' },
-            { label: 'Done',    value: completedGoals, icon: CheckCircle, bg: 'bg-[#C3E8CE]', color: 'text-[#00CD4B]' },
-            { label: 'Overdue', value: overdueGoals,   icon: Clock,       bg: 'bg-[#FECACA]', color: 'text-[#FF4B4B]' },
-          ].map(s => (
-            <div key={s.label} className="bg-white rounded-xl shadow-sm p-3 sm:p-4 flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${s.bg}`}>
-                <s.icon className={`h-4 w-4 ${s.color}`} />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">{s.label}</p>
-                <p className="text-xl font-bold text-gray-900">{s.value}</p>
-              </div>
-            </div>
-          ))}
+    <div className="min-h-screen bg-bg pb-24 lg:pb-8">
+      <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 space-y-5">
+
+        {/* ── Header + rank ─────────────────────────────────────────────── */}
+        <div className="flex items-start justify-between gap-4 animate-slide-up">
+          <div>
+            <h1 className="text-2xl font-bold text-fg">
+              {`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}`}
+            </h1>
+            <p className="text-sm text-muted mt-0.5">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl text-sm transition-colors flex-shrink-0 active:scale-95"
+          >
+            <Plus className="h-4 w-4" /> New Goal
+          </button>
         </div>
 
-        {/* Due soon alerts */}
+        {/* ── XP + stat strip ───────────────────────────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2 card-glow rounded-2xl p-4 animate-slide-up" style={{ ['--i' as string]: 1 }}>
+            <XPBar stats={stats} />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { icon: Flame,      label: 'Streak',  value: `${stats.currentStreak}d`,            color: '#FB923C' },
+              { icon: ListChecks, label: 'Today',   value: `${doneToday}/${todaysTasks.length}`, color: '#5DBC70' },
+              { icon: Trophy,     label: 'Badges',  value: `${earnedCount}/${badges.length}`,    color: '#FBBF24' },
+            ].map((s, i) => (
+              <div key={s.label} className="card-glow rounded-2xl p-3 text-center stagger" style={{ ['--i' as string]: i + 2 }}>
+                <s.icon className="h-4 w-4 mx-auto mb-1.5" style={{ color: s.color }} />
+                <p className="text-lg font-bold text-fg leading-none">{s.value}</p>
+                <p className="text-[10px] text-muted uppercase tracking-wide mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Due soon ──────────────────────────────────────────────────── */}
         {dueSoon.length > 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 animate-slide-up">
             <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              <span className="text-sm font-semibold text-amber-800">Due within 7 days</span>
+              <AlertTriangle className="h-4 w-4 text-amber-400" />
+              <span className="text-sm font-semibold text-amber-300">Due within 7 days</span>
             </div>
             {dueSoon.map(g => {
               const d = Math.ceil((new Date(g.endDate!).getTime() - Date.now()) / 86400000);
               return (
                 <div key={g.id} onClick={() => { setSelectedGoal(g); setShowGoalDetails(true); }}
                   className="flex justify-between items-center cursor-pointer hover:opacity-80 py-0.5">
-                  <span className="text-sm text-amber-900 truncate">{g.title}</span>
-                  <span className="text-xs text-amber-700 ml-2 flex-shrink-0">{d === 0 ? 'Today' : `${d}d left`}</span>
+                  <span className="text-sm text-amber-100 truncate">{g.title}</span>
+                  <span className="text-xs text-amber-400 ml-2 flex-shrink-0">{d <= 0 ? 'Today' : `${d}d left`}</span>
                 </div>
               );
             })}
           </div>
         )}
 
-        {/* Search bar */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <input
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            placeholder="Search goals..."
-            className="w-full pl-9 pr-9 py-2 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70]"
-          />
-          {searchQuery && (
-            <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-            </button>
-          )}
-        </div>
+        {/* ── Today's tasks + upcoming milestones ───────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Today's missions */}
+          <div className="lg:col-span-2 card-glow rounded-2xl p-4 animate-slide-up">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-fg flex items-center gap-2">
+                <ListChecks className="h-4 w-4 text-brand" /> Today&apos;s Tasks
+              </h2>
+              <span className="text-xs text-muted">{doneToday}/{todaysTasks.length} done</span>
+            </div>
 
-        {/* Tabs */}
-        <div className="flex items-center gap-1 mb-3 bg-white rounded-xl p-1 border border-gray-200">
-          {(['active', 'completed', 'all'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-                activeTab === tab ? 'bg-[#5DBC70] text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {tab === 'active' ? `Active (${activeGoals})` : tab === 'completed' ? `Completed (${completedGoals})` : `All (${goals.length})`}
-            </button>
-          ))}
-        </div>
+            {todaysTasks.length === 0 ? (
+              <div className="text-center py-8">
+                <Target className="h-8 w-8 mx-auto mb-2 text-muted/40" />
+                <p className="text-sm text-muted">
+                  Nothing scheduled today.{' '}
+                  <button onClick={() => setShowCreate(true)} className="text-brand hover:underline">Create a goal</button> to get started.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto thin-scroll">
+                {todaysTasks.map(({ goal, task, done }, i) => {
+                  const key = `${goal.id}-${task.id}`;
+                  const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
+                  return (
+                    <div
+                      key={key}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all stagger ${flashTask === key ? 'task-flash task-complete-anim' : ''} ${
+                        done ? 'border-brand/30 bg-brand/10' : 'border-line bg-elevated hover:border-brand/40'
+                      }`}
+                      style={{ ['--i' as string]: i }}
+                    >
+                      <button
+                        onClick={() => logTask(goal.id, task.id, !done)}
+                        className="flex-shrink-0"
+                        aria-label={done ? 'Mark incomplete' : 'Mark complete'}
+                      >
+                        {done
+                          ? <CheckCircle className="h-6 w-6 text-brand" />
+                          : <Circle className="h-6 w-6 text-muted hover:text-brand transition-colors" />
+                        }
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${done ? 'line-through text-muted' : 'text-fg'}`}>
+                          {task.title}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-xs truncate" style={{ color: cat.hex }}>{goal.title}</span>
+                          <DifficultyPill difficulty={task.difficulty} />
+                        </div>
+                      </div>
+                      <XpPill xp={taskXp(task.difficulty)} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide mb-4">
-          <Filter className="h-4 w-4 text-gray-400 flex-shrink-0" />
-          {(['all', 'fitness', 'health', 'personal', 'career', 'finance', 'education'] as const).map(cat => (
-            <button
-              key={cat}
-              onClick={() => setFilterCategory(cat)}
-              className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all ${
-                filterCategory === cat ? 'bg-[#5DBC70] text-white' : 'bg-white border border-gray-300 text-gray-600 hover:border-[#5DBC70]'
-              }`}
-            >
-              {cat.charAt(0).toUpperCase() + cat.slice(1)}
-            </button>
-          ))}
-          <div className="flex-shrink-0 ml-auto flex items-center gap-1 border border-gray-300 rounded-full bg-white px-2 py-1">
-            <SortAsc className="h-3 w-3 text-gray-400" />
-            <select value={sortBy} onChange={e => setSortBy(e.target.value)} className="text-xs text-gray-600 bg-transparent outline-none cursor-pointer">
-              <option value="deadline">Deadline</option>
-              <option value="progress">Progress</option>
-              <option value="name">Name</option>
-            </select>
+          {/* Upcoming milestones */}
+          <div className="card-glow rounded-2xl p-4 animate-slide-up">
+            <h2 className="font-semibold text-fg flex items-center gap-2 mb-3">
+              <Target className="h-4 w-4 text-brand" /> Next Milestones
+            </h2>
+            {upcomingMilestones.length === 0 ? (
+              <p className="text-sm text-muted text-center py-6">No upcoming milestones.</p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingMilestones.map((m, i) => (
+                  <button
+                    key={`${m.goal.id}-${m.idx}`}
+                    onClick={() => { setSelectedGoal(m.goal); setShowGoalDetails(true); }}
+                    className="w-full text-left p-2.5 rounded-xl border border-line bg-elevated hover:border-brand/40 transition-colors stagger"
+                    style={{ ['--i' as string]: i }}
+                  >
+                    <p className="text-xs font-medium text-fg line-clamp-2">{m.title}</p>
+                    <div className="flex items-center justify-between mt-1.5">
+                      <span className="text-[10px] text-muted">
+                        {m.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                      <XpPill xp={milestoneXp(m.difficulty)} />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Goal cards */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {goals.length === 0 ? (
-            <div className="col-span-full bg-white rounded-xl shadow p-12 text-center">
-              <Target className="h-16 w-16 text-gray-200 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No goals yet</h3>
-              <p className="text-sm text-gray-500 mb-4">Create your first goal to start tracking!</p>
-              <button onClick={() => openChat()} className="inline-flex items-center gap-2 px-4 py-2 bg-[#5DBC70] text-white rounded-lg text-sm font-medium">
-                <Plus className="h-4 w-4" /> Create Goal
-              </button>
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-gray-400 text-sm">
-              {searchQuery ? `No goals match "${searchQuery}"` : activeTab === 'completed' ? 'No completed goals yet.' : 'No goals in this category.'}
-            </div>
-          ) : (
-            filtered.map(goal => {
-              const progress = getGoalProgress(goal);
-              const status = getGoalStatus(goal);
-              const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
-              const streak = getStreak(goal.checkIns);
-              const todayStr = new Date().toISOString().split('T')[0];
-              const checkedToday = (goal.checkIns || []).includes(todayStr);
-              const earnedBadges = MILESTONE_BADGES.filter(b => progress >= b.pct);
+        {/* ── Badges ────────────────────────────────────────────────────── */}
+        <div className="card-glow rounded-2xl p-4 animate-slide-up">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-fg flex items-center gap-2">
+              <Trophy className="h-4 w-4 text-brand" /> Achievements
+            </h2>
+            <span className="text-xs text-muted">{earnedCount} of {badges.length} unlocked</span>
+          </div>
+          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+            {badges.map(b => (
+              <BadgeTile key={b.id} icon={b.icon} name={b.name} description={b.description} earned={b.isEarned} compact />
+            ))}
+          </div>
+        </div>
 
-              return (
-                <div
-                  key={goal.id}
-                  onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
-                  className="bg-white rounded-xl shadow-md hover:shadow-xl transition-all cursor-pointer active:scale-[0.98]"
+        {/* ── Goals: search + filter bar + grid ─────────────────────────── */}
+        <div className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
+              <input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search goals..."
+                className="w-full pl-9 pr-9 py-2.5 bg-card border border-line rounded-xl text-sm text-fg placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
+              />
+              {searchQuery && (
+                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <X className="h-4 w-4 text-muted hover:text-fg" />
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1 bg-card rounded-xl p-1 border border-line">
+              {(['active', 'completed', 'all'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
+                    activeTab === tab ? 'bg-brand text-black' : 'text-muted hover:text-fg'
+                  }`}
                 >
-                  <div className="h-2 rounded-t-xl" style={{ backgroundColor: cat.hex }} />
-                  <div className="p-4 sm:p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1 min-w-0 mr-2">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cat.light} ${cat.text} mb-2`}>
-                          {goal.category}
-                        </span>
-                        <h3 className="text-base font-semibold text-gray-900 truncate">{goal.title}</h3>
-                        {goal.description && <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{goal.description}</p>}
-                      </div>
-                      <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0" />
-                    </div>
+                  {tab === 'active' ? `Active (${activeGoals})` : tab === 'completed' ? `Done (${completedGoals})` : `All (${goals.length})`}
+                </button>
+              ))}
+            </div>
+          </div>
 
-                    {/* Progress bar */}
-                    <div className="space-y-1 mb-3">
-                      <div className="flex justify-between text-xs text-gray-500">
-                        {(goal.subtasks || []).length > 0
-                          ? <span>{goal.subtasks.filter(s => s.completed).length} / {goal.subtasks.length} milestones</span>
-                          : <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
-                        }
-                        <span>{progress.toFixed(0)}%</span>
-                      </div>
-                      <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div className="h-full rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: cat.hex }} />
-                      </div>
-                    </div>
+          {/* Bar-style category selector */}
+          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide bg-card border border-line rounded-xl p-1">
+            {(['all', 'fitness', 'health', 'personal', 'career', 'finance', 'education'] as const).map(cat => {
+              const active = filterCategory === cat;
+              const hex = cat === 'all' ? '#5DBC70' : CATEGORY_COLORS[cat as Category].hex;
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setFilterCategory(cat)}
+                  className="flex-shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all"
+                  style={active
+                    ? { backgroundColor: hex, color: '#0B0F10' }
+                    : { color: 'var(--muted)' }}
+                >
+                  {cat}
+                </button>
+              );
+            })}
+          </div>
 
-                    {/* Footer */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3 text-xs text-gray-500">
-                        {streak > 0 && (
-                          <span className="flex items-center gap-0.5 text-orange-500 font-medium">
-                            <Flame className="h-3 w-3" /> {streak}d
-                          </span>
-                        )}
-                        {goal.endDate && (
-                          <span className={status === 'overdue' ? 'text-red-500 font-medium' : ''}>
-                            {status === 'overdue' ? 'Overdue' : `${Math.ceil((new Date(goal.endDate).getTime() - Date.now()) / 86400000)}d left`}
-                          </span>
-                        )}
+          {/* Goal cards */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {goals.length === 0 ? (
+              <div className="col-span-full card-glow rounded-2xl p-12 text-center">
+                <Target className="h-14 w-14 text-muted/30 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-fg mb-2">No goals yet</h3>
+                <p className="text-sm text-muted mb-4">Create your first goal to start earning XP.</p>
+                <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl text-sm font-semibold">
+                  <Plus className="h-4 w-4" /> Create Goal
+                </button>
+              </div>
+            ) : filtered.length === 0 ? (
+              <div className="col-span-full text-center py-12 text-muted text-sm">
+                {searchQuery ? `No goals match "${searchQuery}"` : activeTab === 'completed' ? 'No completed goals yet.' : 'No goals in this category.'}
+              </div>
+            ) : (
+              filtered.map((goal, i) => {
+                const progress = getGoalProgress(goal);
+                const status = getGoalStatus(goal);
+                const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
+                const streak = getStreak(goal.checkIns);
+                const checkedToday = (goal.checkIns || []).includes(todayStr);
+
+                return (
+                  <div
+                    key={goal.id}
+                    onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
+                    className="card-glow rounded-2xl overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 active:scale-[0.98] stagger"
+                    style={{ ['--i' as string]: i }}
+                  >
+                    <div className="h-1" style={{ backgroundColor: cat.hex }} />
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <CategoryBadge category={goal.category} />
+                          <h3 className="text-base font-semibold text-fg truncate mt-2">{goal.title}</h3>
+                          {goal.description && <p className="text-xs text-muted line-clamp-2 mt-0.5">{goal.description}</p>}
+                        </div>
+                        <ChevronRight className="h-5 w-5 text-muted flex-shrink-0" />
                       </div>
-                      <div className="flex items-center gap-1">
-                        {earnedBadges.slice(-2).map(b => (
-                          <span key={b.pct} title={b.label} className="text-sm">{b.emoji}</span>
-                        ))}
-                        {status === 'in-progress' && (
+
+                      <div className="space-y-1 mb-3">
+                        <div className="flex justify-between text-xs text-muted">
+                          {(goal.subtasks || []).length > 0
+                            ? <span>{goal.subtasks.filter(s => s.completed).length} / {goal.subtasks.length} milestones</span>
+                            : <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
+                          }
+                          <span className="font-semibold text-fg">{progress.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-2 bg-elevated rounded-full overflow-hidden">
+                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${progress}%`, backgroundColor: cat.hex }} />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 text-xs text-muted">
+                          {streak > 0 && (
+                            <span className="flex items-center gap-0.5 text-orange-400 font-medium">
+                              <Flame className="h-3 w-3" /> {streak}d
+                            </span>
+                          )}
+                          {goal.endDate && (
+                            <span className={status === 'overdue' ? 'text-red-400 font-medium' : ''}>
+                              {status === 'overdue' ? 'Overdue' : `${Math.ceil((new Date(goal.endDate).getTime() - Date.now()) / 86400000)}d left`}
+                            </span>
+                          )}
+                        </div>
+                        {status !== 'completed' && (
                           <button
                             onClick={e => { e.stopPropagation(); checkIn(goal.id); }}
-                            className={`ml-1 h-10 w-10 flex items-center justify-center rounded-xl transition-colors ${
-                              checkedToday ? 'bg-[#D0EDDA] text-[#1F6B38]' : 'bg-gray-100 text-gray-600 hover:bg-[#D0EDDA] hover:text-[#1F6B38]'
+                            title={checkedToday ? 'Checked in today' : 'Check in'}
+                            className={`h-9 w-9 flex items-center justify-center rounded-xl transition-colors ${
+                              checkedToday ? 'bg-brand/20 text-brand' : 'bg-elevated text-muted hover:bg-brand/20 hover:text-brand'
                             }`}
                           >
                             <CheckCircle className="h-5 w-5" />
@@ -361,14 +519,15 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Goal Detail Drawer */}
+      {/* ── Overlays ────────────────────────────────────────────────────── */}
+      {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
       {showGoalDetails && selectedGoal && (
         <GoalDetail
           goal={goals.find(g => g.id === selectedGoal.id) || selectedGoal}
@@ -383,21 +542,26 @@ export default function Dashboard() {
         />
       )}
 
-      {/* Celebration overlay */}
       {celebratingGoal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl">
-            <div className="text-6xl mb-4">🏆</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Goal Complete!</h2>
-            <p className="text-gray-600 mb-6">{celebratingGoal.title}</p>
-            <button
-              onClick={() => setCelebratingGoal(null)}
-              className="px-6 py-2.5 bg-[#5DBC70] text-white rounded-xl font-semibold hover:bg-[#4EAA5F]"
-            >
-              Awesome! 🎉
-            </button>
+        <>
+          <Confetti />
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[85] p-4 animate-fade-in">
+            <div className="card-glow rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-pop-in">
+              <div className="text-6xl mb-4">🏆</div>
+              <h2 className="text-2xl font-bold text-fg mb-2">Goal Complete!</h2>
+              <p className="text-muted mb-1">{celebratingGoal.title}</p>
+              <p className="text-brand font-semibold mb-6 flex items-center justify-center gap-1">
+                <Zap className="h-4 w-4" /> +500 XP
+              </p>
+              <button
+                onClick={() => setCelebratingGoal(null)}
+                className="px-6 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl font-semibold"
+              >
+                Awesome! 🎉
+              </button>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );

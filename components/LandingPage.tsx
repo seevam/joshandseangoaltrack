@@ -19,16 +19,16 @@ const STEPS = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-white flex flex-col">
+    <div className="min-h-screen bg-bg flex flex-col">
       {/* Nav */}
       <header className="flex items-center justify-between px-6 py-4 max-w-5xl mx-auto w-full">
         <div className="flex items-center gap-2">
           <Image src="/logo-removebg-preview.png" alt="Goal Quest Logo" width={36} height={36} className="object-contain" />
-          <span className="font-bold text-gray-900 text-lg">Goal Quest</span>
+          <span className="font-bold text-fg text-lg">Goal Quest</span>
         </div>
         <div className="flex items-center gap-3">
-          <Link href="/sign-in" className="text-sm font-medium text-gray-600 hover:text-gray-900">Sign in</Link>
-          <Link href="/sign-up" className="px-4 py-2 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white rounded-xl text-sm font-semibold transition-colors">
+          <Link href="/sign-in" className="text-sm font-medium text-muted hover:text-fg">Sign in</Link>
+          <Link href="/sign-up" className="px-4 py-2 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black rounded-xl text-sm font-semibold transition-colors">
             Get started
           </Link>
         </div>
@@ -36,38 +36,38 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="flex-1 flex flex-col items-center justify-center text-center px-6 py-16 max-w-3xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#D0EDDA] rounded-full mb-6">
-          <CheckCircle2 className="h-4 w-4 text-[#5DBC70]" />
-          <span className="text-xs font-semibold text-[#1F6B38]">AI-powered goal tracking</span>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[var(--brand-light)] rounded-full mb-6">
+          <CheckCircle2 className="h-4 w-4 text-[var(--brand)]" />
+          <span className="text-xs font-semibold text-[var(--brand)]">AI-powered goal tracking</span>
         </div>
-        <h1 className="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-4">
+        <h1 className="text-4xl sm:text-5xl font-extrabold text-fg leading-tight mb-4">
           Turn your goals into
-          <span className="text-[#5DBC70]"> achievements</span>
+          <span className="text-[var(--brand)]"> achievements</span>
         </h1>
-        <p className="text-lg text-gray-500 mb-8 max-w-xl">
+        <p className="text-lg text-muted mb-8 max-w-xl">
           Set meaningful goals, track daily progress, and get personalised coaching from your AI accountability partner.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link href="/sign-up" className="flex items-center justify-center gap-2 px-6 py-3 bg-[#5DBC70] hover:bg-[#4EAA5F] text-white rounded-xl font-semibold transition-colors">
+          <Link href="/sign-up" className="flex items-center justify-center gap-2 px-6 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black rounded-xl font-semibold transition-colors">
             Start for free <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link href="/sign-in" className="flex items-center justify-center gap-2 px-6 py-3 border border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-colors">
+          <Link href="/sign-in" className="flex items-center justify-center gap-2 px-6 py-3 border border-line text-fg rounded-xl font-semibold hover:bg-elevated transition-colors">
             Sign in
           </Link>
         </div>
       </section>
 
       {/* How it works */}
-      <section className="bg-gray-50 py-14 px-6">
+      <section className="bg-elevated py-14 px-6">
         <div className="max-w-3xl mx-auto text-center mb-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">How it works</h2>
-          <p className="text-gray-500 text-sm">Get started in minutes, stay on track for months.</p>
+          <h2 className="text-2xl font-bold text-fg mb-2">How it works</h2>
+          <p className="text-muted text-sm">Get started in minutes, stay on track for months.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-4 max-w-2xl mx-auto justify-center">
           {STEPS.map(({ n, text }) => (
             <div key={n} className="flex-1 flex flex-col items-center gap-2 text-center">
-              <div className="h-10 w-10 rounded-full bg-[#5DBC70] text-white font-bold flex items-center justify-center text-lg">{n}</div>
-              <p className="text-sm font-medium text-gray-700">{text}</p>
+              <div className="h-10 w-10 rounded-full bg-[var(--brand)] text-black font-bold flex items-center justify-center text-lg">{n}</div>
+              <p className="text-sm font-medium text-fg">{text}</p>
             </div>
           ))}
         </div>
@@ -76,16 +76,16 @@ export default function LandingPage() {
       {/* Features */}
       <section className="py-14 px-6">
         <div className="max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 text-center mb-8">Everything you need</h2>
+          <h2 className="text-2xl font-bold text-fg text-center mb-8">Everything you need</h2>
           <div className="grid sm:grid-cols-2 gap-5">
             {FEATURES.map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex gap-4 p-5 bg-white border border-gray-100 rounded-2xl shadow-sm">
-                <div className="h-10 w-10 rounded-xl bg-[#D0EDDA] flex items-center justify-center flex-shrink-0">
-                  <Icon className="h-5 w-5 text-[#5DBC70]" />
+              <div key={title} className="flex gap-4 p-5 bg-card border border-line rounded-2xl shadow-sm">
+                <div className="h-10 w-10 rounded-xl bg-[var(--brand-light)] flex items-center justify-center flex-shrink-0">
+                  <Icon className="h-5 w-5 text-[var(--brand)]" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">{title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
+                  <h3 className="font-semibold text-fg mb-1">{title}</h3>
+                  <p className="text-sm text-muted leading-relaxed">{desc}</p>
                 </div>
               </div>
             ))}
@@ -94,16 +94,16 @@ export default function LandingPage() {
       </section>
 
       {/* CTA */}
-      <section className="bg-[#5DBC70] py-14 px-6 text-center">
-        <h2 className="text-2xl font-bold text-white mb-3">Ready to crush your goals?</h2>
-        <p className="text-white/80 text-sm mb-6">Join thousands of people building better habits, one goal at a time.</p>
-        <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#5DBC70] rounded-xl font-bold hover:bg-gray-50 transition-colors">
+      <section className="bg-[var(--brand)] py-14 px-6 text-center">
+        <h2 className="text-2xl font-bold text-black mb-3">Ready to crush your goals?</h2>
+        <p className="text-black/70 text-sm mb-6">Join thousands of people building better habits, one goal at a time.</p>
+        <Link href="/sign-up" className="inline-flex items-center gap-2 px-6 py-3 bg-card text-[var(--brand)] rounded-xl font-bold hover:bg-elevated transition-colors">
           Get started free <ArrowRight className="h-4 w-4" />
         </Link>
       </section>
 
       {/* Footer */}
-      <footer className="py-6 text-center text-xs text-gray-400">
+      <footer className="py-6 text-center text-xs text-muted">
         © {new Date().getFullYear()} Goal Quest. Built with Next.js, Clerk, and OpenAI.
       </footer>
     </div>

@@ -42,7 +42,7 @@ export default function MarkdownText({ content, className = '' }: { content: str
         const txt = lines[i].trim().replace(/^[-•*]\s/, '');
         items.push(
           <li key={i} className="flex items-start gap-2 leading-relaxed">
-            <span className="mt-[5px] w-1.5 h-1.5 rounded-full bg-[#5DBC70] flex-shrink-0" />
+            <span className="mt-[5px] w-1.5 h-1.5 rounded-full bg-[var(--brand)] flex-shrink-0" />
             <span>{parseInline(txt)}</span>
           </li>
         );
@@ -60,7 +60,7 @@ export default function MarkdownText({ content, className = '' }: { content: str
         const txt = lines[i].trim().replace(/^\d+[.)]\s/, '');
         items.push(
           <li key={i} className="flex items-start gap-2 leading-relaxed">
-            <span className="font-semibold text-[#5DBC70] flex-shrink-0 min-w-[1.1rem] text-right">{n}.</span>
+            <span className="font-semibold text-[var(--brand)] flex-shrink-0 min-w-[1.1rem] text-right">{n}.</span>
             <span>{parseInline(txt)}</span>
           </li>
         );

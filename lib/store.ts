@@ -11,6 +11,10 @@ interface GoalStore {
   showAddGoal: boolean;
   setShowAddGoal: (v: boolean) => void;
 
+  /** Two-mode "New Goal" chooser (Quick vs Detailed). Global so nav can open it anywhere. */
+  showCreateGoal: boolean;
+  setShowCreateGoal: (v: boolean) => void;
+
   isChatOpen: boolean;
   setIsChatOpen: (v: boolean) => void;
   chatSessionId: number;
@@ -38,6 +42,9 @@ export const useGoalStore = create<GoalStore>((set) => ({
 
   showAddGoal: false,
   setShowAddGoal: (v) => set({ showAddGoal: v }),
+
+  showCreateGoal: false,
+  setShowCreateGoal: (v) => set({ showCreateGoal: v }),
 
   isChatOpen: false,
   setIsChatOpen: (v) => set({ isChatOpen: v }),

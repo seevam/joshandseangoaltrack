@@ -2,27 +2,112 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── Dark theme, green accent ─────────────────────────────────────────────── */
 :root {
+  --bg: #0B0F10;
+  --card: #131A1C;
+  --elevated: #1B2426;
+  --line: #253033;
+  --fg: #E8F0EC;
+  --muted: #8A9B93;
   --brand: #5DBC70;
   --brand-dark: #4EAA5F;
-  --surface: #F0F0F0;
+  --brand-light: #1F3A28;
 }
 
-body {
-  background-color: var(--surface);
+html, body {
+  background-color: var(--bg);
+  color: var(--fg);
 }
 
 /* Hide scrollbar but keep scroll functionality */
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Task completion pop animation */
+/* Thin themed scrollbar for panels that should still show one */
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+
+/* ── Surfaces ─────────────────────────────────────────────────────────────── */
+.card-glow {
+  background: linear-gradient(180deg, rgba(93, 188, 112, 0.04) 0%, transparent 60%), var(--card);
+  border: 1px solid var(--line);
+}
+.card-glow:hover { border-color: rgba(93, 188, 112, 0.35); }
+
+.xp-bar-fill {
+  background: linear-gradient(90deg, var(--brand-dark), var(--brand) 60%, #8FE3A3);
+  box-shadow: 0 0 12px rgba(93, 188, 112, 0.45);
+}
+
+/* ── Animations ───────────────────────────────────────────────────────────── */
 @keyframes task-pop {
   0%   { transform: scale(1); }
   35%  { transform: scale(1.06); }
   70%  { transform: scale(0.97); }
   100% { transform: scale(1); }
 }
-.task-complete-anim {
-  animation: task-pop 0.35s ease-out;
+.task-complete-anim { animation: task-pop 0.35s ease-out; }
+
+/* Green flash sweep when a task is completed */
+@keyframes task-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(93, 188, 112, 0.55); }
+  100% { box-shadow: 0 0 0 14px rgba(93, 188, 112, 0); }
 }
+.task-flash { animation: task-flash 0.6s ease-out; }
+
+/* XP counter float-up */
+@keyframes xp-float {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.9); }
+  20%  { opacity: 1; transform: translateY(0) scale(1); }
+  80%  { opacity: 1; transform: translateY(-10px) scale(1); }
+  100% { opacity: 0; transform: translateY(-22px) scale(0.95); }
+}
+.xp-float { animation: xp-float 1.2s ease-out forwards; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.animate-fade-in { animation: fade-in 0.2s ease-out; }
+
+@keyframes slide-in-right {
+  from { transform: translateX(100%); opacity: 0.4; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.animate-slide-in-right { animation: slide-in-right 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+
+@keyframes slide-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes pop-in {
+  0%   { transform: scale(0.94); opacity: 0; }
+  60%  { transform: scale(1.01); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop-in { animation: pop-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Staggered list entrance — set --i on each row */
+.stagger { animation: slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+
+@keyframes confetti-fall {
+  0%   { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(105vh) rotate(680deg); opacity: 0; }
+}
+.confetti-piece { animation: confetti-fall linear forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .task-complete-anim, .task-flash, .xp-float, .animate-fade-in,
+  .animate-slide-in-right, .animate-slide-up, .animate-pop-in,
+  .stagger, .confetti-piece {
+    animation: none !important;
+  }
+}
+
+/* Native controls should follow the dark theme */
+select, option { background-color: var(--elevated); color: var(--fg); }
+input, textarea { color-scheme: dark; }

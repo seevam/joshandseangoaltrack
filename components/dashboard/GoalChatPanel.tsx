@@ -171,15 +171,15 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
 
   return (
     // Full-screen modal on mobile, side sheet on larger screens
-    <div className="fixed inset-0 z-50 flex flex-col bg-white sm:bg-black/50 sm:items-center sm:justify-center">
-      <div className="flex flex-col w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-3xl sm:overflow-hidden bg-white">
+    <div className="fixed inset-0 z-50 flex flex-col bg-card sm:bg-black/50 sm:items-center sm:justify-center">
+      <div className="flex flex-col w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-3xl sm:overflow-hidden bg-card">
 
         {/* Header */}
-        <div className="flex-shrink-0 bg-[#5DBC70] px-4 py-4 flex items-center gap-3">
-          <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors">
+        <div className="flex-shrink-0 bg-[var(--brand)] px-4 py-4 flex items-center gap-3">
+          <button onClick={onClose} className="p-2 bg-card/20 hover:bg-card/30 rounded-xl transition-colors">
             <X className="h-5 w-5 text-white" />
           </button>
-          <div className="h-9 w-9 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+          <div className="h-9 w-9 rounded-full bg-card/20 flex items-center justify-center flex-shrink-0">
             <Bot className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -193,20 +193,20 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-gray-50">
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3 bg-elevated">
           {messages.map(msg => (
             <div key={msg.id} className={`flex items-end gap-2 ${msg.type === 'user' ? 'flex-row-reverse' : ''}`}>
               {msg.type === 'ai' && (
-                <div className="h-7 w-7 rounded-full bg-[#5DBC70] flex items-center justify-center flex-shrink-0 mb-0.5">
+                <div className="h-7 w-7 rounded-full bg-[var(--brand)] flex items-center justify-center flex-shrink-0 mb-0.5">
                   <Bot className="h-4 w-4 text-white" />
                 </div>
               )}
               <div className={`max-w-[80%] px-3.5 py-2.5 rounded-2xl break-words ${
                 msg.type === 'user'
-                  ? 'bg-[#5DBC70] text-white rounded-br-sm text-sm leading-relaxed'
+                  ? 'bg-[var(--brand)] text-black rounded-br-sm text-sm leading-relaxed'
                   : msg.isError
                   ? 'bg-red-50 text-red-700 border border-red-100 text-sm leading-relaxed'
-                  : 'bg-white text-gray-800 shadow-sm rounded-bl-sm'
+                  : 'bg-card text-fg shadow-sm rounded-bl-sm'
               }`}>
                 {msg.type === 'user' || msg.isError
                   ? <span className="whitespace-pre-wrap">{msg.content}</span>
@@ -214,10 +214,10 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
                 }
               </div>
               {msg.type === 'user' && (
-                <div className="h-7 w-7 rounded-full bg-gray-300 overflow-hidden flex items-center justify-center flex-shrink-0 mb-0.5">
+                <div className="h-7 w-7 rounded-full bg-line overflow-hidden flex items-center justify-center flex-shrink-0 mb-0.5">
                   {user?.imageUrl
                     ? <img src={user.imageUrl} alt="avatar" className="h-full w-full object-cover" />
-                    : <UserIcon className="h-4 w-4 text-gray-600" />
+                    : <UserIcon className="h-4 w-4 text-muted" />
                   }
                 </div>
               )}
@@ -226,12 +226,12 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
 
           {isLoading && (
             <div className="flex items-end gap-2">
-              <div className="h-7 w-7 rounded-full bg-[#5DBC70] flex items-center justify-center flex-shrink-0">
+              <div className="h-7 w-7 rounded-full bg-[var(--brand)] flex items-center justify-center flex-shrink-0">
                 <Bot className="h-4 w-4 text-white" />
               </div>
-              <div className="bg-white shadow-sm rounded-2xl rounded-bl-sm px-3.5 py-3 flex gap-1.5">
+              <div className="bg-card shadow-sm rounded-2xl rounded-bl-sm px-3.5 py-3 flex gap-1.5">
                 {[0, 0.15, 0.3].map((d, i) => (
-                  <div key={i} className="w-2 h-2 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: `${d}s` }} />
+                  <div key={i} className="w-2 h-2 bg-line rounded-full animate-bounce" style={{ animationDelay: `${d}s` }} />
                 ))}
               </div>
             </div>
@@ -241,8 +241,8 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
 
         {/* Quick prompts */}
         {showQuickPrompts && messages.length === 1 && (
-          <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-gray-100">
-            <p className="text-xs font-semibold text-gray-400 mb-2 flex items-center gap-1.5">
+          <div className="flex-shrink-0 px-4 py-3 bg-card border-t border-line">
+            <p className="text-xs font-semibold text-muted mb-2 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" /> Suggested questions
             </p>
             <div className="space-y-1.5">
@@ -250,10 +250,10 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
                 <button
                   key={i}
                   onClick={() => send(prompt)}
-                  className="w-full flex items-center justify-between px-3 py-2.5 bg-gray-50 hover:bg-[#D0EDDA] rounded-xl text-sm text-gray-700 font-medium transition-colors text-left group"
+                  className="w-full flex items-center justify-between px-3 py-2.5 bg-elevated hover:bg-[var(--brand-light)] rounded-xl text-sm text-fg font-medium transition-colors text-left group"
                 >
                   <span>{prompt}</span>
-                  <ChevronRight className="h-4 w-4 text-gray-300 group-hover:text-[#5DBC70] flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-muted group-hover:text-[var(--brand)] flex-shrink-0" />
                 </button>
               ))}
             </div>
@@ -261,7 +261,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
         )}
 
         {/* Input */}
-        <div className="flex-shrink-0 px-4 py-3 bg-white border-t border-gray-100"
+        <div className="flex-shrink-0 px-4 py-3 bg-card border-t border-line"
           style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}>
           <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex gap-2">
             <input
@@ -270,12 +270,12 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
               onChange={e => setInput(e.target.value)}
               placeholder="Ask your coach anything…"
               disabled={isLoading}
-              className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5DBC70] focus:border-[#5DBC70] bg-gray-50"
+              className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] bg-elevated"
             />
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="h-10 w-10 bg-[#5DBC70] hover:bg-[#4EAA5F] disabled:bg-gray-200 text-white rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
+              className="h-10 w-10 bg-[var(--brand)] hover:bg-[var(--brand-dark)] disabled:bg-line text-black rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
             >
               <Send className="h-4 w-4" />
             </button>
