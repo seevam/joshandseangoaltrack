@@ -176,8 +176,8 @@ export default function CalendarView() {
 
       {/* Export modal — shown every time Export is clicked */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="bg-card border border-line rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-pop-in">
             <div className="flex items-start justify-between mb-4">
               <h3 className="text-base font-bold text-fg">Export to Calendar</h3>
               <button onClick={() => setShowExportModal(false)} className="p-1 hover:bg-elevated rounded-lg">
@@ -301,8 +301,8 @@ export default function CalendarView() {
                 const key = `${goal.id}-${task.id}`;
                 const isLogging = loggingTask === key;
                 return (
-                  <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${animatingTask === key ? 'task-complete-anim' : ''} ${
-                    done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line'
+                  <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 ${animatingTask === key ? 'task-flash task-complete-anim' : ''} ${
+                    done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line hover:border-[var(--brand)]/40'
                   }`}>
                     <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || 'var(--brand)' }} />
                     <div className="flex-1 min-w-0">

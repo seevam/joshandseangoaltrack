@@ -1,17 +1,26 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Zap, Flame, Lock, Check } from 'lucide-react';
 import { CATEGORY_COLORS, type Category } from '@/lib/types';
 import { DIFFICULTY_META, type Difficulty, type UserStats } from '@/lib/xp';
 import { Icon, IconTile, categoryIcon } from './icons';
+import { AnimatedNumber, useDidIncrease } from './motion';
 
 export function XPBar({ stats }: { stats: UserStats }) {
   const pct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
+  const gained = useDidIncrease(stats.totalXp);
+  // Start at 0 so the bar visibly fills on mount rather than appearing pre-filled.
+  const [width, setWidth] = useState(0);
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setWidth(pct));
+    return () => cancelAnimationFrame(t);
+  }, [pct]);
   return (
     <div>
       <div className="flex items-end justify-between mb-2.5">
         <div className="flex items-center gap-2.5">
-          <IconTile name={stats.rank.icon} color={stats.rank.color} size="sm" />
+          <IconTile name={stats.rank.icon} color={stats.rank.color} size="sm" className={gained ? "pulse-glow" : ""} />
           <div>
             <p className="text-sm font-bold text-fg leading-tight">Level {stats.level}</p>
             <p className="text-xs font-medium" style={{ color: stats.rank.color }}>{stats.rank.name}</p>
@@ -19,13 +28,14 @@ export function XPBar({ stats }: { stats: UserStats }) {
         </div>
         <div className="text-right">
           <p className="text-sm font-bold text-brand leading-tight flex items-center gap-1 justify-end">
-            <Zap className="h-3.5 w-3.5" />{stats.totalXp.toLocaleString()}
+            <Zap className={`h-3.5 w-3.5 ${gained ? 'flame-flicker' : ''}`} />
+            <AnimatedNumber value={stats.totalXp} />
           </p>
           <p className="text-xs text-muted">{stats.levelXp} / {stats.levelSpan} to next</p>
         </div>
       </div>
       <div className="h-2.5 bg-elevated rounded-full overflow-hidden">
-        <div className="xp-bar-fill h-full rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+        <div className="xp-bar-fill h-full rounded-full" style={{ width: `${width}%` }} />
       </div>
       {stats.nextRank && (
         <p className="text-xs text-muted mt-1.5 flex items-center gap-1">
@@ -107,7 +117,7 @@ export function StreakBadge({ days }: { days: number }) {
   if (days <= 0) return null;
   return (
     <span className="inline-flex items-center gap-1 text-xs font-semibold text-orange-400">
-      <Flame className="h-3.5 w-3.5" />{days}d
+      <Flame className="h-3.5 w-3.5 flame-flicker" />{days}d
     </span>
   );
 }
@@ -115,11 +125,12 @@ export function StreakBadge({ days }: { days: number }) {
 export function BadgeTile({ icon, name, description, color, earned, compact = false }: {
   icon: string; name: string; description: string; color: string; earned: boolean; compact?: boolean;
 }) {
+  const justUnlocked = useDidIncrease(earned ? 1 : 0);
   return (
     <div
-      className={`relative rounded-xl border text-center transition-all ${compact ? 'p-2' : 'p-3'} ${
-        earned ? 'bg-card' : 'bg-card/40 border-line'
-      }`}
+      className={`relative rounded-xl border text-center transition-all duration-300 ${compact ? 'p-2' : 'p-3'} ${
+        earned ? 'bg-card hover:-translate-y-0.5' : 'bg-card/40 border-line'
+      } ${justUnlocked ? 'badge-unlock' : ''}`}
       style={earned ? { borderColor: `${color}4D`, boxShadow: `0 0 16px ${color}14` } : undefined}
       title={earned ? description : `Locked — ${description}`}
     >

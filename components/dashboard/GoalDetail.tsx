@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Pencil, TrendingUp, Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon, CalendarDays, Map, Check, Undo2 } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import { IconTile } from '@/components/ui/icons';
+import { AnimatedNumber, AnimatedCheck } from '@/components/ui/motion';
 import GoalChatPanel from './GoalChatPanel';
 import GoalForm from './GoalForm';
 
@@ -119,8 +120,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   });
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-40 p-0 sm:p-4">
-      <div className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-40 p-0 sm:p-4 animate-fade-in">
+      <div className="bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden animate-pop-in shadow-2xl">
 
         {/* ── Header — never scrolls ─────────────────────────────── */}
         <div style={{ backgroundColor: cat.hex }} className="rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0">
@@ -148,10 +149,10 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   ? `${goal.subtasks.filter(s => s.completed).length} of ${goal.subtasks.length} milestones`
                   : `${goal.currentValue} / ${goal.targetValue} ${goal.unit}`}
               </span>
-              <span className="font-semibold">{progress.toFixed(0)}%</span>
+              <span className="font-semibold"><AnimatedNumber value={progress} />%</span>
             </div>
             <div className="h-3 bg-black/25 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progress}%` }} />
+              <div className="h-full bg-white rounded-full transition-[width] duration-1000 ease-out" style={{ width: `${progress}%` }} />
             </div>
           </div>
         </div>
@@ -163,7 +164,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* AI Coach card */}
             <button
               onClick={() => setShowChat(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 bg-[var(--brand-light)] border border-[var(--brand)]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
+              className="group w-full flex items-center gap-3 px-4 py-3.5 bg-[var(--brand-light)] border border-[var(--brand)]/30 rounded-2xl transition-all text-left lift sheen"
             >
               <div className="h-10 w-10 rounded-full bg-[var(--brand)] flex items-center justify-center flex-shrink-0">
                 <Bot className="h-5 w-5 text-white" />
@@ -178,7 +179,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                    'Get tips, motivation, and a plan'}
                 </p>
               </div>
-              <Sparkles className="h-5 w-5 text-[var(--brand)] flex-shrink-0" />
+              <Sparkles className="h-5 w-5 text-[var(--brand)] flex-shrink-0 icon-shift" />
             </button>
 
             {/* Stats row */}
@@ -236,11 +237,11 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
 
                 {showTasks && (
                   <div className="space-y-2">
-                    {recurringTasks.map(task => {
+                    {recurringTasks.map((task, idx) => {
                       const scheduledToday = !task.daysOfWeek || task.daysOfWeek.length === 0 || task.daysOfWeek.includes(todayDow);
                       const done = !!todayCompletions[task.id];
                       return (
-                        <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${animatingTasks.has(task.id) ? 'task-complete-anim' : ''} ${
+                        <div key={task.id} style={{ ['--i' as string]: idx }} className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 stagger-fast ${animatingTasks.has(task.id) ? 'task-flash task-complete-anim' : ''} ${
                           done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' :
                           scheduledToday ? 'bg-elevated border-line' :
                           'bg-elevated/50 border-line opacity-60'
@@ -341,8 +342,9 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       return (
                         <li
                           key={i}
-                          className={`rounded-xl border overflow-hidden transition-all ${animatingMilestone === i ? 'task-complete-anim' : ''} ${
-                            s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line'
+                          style={{ ['--i' as string]: i }}
+                          className={`rounded-xl border overflow-hidden transition-all duration-300 stagger-fast ${animatingMilestone === i ? 'task-flash task-complete-anim' : ''} ${
+                            s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line hover:border-[var(--brand)]/40'
                           }`}
                         >
                           {/* Row */}
@@ -350,15 +352,13 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                             className="flex items-center gap-3 p-3 cursor-pointer"
                             onClick={() => setExpandedMilestone(isExpanded ? null : i)}
                           >
-                            <button
-                              onClick={e => { e.stopPropagation(); handleToggleMilestone(goal.id, i); }}
-                              className="flex-shrink-0"
-                            >
-                              {s.completed
-                                ? <CheckCircle className="h-5 w-5 text-[var(--brand)]" />
-                                : <Circle className="h-5 w-5 text-muted hover:text-[var(--brand)] transition-colors" />
-                              }
-                            </button>
+                            <div onClick={e => e.stopPropagation()}>
+                              <AnimatedCheck
+                                checked={s.completed}
+                                size={22}
+                                onClick={() => handleToggleMilestone(goal.id, i)}
+                              />
+                            </div>
                             <span className={`text-sm flex-1 font-medium ${s.completed ? 'line-through text-muted' : 'text-fg'}`}>
                               {s.title}
                             </span>

@@ -84,7 +84,7 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
 
             <button
               onClick={() => setMode('quick')}
-              className="w-full flex items-start gap-4 p-4 rounded-2xl border border-line bg-elevated hover:border-brand/50 transition-all text-left active:scale-[0.99] group"
+              className="w-full flex items-start gap-4 p-4 rounded-2xl border border-line bg-elevated hover:border-brand/50 transition-all text-left group lift sheen"
             >
               <div className="h-11 w-11 rounded-xl bg-brand/15 flex items-center justify-center flex-shrink-0">
                 <Zap className="h-5 w-5 text-brand" />
@@ -98,12 +98,12 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
                   Type your goal in one line. The AI fills in the timeline, milestones, and tasks for you.
                 </p>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted group-hover:text-brand transition-colors flex-shrink-0 mt-1" />
+              <ArrowRight className="h-4 w-4 text-muted group-hover:text-brand transition-colors flex-shrink-0 mt-1 icon-shift" />
             </button>
 
             <button
               onClick={startDetailed}
-              className="w-full flex items-start gap-4 p-4 rounded-2xl border border-line bg-elevated hover:border-brand/50 transition-all text-left active:scale-[0.99] group"
+              className="w-full flex items-start gap-4 p-4 rounded-2xl border border-line bg-elevated hover:border-brand/50 transition-all text-left group lift sheen"
             >
               <div className="h-11 w-11 rounded-xl bg-blue-500/15 flex items-center justify-center flex-shrink-0">
                 <MessagesSquare className="h-5 w-5 text-blue-400" />
@@ -117,7 +117,7 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
                   Chat with your coach. It asks about your timeline, experience, and constraints, then builds a plan around you.
                 </p>
               </div>
-              <ArrowRight className="h-4 w-4 text-muted group-hover:text-brand transition-colors flex-shrink-0 mt-1" />
+              <ArrowRight className="h-4 w-4 text-muted group-hover:text-brand transition-colors flex-shrink-0 mt-1 icon-shift" />
             </button>
           </div>
         ) : (
