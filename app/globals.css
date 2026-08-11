@@ -13,6 +13,13 @@
   --brand: #5DBC70;
   --brand-dark: #4EAA5F;
   --brand-light: #1F3A28;
+
+  /* Motion tokens — one place to retune the feel of the whole app */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 0.18s;
+  --dur-base: 0.3s;
+  --dur-slow: 0.6s;
 }
 
 html, body {
@@ -20,79 +27,206 @@ html, body {
   color: var(--fg);
 }
 
-/* Hide scrollbar but keep scroll functionality */
+/* Ambient depth behind the app — very subtle, keeps flat dark from reading dead */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(60rem 40rem at 15% -10%, rgba(93, 188, 112, 0.06), transparent 70%),
+    radial-gradient(50rem 35rem at 95% 5%, rgba(59, 130, 246, 0.04), transparent 70%);
+}
+
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* Thin themed scrollbar for panels that should still show one */
 .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
 .thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+.thin-scroll:hover::-webkit-scrollbar-thumb { background: #344245; }
 
 /* ── Surfaces ─────────────────────────────────────────────────────────────── */
 .card-glow {
+  position: relative;
   background: linear-gradient(180deg, rgba(93, 188, 112, 0.04) 0%, transparent 60%), var(--card);
   border: 1px solid var(--line);
+  transition: border-color var(--dur-base) var(--ease-out),
+              transform var(--dur-base) var(--ease-out),
+              box-shadow var(--dur-base) var(--ease-out);
 }
-.card-glow:hover { border-color: rgba(93, 188, 112, 0.35); }
+.card-glow:hover {
+  border-color: rgba(93, 188, 112, 0.35);
+  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.7), 0 0 24px -8px rgba(93, 188, 112, 0.25);
+}
+
+/* Interactive cards lift on hover and settle on press */
+.card-interactive { cursor: pointer; }
+.card-interactive:hover { transform: translateY(-3px); }
+.card-interactive:active { transform: translateY(-1px) scale(0.99); transition-duration: 0.08s; }
+
+/* Sheen that sweeps across a card on hover */
+.sheen { position: relative; overflow: hidden; }
+.sheen::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.07) 50%, transparent 65%);
+  transform: translateX(-120%);
+  transition: transform 0.7s var(--ease-out);
+  pointer-events: none;
+}
+.sheen:hover::after { transform: translateX(120%); }
 
 .xp-bar-fill {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(90deg, var(--brand-dark), var(--brand) 60%, #8FE3A3);
   box-shadow: 0 0 12px rgba(93, 188, 112, 0.45);
+  transition: width 0.9s var(--ease-out);
+}
+/* Light travelling along the XP bar */
+.xp-bar-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  transform: translateX(-100%);
+  animation: shimmer 2.6s var(--ease-out) infinite;
+}
+@keyframes shimmer {
+  0%       { transform: translateX(-100%); }
+  60%,100% { transform: translateX(200%); }
 }
 
-/* ── Animations ───────────────────────────────────────────────────────────── */
-@keyframes task-pop {
-  0%   { transform: scale(1); }
-  35%  { transform: scale(1.06); }
-  70%  { transform: scale(0.97); }
-  100% { transform: scale(1); }
-}
-.task-complete-anim { animation: task-pop 0.35s ease-out; }
-
-/* Green flash sweep when a task is completed */
-@keyframes task-flash {
-  0%   { box-shadow: 0 0 0 0 rgba(93, 188, 112, 0.55); }
-  100% { box-shadow: 0 0 0 14px rgba(93, 188, 112, 0); }
-}
-.task-flash { animation: task-flash 0.6s ease-out; }
-
-/* XP counter float-up */
-@keyframes xp-float {
-  0%   { opacity: 0; transform: translateY(6px) scale(0.9); }
-  20%  { opacity: 1; transform: translateY(0) scale(1); }
-  80%  { opacity: 1; transform: translateY(-10px) scale(1); }
-  100% { opacity: 0; transform: translateY(-22px) scale(0.95); }
-}
-.xp-float { animation: xp-float 1.2s ease-out forwards; }
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-.animate-fade-in { animation: fade-in 0.2s ease-out; }
+/* ── Entrances ────────────────────────────────────────────────────────────── */
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.animate-fade-in { animation: fade-in var(--dur-fast) var(--ease-out); }
 
 @keyframes slide-in-right {
   from { transform: translateX(100%); opacity: 0.4; }
   to   { transform: translateX(0); opacity: 1; }
 }
-.animate-slide-in-right { animation: slide-in-right 0.28s cubic-bezier(0.22, 1, 0.36, 1); }
+.animate-slide-in-right { animation: slide-in-right var(--dur-base) var(--ease-out); }
 
 @keyframes slide-up {
   from { transform: translateY(16px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
-.animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-slide-up { animation: slide-up var(--dur-base) var(--ease-out) both; }
 
 @keyframes pop-in {
   0%   { transform: scale(0.94); opacity: 0; }
   60%  { transform: scale(1.01); }
   100% { transform: scale(1); opacity: 1; }
 }
-.animate-pop-in { animation: pop-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-pop-in { animation: pop-in 0.26s var(--ease-out) both; }
+
+@keyframes scale-in {
+  from { transform: scale(0.8); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+.animate-scale-in { animation: scale-in var(--dur-base) var(--ease-spring) both; }
 
 /* Staggered list entrance — set --i on each row */
-.stagger { animation: slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+.stagger { animation: slide-up var(--dur-base) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 55ms); }
+.stagger-fast { animation: slide-up 0.24s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 35ms); }
+
+/* ── Task completion ──────────────────────────────────────────────────────── */
+@keyframes task-pop {
+  0%   { transform: scale(1); }
+  35%  { transform: scale(1.04); }
+  70%  { transform: scale(0.985); }
+  100% { transform: scale(1); }
+}
+.task-complete-anim { animation: task-pop 0.4s var(--ease-out); }
+
+@keyframes task-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(93, 188, 112, 0.5), inset 0 0 0 0 rgba(93, 188, 112, 0.3); }
+  40%  { box-shadow: 0 0 0 6px rgba(93, 188, 112, 0.18), inset 0 0 30px 0 rgba(93, 188, 112, 0.18); }
+  100% { box-shadow: 0 0 0 16px rgba(93, 188, 112, 0), inset 0 0 0 0 rgba(93, 188, 112, 0); }
+}
+.task-flash { animation: task-flash 0.7s var(--ease-out); }
+
+/* Checkmark that draws itself */
+@keyframes check-draw {
+  from { stroke-dashoffset: 24; }
+  to   { stroke-dashoffset: 0; }
+}
+.check-draw {
+  stroke-dasharray: 24;
+  animation: check-draw 0.35s var(--ease-out) forwards;
+}
+
+/* Ring that expands out of a completed checkbox */
+@keyframes ring-burst {
+  0%   { transform: scale(0.6); opacity: 0.9; border-width: 3px; }
+  100% { transform: scale(2.1); opacity: 0; border-width: 1px; }
+}
+.ring-burst { animation: ring-burst 0.55s var(--ease-out) forwards; }
+
+/* XP counter float-up */
+@keyframes xp-float {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.85); }
+  18%  { opacity: 1; transform: translateY(0) scale(1.06); }
+  30%  { transform: translateY(0) scale(1); }
+  78%  { opacity: 1; transform: translateY(-14px) scale(1); }
+  100% { opacity: 0; transform: translateY(-30px) scale(0.95); }
+}
+.xp-float { animation: xp-float 1.3s var(--ease-out) forwards; }
+
+/* Particles that spray from a completed task */
+@keyframes spark-fly {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+}
+.spark { animation: spark-fly 0.65s var(--ease-out) forwards; }
+
+/* ── Emphasis / ambient ───────────────────────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(93, 188, 112, 0.35); }
+  50%      { box-shadow: 0 0 14px 3px rgba(93, 188, 112, 0.25); }
+}
+.pulse-glow { animation: pulse-glow 2.4s ease-in-out infinite; }
+
+@keyframes flame-flicker {
+  0%, 100% { transform: scale(1) rotate(-2deg); opacity: 1; }
+  50%      { transform: scale(1.12) rotate(2deg); opacity: 0.88; }
+}
+.flame-flicker { animation: flame-flicker 1.7s ease-in-out infinite; }
+
+@keyframes badge-unlock {
+  0%   { transform: scale(0.4) rotate(-25deg); opacity: 0; }
+  55%  { transform: scale(1.18) rotate(6deg); opacity: 1; }
+  75%  { transform: scale(0.95) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+.badge-unlock { animation: badge-unlock 0.7s var(--ease-spring) both; }
+
+@keyframes level-ring {
+  0%   { transform: scale(0.7); opacity: 0; }
+  35%  { opacity: 1; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+.level-ring { animation: level-ring 1.4s var(--ease-out) infinite; }
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+.float-y { animation: float-y 3.2s ease-in-out infinite; }
+
+/* Skeleton shimmer while data loads */
+@keyframes skeleton-sweep {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--elevated) 25%, #223033 50%, var(--elevated) 75%);
+  background-size: 200% 100%;
+  animation: skeleton-sweep 1.5s linear infinite;
+}
 
 @keyframes confetti-fall {
   0%   { transform: translateY(-10vh) rotate(0deg); opacity: 1; }
@@ -100,14 +234,26 @@ html, body {
 }
 .confetti-piece { animation: confetti-fall linear forwards; }
 
+/* ── Interaction affordances ──────────────────────────────────────────────── */
+.press { transition: transform 0.12s var(--ease-out); }
+.press:active { transform: scale(0.95); }
+
+.lift { transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out); }
+.lift:hover { transform: translateY(-2px); }
+.lift:active { transform: translateY(0) scale(0.98); }
+
+/* Icon nudges on hover of its parent row */
+.icon-shift { transition: transform var(--dur-fast) var(--ease-out); }
+.group:hover .icon-shift { transform: translateX(3px); }
+
 @media (prefers-reduced-motion: reduce) {
-  .task-complete-anim, .task-flash, .xp-float, .animate-fade-in,
-  .animate-slide-in-right, .animate-slide-up, .animate-pop-in,
-  .stagger, .confetti-piece {
-    animation: none !important;
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
+  .card-interactive:hover, .lift:hover { transform: none; }
 }
 
-/* Native controls should follow the dark theme */
 select, option { background-color: var(--elevated); color: var(--fg); }
 input, textarea { color-scheme: dark; }

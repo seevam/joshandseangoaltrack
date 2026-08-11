@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Target, Plus, CheckCircle, AlertTriangle, ChevronRight, Search, X,
-  Zap, Trophy, Flame, ListChecks, Loader2, Circle,
+  Zap, Trophy, Flame, ListChecks,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import { computeStats, earnedBadges, taskXp, milestoneXp } from '@/lib/xp';
 import { XPBar, CategoryBadge, BadgeTile, DifficultyPill, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
+import { IconTile } from '@/components/ui/icons';
+import {
+  AnimatedNumber, AnimatedCheck, Sparks, LevelUpOverlay, Reveal, DashboardSkeleton,
+} from '@/components/ui/motion';
 import GoalDetail from './GoalDetail';
 
 
@@ -26,6 +30,9 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
   const [xpToast, setXpToast] = useState<{ id: number; amount: number } | null>(null);
   const [flashTask, setFlashTask] = useState<string | null>(null);
+  const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
+  const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
+  const prevLevel = useRef<number | null>(null);
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -55,9 +62,13 @@ export default function Dashboard() {
     return res.json();
   };
 
-  const fireXp = (amount: number) => {
+  const fireXp = (amount: number, origin?: { x: number; y: number }) => {
     setXpToast({ id: Date.now(), amount });
-    setTimeout(() => setXpToast(null), 1300);
+    setTimeout(() => setXpToast(null), 1400);
+    if (origin) {
+      setSparks({ id: Date.now(), ...origin });
+      setTimeout(() => setSparks(null), 700);
+    }
   };
 
   const deleteGoal = async (id: string) => {
@@ -108,7 +119,7 @@ export default function Dashboard() {
     } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
-  const logTask = async (goalId: string, taskId: number, value: number | boolean) => {
+  const logTask = async (goalId: string, taskId: number, value: number | boolean, origin?: { x: number; y: number }) => {
     const today = new Date().toISOString().split('T')[0];
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -121,7 +132,7 @@ export default function Dashboard() {
       updateGoal(saved);
       if (value) {
         const task = (goal.dailyTasks || []).find(t => t.id === taskId);
-        fireXp(taskXp(task?.difficulty));
+        fireXp(taskXp(task?.difficulty), origin);
         setFlashTask(`${goalId}-${taskId}`);
         setTimeout(() => setFlashTask(null), 650);
       }
@@ -155,6 +166,14 @@ export default function Dashboard() {
   const stats = useMemo(() => computeStats(goals), [goals]);
   const badges = useMemo(() => earnedBadges(stats, goals), [stats, goals]);
   const earnedCount = badges.filter(b => b.isEarned).length;
+
+  // Level is derived, so watching it here catches gains from any source.
+  useEffect(() => {
+    if (prevLevel.current !== null && stats.level > prevLevel.current) {
+      setLevelUp({ level: stats.level, name: stats.rank.name, color: stats.rank.color });
+    }
+    prevLevel.current = stats.level;
+  }, [stats.level, stats.rank]);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayDow = new Date().getDay();
@@ -213,11 +232,7 @@ export default function Dashboard() {
   });
 
   if (!isLoaded || isLoadingGoals) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-bg">
-        <Loader2 className="h-8 w-8 text-brand animate-spin" />
-      </div>
-    );
+    return <div className="min-h-screen bg-bg"><DashboardSkeleton /></div>;
   }
 
   return (
@@ -236,9 +251,9 @@ export default function Dashboard() {
           </div>
           <button
             onClick={() => setShowCreate(true)}
-            className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl text-sm transition-colors flex-shrink-0 active:scale-95"
+            className="group flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl text-sm transition-colors flex-shrink-0 press shadow-lg shadow-brand/20"
           >
-            <Plus className="h-4 w-4" /> New Goal
+            <Plus className="h-4 w-4 transition-transform duration-300 group-hover:rotate-90" /> New Goal
           </button>
         </div>
 
@@ -249,12 +264,12 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              { icon: Flame,      label: 'Streak',  value: `${stats.currentStreak}d`,            color: '#FB923C' },
-              { icon: ListChecks, label: 'Today',   value: `${doneToday}/${todaysTasks.length}`, color: '#5DBC70' },
-              { icon: Trophy,     label: 'Badges',  value: `${earnedCount}/${badges.length}`,    color: '#FBBF24' },
+              { icon: Flame,      label: 'Streak',  value: <><AnimatedNumber value={stats.currentStreak} />d</>,          color: '#FB923C', spin: stats.currentStreak > 0 },
+              { icon: ListChecks, label: 'Today',   value: <><AnimatedNumber value={doneToday} />/{todaysTasks.length}</>, color: '#5DBC70', spin: false },
+              { icon: Trophy,     label: 'Badges',  value: <><AnimatedNumber value={earnedCount} />/{badges.length}</>,    color: '#FBBF24', spin: false },
             ].map((s, i) => (
-              <div key={s.label} className="card-glow rounded-2xl p-3 text-center stagger" style={{ ['--i' as string]: i + 2 }}>
-                <s.icon className="h-4 w-4 mx-auto mb-1.5" style={{ color: s.color }} />
+              <div key={s.label} className="card-glow sheen rounded-2xl p-3 text-center stagger" style={{ ['--i' as string]: i + 2 }}>
+                <s.icon className={`h-4 w-4 mx-auto mb-1.5 ${s.spin ? 'flame-flicker' : ''}`} style={{ color: s.color }} />
                 <p className="text-lg font-bold text-fg leading-none">{s.value}</p>
                 <p className="text-[10px] text-muted uppercase tracking-wide mt-1">{s.label}</p>
               </div>
@@ -309,21 +324,23 @@ export default function Dashboard() {
                   return (
                     <div
                       key={key}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-all stagger ${flashTask === key ? 'task-flash task-complete-anim' : ''} ${
-                        done ? 'border-brand/30 bg-brand/10' : 'border-line bg-elevated hover:border-brand/40'
+                      id={`task-${key}`}
+                      className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 stagger-fast ${flashTask === key ? 'task-flash task-complete-anim' : ''} ${
+                        done ? 'border-brand/30 bg-brand/10' : 'border-line bg-elevated hover:border-brand/40 hover:translate-x-0.5'
                       }`}
                       style={{ ['--i' as string]: i }}
                     >
-                      <button
-                        onClick={() => logTask(goal.id, task.id, !done)}
-                        className="flex-shrink-0"
-                        aria-label={done ? 'Mark incomplete' : 'Mark complete'}
-                      >
-                        {done
-                          ? <CheckCircle className="h-6 w-6 text-brand" />
-                          : <Circle className="h-6 w-6 text-muted hover:text-brand transition-colors" />
-                        }
-                      </button>
+                      <AnimatedCheck
+                        checked={done}
+                        size={24}
+                        color={cat.hex}
+                        onClick={() => {
+                          const el = document.getElementById(`task-${key}`);
+                          const r = el?.getBoundingClientRect();
+                          logTask(goal.id, task.id, !done,
+                            r ? { x: r.left + 12, y: r.top + r.height / 2 } : undefined);
+                        }}
+                      />
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium truncate ${done ? 'line-through text-muted' : 'text-fg'}`}>
                           {task.title}
@@ -354,7 +371,7 @@ export default function Dashboard() {
                   <button
                     key={`${m.goal.id}-${m.idx}`}
                     onClick={() => { setSelectedGoal(m.goal); setShowGoalDetails(true); }}
-                    className="w-full text-left p-2.5 rounded-xl border border-line bg-elevated hover:border-brand/40 transition-colors stagger"
+                    className="w-full text-left p-2.5 rounded-xl border border-line bg-elevated hover:border-brand/40 hover:-translate-y-0.5 transition-all duration-200 stagger-fast"
                     style={{ ['--i' as string]: i }}
                   >
                     <p className="text-xs font-medium text-fg line-clamp-2">{m.title}</p>
@@ -372,7 +389,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Badges ────────────────────────────────────────────────────── */}
-        <div className="card-glow rounded-2xl p-4 animate-slide-up">
+        <Reveal><div className="card-glow rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-fg flex items-center gap-2">
               <Trophy className="h-4 w-4 text-brand" /> Achievements
@@ -381,10 +398,10 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
             {badges.map(b => (
-              <BadgeTile key={b.id} icon={b.icon} name={b.name} description={b.description} earned={b.isEarned} compact />
+              <BadgeTile key={b.id} icon={b.icon} name={b.name} description={b.description} color={b.color} earned={b.isEarned} compact />
             ))}
           </div>
-        </div>
+        </div></Reveal>
 
         {/* ── Goals: search + filter bar + grid ─────────────────────────── */}
         <div className="space-y-3">
@@ -465,7 +482,7 @@ export default function Dashboard() {
                   <div
                     key={goal.id}
                     onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
-                    className="card-glow rounded-2xl overflow-hidden cursor-pointer transition-all hover:-translate-y-0.5 active:scale-[0.98] stagger"
+                    className="card-glow card-interactive sheen group rounded-2xl overflow-hidden stagger"
                     style={{ ['--i' as string]: i }}
                   >
                     <div className="h-1" style={{ backgroundColor: cat.hex }} />
@@ -476,7 +493,7 @@ export default function Dashboard() {
                           <h3 className="text-base font-semibold text-fg truncate mt-2">{goal.title}</h3>
                           {goal.description && <p className="text-xs text-muted line-clamp-2 mt-0.5">{goal.description}</p>}
                         </div>
-                        <ChevronRight className="h-5 w-5 text-muted flex-shrink-0" />
+                        <ChevronRight className="h-5 w-5 text-muted flex-shrink-0 icon-shift" />
                       </div>
 
                       <div className="space-y-1 mb-3">
@@ -485,10 +502,10 @@ export default function Dashboard() {
                             ? <span>{goal.subtasks.filter(s => s.completed).length} / {goal.subtasks.length} milestones</span>
                             : <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
                           }
-                          <span className="font-semibold text-fg">{progress.toFixed(0)}%</span>
+                          <span className="font-semibold text-fg"><AnimatedNumber value={progress} />%</span>
                         </div>
                         <div className="h-2 bg-elevated rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-all duration-700" style={{ width: `${progress}%`, backgroundColor: cat.hex }} />
+                          <div className="h-full rounded-full transition-[width] duration-1000 ease-out" style={{ width: `${progress}%`, backgroundColor: cat.hex }} />
                         </div>
                       </div>
 
@@ -528,6 +545,15 @@ export default function Dashboard() {
 
       {/* ── Overlays ────────────────────────────────────────────────────── */}
       {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
+      {sparks && <Sparks key={sparks.id} x={sparks.x} y={sparks.y} />}
+      {levelUp && (
+        <LevelUpOverlay
+          level={levelUp.level}
+          rankName={levelUp.name}
+          rankColor={levelUp.color}
+          onDone={() => setLevelUp(null)}
+        />
+      )}
       {showGoalDetails && selectedGoal && (
         <GoalDetail
           goal={goals.find(g => g.id === selectedGoal.id) || selectedGoal}
@@ -547,7 +573,7 @@ export default function Dashboard() {
           <Confetti />
           <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[85] p-4 animate-fade-in">
             <div className="card-glow rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-pop-in">
-              <div className="text-6xl mb-4">🏆</div>
+              <IconTile name="trophy" color="#FBBF24" size="lg" className="mx-auto mb-4" />
               <h2 className="text-2xl font-bold text-fg mb-2">Goal Complete!</h2>
               <p className="text-muted mb-1">{celebratingGoal.title}</p>
               <p className="text-brand font-semibold mb-6 flex items-center justify-center gap-1">
@@ -557,7 +583,7 @@ export default function Dashboard() {
                 onClick={() => setCelebratingGoal(null)}
                 className="px-6 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl font-semibold"
               >
-                Awesome! 🎉
+                Awesome!
               </button>
             </div>
           </div>

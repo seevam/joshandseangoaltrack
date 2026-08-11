@@ -6,6 +6,7 @@ import { X, Maximize2, Minimize2, Bot, User as UserIcon, Send, Target, Pencil } 
 import { useGoalStore } from '@/lib/store';
 import { getGoalProgress } from '@/lib/types';
 import MarkdownText from '@/components/ui/MarkdownText';
+import { Icon } from '@/components/ui/icons';
 import { buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal } from '@/lib/aiGoal';
 
 interface Message {
@@ -18,13 +19,13 @@ interface Message {
 }
 
 /** Concrete goal starters, grouped. A vague starter leaves the AI nothing to work from. */
-const STARTER_GROUPS: { label: string; emoji: string; items: string[] }[] = [
-  { label: 'Fitness',   emoji: '🏃', items: ['Run a 5k', 'Run a marathon', 'Build strength in the gym', 'Lose weight'] },
-  { label: 'Health',    emoji: '🧘', items: ['Meditate daily', 'Fix my sleep schedule', 'Eat healthier', 'Quit a bad habit'] },
-  { label: 'Learning',  emoji: '📚', items: ['Read more books', 'Learn Spanish', 'Learn to code', 'Play guitar'] },
-  { label: 'Finance',   emoji: '💰', items: ['Save an emergency fund', 'Pay off debt', 'Start investing', 'Build a budget'] },
-  { label: 'Career',    emoji: '💼', items: ['Get promoted', 'Change careers', 'Build a portfolio', 'Grow my network'] },
-  { label: 'Creative',  emoji: '🎨', items: ['Write a novel', 'Start a side project', 'Learn photography', 'Make music'] },
+const STARTER_GROUPS: { label: string; icon: string; color: string; items: string[] }[] = [
+  { label: 'Fitness',  icon: 'dumbbell',   color: '#FF4B4B', items: ['Run a 5k', 'Run a marathon', 'Build strength in the gym', 'Lose weight'] },
+  { label: 'Health',   icon: 'heart',      color: '#00CD4B', items: ['Meditate daily', 'Fix my sleep schedule', 'Eat healthier', 'Quit a bad habit'] },
+  { label: 'Learning', icon: 'graduation', color: '#3B82F6', items: ['Read more books', 'Learn Spanish', 'Learn to code', 'Play guitar'] },
+  { label: 'Finance',  icon: 'wallet',     color: '#FBBF24', items: ['Save an emergency fund', 'Pay off debt', 'Start investing', 'Build a budget'] },
+  { label: 'Career',   icon: 'briefcase',  color: '#7E3AF2', items: ['Get promoted', 'Change careers', 'Build a portfolio', 'Grow my network'] },
+  { label: 'Creative', icon: 'palette',    color: '#5DBC70', items: ['Write a novel', 'Start a side project', 'Learn photography', 'Make music'] },
 ];
 
 export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
@@ -229,7 +230,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
     <>
       {showGoalCreated && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-brand text-black px-5 py-2.5 rounded-lg shadow-xl flex items-center gap-2 text-sm font-semibold animate-pop-in">
-          <Target className="h-4 w-4" /> Goal Created! 🎉
+          <Target className="h-4 w-4" /> Goal created
         </div>
       )}
 
@@ -334,19 +335,22 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
           <div className="flex-shrink-0 p-3 border-t border-line bg-card max-h-56 overflow-y-auto thin-scroll">
             <p className="text-xs font-medium text-muted mb-2">Pick a category, or just type your goal below</p>
             <div className="flex flex-wrap gap-1.5">
-              {STARTER_GROUPS.map(g => (
-                <button
-                  key={g.label}
-                  onClick={() => setOpenGroup(openGroup === g.label ? null : g.label)}
-                  className={`px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    openGroup === g.label
-                      ? 'bg-brand text-black border-brand'
-                      : 'bg-elevated text-muted border-line hover:border-brand/50 hover:text-fg'
-                  }`}
-                >
-                  {g.emoji} {g.label}
-                </button>
-              ))}
+              {STARTER_GROUPS.map(g => {
+                const active = openGroup === g.label;
+                return (
+                  <button
+                    key={g.label}
+                    onClick={() => setOpenGroup(active ? null : g.label)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors"
+                    style={active
+                      ? { backgroundColor: `${g.color}26`, borderColor: `${g.color}80`, color: g.color }
+                      : { backgroundColor: 'var(--elevated)', borderColor: 'var(--line)', color: 'var(--muted)' }}
+                  >
+                    <Icon name={g.icon} className="h-3.5 w-3.5" style={{ color: active ? g.color : 'var(--muted)' }} />
+                    {g.label}
+                  </button>
+                );
+              })}
             </div>
             {openGroup && (
               <div className="mt-2 grid grid-cols-2 gap-1.5 animate-slide-up">

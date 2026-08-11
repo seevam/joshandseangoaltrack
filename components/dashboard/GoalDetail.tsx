@@ -1,8 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Pencil, TrendingUp, Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon, CalendarDays } from 'lucide-react';
+import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Pencil, TrendingUp, Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon, CalendarDays, Map, Check, Undo2 } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
+import { IconTile } from '@/components/ui/icons';
+import { AnimatedNumber, AnimatedCheck } from '@/components/ui/motion';
 import GoalChatPanel from './GoalChatPanel';
 import GoalForm from './GoalForm';
 
@@ -19,10 +21,10 @@ interface Props {
 }
 
 const MILESTONE_BADGES = [
-  { pct: 25,  label: 'First Quarter', emoji: '🌱' },
-  { pct: 50,  label: 'Halfway There', emoji: '⚡' },
-  { pct: 75,  label: 'Almost There',  emoji: '🔥' },
-  { pct: 100, label: 'Completed!',    emoji: '🏆' },
+  { pct: 25,  label: 'First Quarter', icon: 'sprout', color: '#5DBC70' },
+  { pct: 50,  label: 'Halfway There', icon: 'zap',    color: '#3B82F6' },
+  { pct: 75,  label: 'Almost There',  icon: 'flame',  color: '#FB923C' },
+  { pct: 100, label: 'Completed!',    icon: 'trophy', color: '#FBBF24' },
 ];
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -118,8 +120,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   });
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-40 p-0 sm:p-4">
-      <div className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-40 p-0 sm:p-4 animate-fade-in">
+      <div className="bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden animate-pop-in shadow-2xl">
 
         {/* ── Header — never scrolls ─────────────────────────────── */}
         <div style={{ backgroundColor: cat.hex }} className="rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0">
@@ -130,10 +132,10 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               {goal.description && <p className="text-white/80 text-sm mt-1 line-clamp-2">{goal.description}</p>}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowEdit(true)} className="p-2 bg-card/20 hover:bg-card/30 rounded-lg" title="Edit Goal">
+              <button onClick={() => setShowEdit(true)} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg" title="Edit Goal">
                 <Pencil className="h-4 w-4" />
               </button>
-              <button onClick={onClose} className="p-2 bg-card/20 hover:bg-card/30 rounded-lg">
+              <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -147,10 +149,10 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   ? `${goal.subtasks.filter(s => s.completed).length} of ${goal.subtasks.length} milestones`
                   : `${goal.currentValue} / ${goal.targetValue} ${goal.unit}`}
               </span>
-              <span className="font-semibold">{progress.toFixed(0)}%</span>
+              <span className="font-semibold"><AnimatedNumber value={progress} />%</span>
             </div>
-            <div className="h-3 bg-card/30 rounded-full overflow-hidden">
-              <div className="h-full bg-card rounded-full transition-all" style={{ width: `${progress}%` }} />
+            <div className="h-3 bg-black/25 rounded-full overflow-hidden">
+              <div className="h-full bg-white rounded-full transition-[width] duration-1000 ease-out" style={{ width: `${progress}%` }} />
             </div>
           </div>
         </div>
@@ -162,7 +164,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* AI Coach card */}
             <button
               onClick={() => setShowChat(true)}
-              className="w-full flex items-center gap-3 px-4 py-3.5 bg-[var(--brand-light)] border border-[var(--brand)]/30 rounded-2xl hover:shadow-md transition-all text-left active:scale-[0.98]"
+              className="group w-full flex items-center gap-3 px-4 py-3.5 bg-[var(--brand-light)] border border-[var(--brand)]/30 rounded-2xl transition-all text-left lift sheen"
             >
               <div className="h-10 w-10 rounded-full bg-[var(--brand)] flex items-center justify-center flex-shrink-0">
                 <Bot className="h-5 w-5 text-white" />
@@ -170,14 +172,14 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-[var(--brand)]">Talk to your AI Coach</p>
                 <p className="text-xs text-[var(--brand)] truncate">
-                  {status === 'completed' ? 'Celebrate and plan what\'s next 🏆' :
-                   status === 'overdue' ? 'Get a recovery plan for this goal 💪' :
-                   progress >= 75 ? 'You\'re almost there — finish strong! 🔥' :
+                  {status === 'completed' ? 'Celebrate and plan what\'s next' :
+                   status === 'overdue' ? 'Get a recovery plan for this goal' :
+                   progress >= 75 ? 'You\'re almost there — finish strong' :
                    streak > 2 ? `${streak}-day streak! Keep the momentum going` :
                    'Get tips, motivation, and a plan'}
                 </p>
               </div>
-              <Sparkles className="h-5 w-5 text-[var(--brand)] flex-shrink-0" />
+              <Sparkles className="h-5 w-5 text-[var(--brand)] flex-shrink-0 icon-shift" />
             </button>
 
             {/* Stats row */}
@@ -211,7 +213,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               }`}
             >
               <CheckCircle className="h-4 w-4" />
-              {checkedToday ? 'Checked in today ✓' : 'Check in today'}
+              {checkedToday ? 'Checked in today' : 'Check in today'}
             </button>
 
             {/* Today's recurring tasks */}
@@ -235,11 +237,11 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
 
                 {showTasks && (
                   <div className="space-y-2">
-                    {recurringTasks.map(task => {
+                    {recurringTasks.map((task, idx) => {
                       const scheduledToday = !task.daysOfWeek || task.daysOfWeek.length === 0 || task.daysOfWeek.includes(todayDow);
                       const done = !!todayCompletions[task.id];
                       return (
-                        <div key={task.id} className={`flex items-center gap-3 p-3 rounded-xl border ${animatingTasks.has(task.id) ? 'task-complete-anim' : ''} ${
+                        <div key={task.id} style={{ ['--i' as string]: idx }} className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 stagger-fast ${animatingTasks.has(task.id) ? 'task-flash task-complete-anim' : ''} ${
                           done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' :
                           scheduledToday ? 'bg-elevated border-line' :
                           'bg-elevated/50 border-line opacity-60'
@@ -262,7 +264,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                                   : 'bg-[var(--brand)] text-black hover:bg-[var(--brand-dark)]'
                               }`}
                             >
-                              {done ? '✓ Done' : 'Complete'}
+                              {done ? <span className="flex items-center gap-1"><Check className="h-3 w-3" strokeWidth={3} />Done</span> : 'Complete'}
                             </button>
                           ) : (
                             <span className="text-xs text-muted flex-shrink-0">Not today</span>
@@ -286,9 +288,13 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   {MILESTONE_BADGES.map(b => {
                     const earned = progress >= b.pct;
                     return (
-                      <div key={b.pct} className={`flex flex-col items-center p-2 rounded-xl ${earned ? 'bg-[var(--brand-light)]' : 'bg-elevated opacity-40'}`}>
-                        <span className="text-2xl">{b.emoji}</span>
-                        <span className="text-xs font-medium text-muted mt-1 text-center leading-tight">{b.label}</span>
+                      <div
+                        key={b.pct}
+                        className={`flex flex-col items-center p-2.5 rounded-xl border transition-all ${earned ? 'bg-card' : 'bg-elevated border-line opacity-40'}`}
+                        style={earned ? { borderColor: `${b.color}4D` } : undefined}
+                      >
+                        <IconTile name={b.icon} color={b.color} size="sm" muted={!earned} />
+                        <span className={`text-xs font-medium mt-1.5 text-center leading-tight ${earned ? 'text-fg' : 'text-muted'}`}>{b.label}</span>
                         <span className="text-xs text-muted">{b.pct}%</span>
                       </div>
                     );
@@ -322,7 +328,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                   onClick={() => setShowSubtasks(!showSubtasks)}
                   className="flex items-center justify-between w-full text-sm font-semibold text-fg mb-2"
                 >
-                  <span>🗺️ Milestones ({goal.subtasks.filter(s => s.completed).length}/{goal.subtasks.length} done)</span>
+                  <span className="flex items-center gap-1.5"><Map className="h-4 w-4 text-brand" /> Milestones ({goal.subtasks.filter(s => s.completed).length}/{goal.subtasks.length} done)</span>
                   {showSubtasks ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
                 </button>
                 {showSubtasks && (
@@ -336,8 +342,9 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       return (
                         <li
                           key={i}
-                          className={`rounded-xl border overflow-hidden transition-all ${animatingMilestone === i ? 'task-complete-anim' : ''} ${
-                            s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line'
+                          style={{ ['--i' as string]: i }}
+                          className={`rounded-xl border overflow-hidden transition-all duration-300 stagger-fast ${animatingMilestone === i ? 'task-flash task-complete-anim' : ''} ${
+                            s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line hover:border-[var(--brand)]/40'
                           }`}
                         >
                           {/* Row */}
@@ -345,15 +352,13 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                             className="flex items-center gap-3 p-3 cursor-pointer"
                             onClick={() => setExpandedMilestone(isExpanded ? null : i)}
                           >
-                            <button
-                              onClick={e => { e.stopPropagation(); handleToggleMilestone(goal.id, i); }}
-                              className="flex-shrink-0"
-                            >
-                              {s.completed
-                                ? <CheckCircle className="h-5 w-5 text-[var(--brand)]" />
-                                : <Circle className="h-5 w-5 text-muted hover:text-[var(--brand)] transition-colors" />
-                              }
-                            </button>
+                            <div onClick={e => e.stopPropagation()}>
+                              <AnimatedCheck
+                                checked={s.completed}
+                                size={22}
+                                onClick={() => handleToggleMilestone(goal.id, i)}
+                              />
+                            </div>
                             <span className={`text-sm flex-1 font-medium ${s.completed ? 'line-through text-muted' : 'text-fg'}`}>
                               {s.title}
                             </span>
@@ -391,7 +396,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                                     : 'bg-[var(--brand)] text-black hover:bg-[var(--brand-dark)]'
                                 }`}
                               >
-                                {s.completed ? '↩ Mark Incomplete' : '✓ Mark Complete'}
+                                <span className="flex items-center justify-center gap-1.5">{s.completed ? <><Undo2 className="h-3.5 w-3.5" />Mark Incomplete</> : <><Check className="h-3.5 w-3.5" strokeWidth={3} />Mark Complete</>}</span>
                               </button>
                             </div>
                           )}
