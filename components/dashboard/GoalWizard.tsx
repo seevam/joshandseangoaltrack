@@ -697,7 +697,7 @@ export default function GoalWizard({ onClose }: { onClose: () => void }) {
               )}
 
               {/* Commitment statement */}
-              <div className="bg-gradient-to-r from-[#D0EDDA] to-[#C3E8CE] rounded-2xl px-5 py-4 border border-[#5DBC70]/30">
+              <div className="bg-[#D0EDDA] rounded-2xl px-5 py-4 border border-[#5DBC70]/30">
                 <p className="text-sm text-[#1F6B38] leading-relaxed">
                   <span className="font-bold">I, {user?.firstName || 'I'}, commit to</span>{' '}
                   {form.title || 'this goal'}{form.target ? ` — ${form.target} ${form.unit}` : ''}{' '}

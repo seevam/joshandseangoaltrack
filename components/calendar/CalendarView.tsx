@@ -16,6 +16,7 @@ export default function CalendarView() {
   const [selected, setSelected] = useState<Date | null>(new Date());
   const [showExportModal, setShowExportModal] = useState(false);
   const [loggingTask, setLoggingTask] = useState<string | null>(null);
+  const [animatingTask, setAnimatingTask] = useState<string | null>(null);
 
   const year = current.getFullYear();
   const month = current.getMonth();
@@ -68,7 +69,13 @@ export default function CalendarView() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ taskCompletions }),
       });
-      if (res.ok) updateGoal(await res.json());
+      if (res.ok) {
+        updateGoal(await res.json());
+        if (done) {
+          setAnimatingTask(key);
+          setTimeout(() => setAnimatingTask(null), 400);
+        }
+      }
     } catch { /* best effort */ } finally {
       setLoggingTask(null);
     }
@@ -291,7 +298,7 @@ export default function CalendarView() {
                 const key = `${goal.id}-${task.id}`;
                 const isLogging = loggingTask === key;
                 return (
-                  <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                  <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${animatingTask === key ? 'task-complete-anim' : ''} ${
                     done ? 'bg-[#D0EDDA] border-[#5DBC70]/30' : 'bg-gray-50 border-gray-200'
                   }`}>
                     <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || '#5DBC70' }} />

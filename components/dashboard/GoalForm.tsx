@@ -225,7 +225,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
           </div>
 
           {/* AI Subtasks */}
-          <div className="bg-gradient-to-r from-[#D0EDDA] to-[#C3E8CE] rounded-xl p-4">
+          <div className="bg-[#D0EDDA] rounded-xl p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-4 w-4 text-[#5DBC70]" />
