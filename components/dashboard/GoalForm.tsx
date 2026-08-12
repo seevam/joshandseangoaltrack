@@ -128,8 +128,8 @@ export default function GoalForm({ onClose, editGoal }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-card w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
+      <div className="bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto animate-pop-in">
         {/* Header */}
         <div className="sticky top-0 bg-card border-b border-line px-5 py-4 flex items-center justify-between z-10">
           <h2 className="text-lg font-bold text-fg">{isEditing ? 'Edit Goal' : 'Create New Goal'}</h2>
@@ -164,7 +164,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               value={form.title}
               onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
               placeholder={tpl.placeholder}
-              className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
+              className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
               required
             />
           </div>
@@ -177,7 +177,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
                 type="number" value={form.targetValue}
                 onChange={e => setForm(f => ({ ...f, targetValue: e.target.value }))}
                 placeholder={tpl.target}
-                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
+                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
                 required
               />
             </div>
@@ -187,7 +187,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
                 value={form.unit}
                 onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
                 placeholder={tpl.unit}
-                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
+                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
               />
             </div>
           </div>
@@ -199,7 +199,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               <input
                 type="date" value={form.startDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
+                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
               />
             </div>
             <div>
@@ -207,7 +207,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               <input
                 type="date" value={form.endDate ?? ''}
                 onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm"
+                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
               />
             </div>
           </div>
@@ -220,7 +220,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               placeholder="Why is this goal important to you?"
               rows={2}
-              className="w-full px-3 py-2.5 border border-line rounded-xl focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] text-sm resize-none"
+              className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm resize-none transition-colors"
             />
           </div>
 
@@ -245,7 +245,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
                   <li key={i} className="flex items-center justify-between gap-2 bg-card/70 rounded-lg px-3 py-2 text-xs text-fg">
                     <span className="truncate">{s.title}</span>
                     <button type="button" onClick={() => setSubtasks(prev => prev.filter((_, idx) => idx !== i))}>
-                      <X className="h-3.5 w-3.5 text-muted hover:text-red-500" />
+                      <X className="h-3.5 w-3.5 text-muted hover:text-red-400" />
                     </button>
                   </li>
                 ))}

@@ -18,6 +18,7 @@ export default function CalendarView() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [loggingTask, setLoggingTask] = useState<string | null>(null);
   const [animatingTask, setAnimatingTask] = useState<string | null>(null);
+  const [view, setView] = useState<'month' | 'week'>('month');
 
   const year = current.getFullYear();
   const month = current.getMonth();
@@ -25,8 +26,25 @@ export default function CalendarView() {
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const prev = () => setCurrent(new Date(year, month - 1, 1));
-  const next = () => setCurrent(new Date(year, month + 1, 1));
+  const shift = (dir: 1 | -1) => {
+    const d = new Date(current);
+    if (view === 'month') d.setMonth(d.getMonth() + dir);
+    else d.setDate(d.getDate() + 7 * dir);
+    setCurrent(d);
+  };
+  const prev = () => shift(-1);
+  const next = () => shift(1);
+
+  const weekDays = (() => {
+    const start = new Date(current);
+    start.setDate(current.getDate() - current.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    });
+  })();
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -146,17 +164,32 @@ export default function CalendarView() {
     : [];
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 sm:px-6 space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-2xl font-bold text-fg">Calendar</h1>
         <div className="flex items-center gap-2">
-          {/* Month nav */}
+          <div className="flex rounded-lg border border-line overflow-hidden">
+            {(['month', 'week'] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setView(v)}
+                className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
+                  view === v ? 'bg-[var(--brand)] text-black' : 'text-muted hover:text-fg hover:bg-elevated'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          {/* Period nav */}
           <button onClick={prev} className="p-2 hover:bg-elevated rounded-lg transition-colors">
             <ChevronLeft className="h-5 w-5 text-muted" />
           </button>
-          <span className="text-sm font-semibold text-fg min-w-[7rem] text-center">
-            {MONTHS[month]} {year}
+          <span className="text-sm font-semibold text-fg min-w-[10rem] text-center">
+            {view === 'month'
+              ? `${MONTHS[month]} ${year}`
+              : `${weekDays[0].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${weekDays[6].toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
           </span>
           <button onClick={next} className="p-2 hover:bg-elevated rounded-lg transition-colors">
             <ChevronRight className="h-5 w-5 text-muted" />
@@ -215,8 +248,49 @@ export default function CalendarView() {
         </div>
       )}
 
-      {/* Calendar grid */}
-      <div className="bg-card rounded-2xl shadow-sm border border-line overflow-hidden">
+      {/* Week view */}
+      {view === 'week' ? (
+        <div className="grid grid-cols-7 gap-2 animate-slide-up">
+          {weekDays.map((d, i) => {
+            const isToday = d.getTime() === today.getTime();
+            const dayTasks = getTasksForDate(d);
+            const isSel = selected?.getTime() === d.getTime();
+            return (
+              <button
+                key={d.toISOString()}
+                onClick={() => setSelected(d)}
+                style={{ ['--i' as string]: i }}
+                className={`stagger-fast text-left rounded-xl border p-2.5 min-h-[160px] transition-colors ${
+                  isSel || isToday ? 'border-[var(--brand)]/50 bg-elevated' : 'border-line bg-card hover:bg-elevated'
+                }`}
+              >
+                <div className="text-center mb-2">
+                  <p className="text-[10px] text-muted">{d.toLocaleDateString('en-US', { weekday: 'short' })}</p>
+                  <p className={`text-base font-bold ${isToday ? 'text-[var(--brand)]' : 'text-fg'}`}>{d.getDate()}</p>
+                </div>
+                <div className="space-y-1">
+                  {dayTasks.slice(0, 4).map(({ task, done }) => (
+                    <div
+                      key={task.id}
+                      className={`text-[10px] p-1 rounded border truncate ${
+                        done ? 'border-[var(--brand)]/30 bg-[var(--brand)]/10 text-muted line-through' : 'border-line text-fg'
+                      }`}
+                    >
+                      {task.title}
+                    </div>
+                  ))}
+                  {dayTasks.length > 4 && (
+                    <p className="text-[10px] text-muted">+{dayTasks.length - 4} more</p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+
+      /* Month grid */
+      <div className="bg-card rounded-2xl border border-line overflow-hidden animate-slide-up">
         <div className="grid grid-cols-7 border-b border-line">
           {WEEKDAYS.map(d => (
             <div key={d} className="py-2 text-center text-xs font-semibold text-muted">{d}</div>
@@ -224,7 +298,7 @@ export default function CalendarView() {
         </div>
         <div className="grid grid-cols-7">
           {cells.map((day, i) => {
-            if (!day) return <div key={i} className="h-14 border-b border-r border-gray-50" />;
+            if (!day) return <div key={i} className="min-h-[76px] border-b border-r border-line/60 opacity-40" />;
             const cellDate = new Date(year, month, day);
             cellDate.setHours(0, 0, 0, 0);
             const isToday = cellDate.getTime() === today.getTime();
@@ -237,27 +311,27 @@ export default function CalendarView() {
               <button
                 key={i}
                 onClick={() => setSelected(cellDate)}
-                className={`h-14 border-b border-r border-gray-50 flex flex-col items-center justify-start pt-1.5 gap-1 transition-colors ${
-                  isSelected ? 'bg-[var(--brand)]/10' : 'hover:bg-elevated'
-                }`}
+                className={`min-h-[76px] border-b border-r border-line/60 flex flex-col items-center justify-start pt-1.5 gap-1 transition-colors ${
+                  isSelected ? 'bg-elevated' : 'hover:bg-elevated'
+                } ${isToday ? 'bg-[var(--brand)]/5' : ''}`}
               >
                 <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full ${
                   isToday ? 'bg-[var(--brand)] text-black' :
                   isSelected ? 'text-[var(--brand)] font-bold' :
                   isPast ? 'text-muted' : 'text-fg'
                 }`}>{day}</span>
-                {(dotColors.length > 0 || hasCheckIn || totalTasks > 0) && (
+                {totalTasks > 0 && (
+                  <span className="flex items-center gap-1 text-[10px] font-medium"
+                    style={{ color: doneTasks === totalTasks ? 'var(--brand)' : 'var(--muted)' }}>
+                    <CheckCircle2 className="h-2.5 w-2.5" />{doneTasks}/{totalTasks}
+                  </span>
+                )}
+                {(dotColors.length > 0 || hasCheckIn) && (
                   <div className="flex gap-0.5 items-center">
                     {dotColors.map((color, ci) => (
                       <div key={ci} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
                     ))}
                     {hasCheckIn && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                    {totalTasks > 0 && (
-                      <div
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: doneTasks === totalTasks ? 'var(--brand)' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
-                      />
-                    )}
                   </div>
                 )}
               </button>
@@ -265,6 +339,7 @@ export default function CalendarView() {
           })}
         </div>
       </div>
+      )}
 
       {/* Legend */}
       <div className="flex flex-wrap gap-x-4 gap-y-2">

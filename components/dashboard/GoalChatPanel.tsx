@@ -205,7 +205,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
                 msg.type === 'user'
                   ? 'bg-[var(--brand)] text-black rounded-br-sm text-sm leading-relaxed'
                   : msg.isError
-                  ? 'bg-red-50 text-red-700 border border-red-100 text-sm leading-relaxed'
+                  ? 'bg-red-500/10 text-red-300 border border-red-500/30 text-sm leading-relaxed'
                   : 'bg-card text-fg shadow-sm rounded-bl-sm'
               }`}>
                 {msg.type === 'user' || msg.isError
@@ -270,7 +270,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
               onChange={e => setInput(e.target.value)}
               placeholder="Ask your coach anything…"
               disabled={isLoading}
-              className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)] bg-elevated"
+              className="flex-1 px-4 py-2.5 border border-line rounded-xl text-sm bg-elevated text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] transition-colors"
             />
             <button
               type="submit"

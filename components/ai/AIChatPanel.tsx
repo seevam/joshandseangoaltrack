@@ -209,7 +209,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
             value={input}
             onChange={e => setInput(e.target.value)}
             placeholder="Type a message…"
-            className="flex-1 px-3 py-2 bg-elevated border border-line rounded-xl text-xs text-fg placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand"
+            className="flex-1 px-3 py-2 bg-elevated border border-line rounded-xl text-xs text-fg placeholder:text-muted/70 focus:outline-none focus:border-brand transition-colors"
           />
           <button
             type="submit"
@@ -376,7 +376,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
               value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="Type your own answer…"
-              className="flex-1 px-3 py-2 bg-elevated border border-line rounded-xl text-sm text-fg placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand resize-none"
+              className="flex-1 px-3 py-2 bg-elevated border border-line rounded-xl text-sm text-fg placeholder:text-muted/70 focus:outline-none focus:border-brand transition-colors resize-none"
               rows={1}
               style={{ minHeight: '40px', maxHeight: '100px' }}
               onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }}

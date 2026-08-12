@@ -4,22 +4,28 @@
 
 /* ── Dark theme, green accent ─────────────────────────────────────────────── */
 :root {
-  --bg: #0B0F10;
-  --card: #131A1C;
-  --elevated: #1B2426;
-  --line: #253033;
-  --fg: #E8F0EC;
-  --muted: #8A9B93;
+  /* Pure black page; surfaces are near-black with subtle grey borders. */
+  --bg: #000000;
+  --card: #0A0A0A;
+  --elevated: #121212;
+  --line: #232323;
+  --line-strong: #2E2E2E;
+
+  /* Text hierarchy: white = action//title, grey = description, green = XP only. */
+  --fg: #FFFFFF;
+  --muted: #A1A1A1;
+  --muted-dim: #6B6B6B;
+
   --brand: #5DBC70;
   --brand-dark: #4EAA5F;
-  --brand-light: #1F3A28;
+  --brand-light: #122A19;
 
   /* Motion tokens — one place to retune the feel of the whole app */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --dur-fast: 0.18s;
-  --dur-base: 0.3s;
-  --dur-slow: 0.6s;
+  --dur-fast: 0.28s;
+  --dur-base: 0.55s;
+  --dur-slow: 0.9s;
 }
 
 html, body {
@@ -27,17 +33,6 @@ html, body {
   color: var(--fg);
 }
 
-/* Ambient depth behind the app — very subtle, keeps flat dark from reading dead */
-body::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(60rem 40rem at 15% -10%, rgba(93, 188, 112, 0.06), transparent 70%),
-    radial-gradient(50rem 35rem at 95% 5%, rgba(59, 130, 246, 0.04), transparent 70%);
-}
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -50,20 +45,28 @@ body::before {
 /* ── Surfaces ─────────────────────────────────────────────────────────────── */
 .card-glow {
   position: relative;
-  background: linear-gradient(180deg, rgba(93, 188, 112, 0.04) 0%, transparent 60%), var(--card);
+  background: var(--card);
   border: 1px solid var(--line);
   transition: border-color var(--dur-base) var(--ease-out),
-              transform var(--dur-base) var(--ease-out),
-              box-shadow var(--dur-base) var(--ease-out);
+              background-color var(--dur-base) var(--ease-out),
+              transform var(--dur-base) var(--ease-out);
 }
 .card-glow:hover {
-  border-color: rgba(93, 188, 112, 0.35);
-  box-shadow: 0 8px 30px -12px rgba(0, 0, 0, 0.7), 0 0 24px -8px rgba(93, 188, 112, 0.25);
+  border-color: var(--line-strong);
+  background: var(--elevated);
 }
+
+/* Any row/tile the user can pick — hover makes the target unmistakable. */
+.selectable {
+  transition: background-color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.selectable:hover { background: var(--elevated); border-color: var(--line-strong); }
+.selectable[data-active='true'] { background: var(--elevated); border-color: var(--brand); }
 
 /* Interactive cards lift on hover and settle on press */
 .card-interactive { cursor: pointer; }
-.card-interactive:hover { transform: translateY(-3px); }
+.card-interactive:hover { transform: translateY(-2px); }
 .card-interactive:active { transform: translateY(-1px) scale(0.99); transition-duration: 0.08s; }
 
 /* Sheen that sweeps across a card on hover */
@@ -111,7 +114,7 @@ body::before {
 .animate-slide-in-right { animation: slide-in-right var(--dur-base) var(--ease-out); }
 
 @keyframes slide-up {
-  from { transform: translateY(16px); opacity: 0; }
+  from { transform: translateY(22px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
 .animate-slide-up { animation: slide-up var(--dur-base) var(--ease-out) both; }
@@ -130,8 +133,8 @@ body::before {
 .animate-scale-in { animation: scale-in var(--dur-base) var(--ease-spring) both; }
 
 /* Staggered list entrance — set --i on each row */
-.stagger { animation: slide-up var(--dur-base) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 55ms); }
-.stagger-fast { animation: slide-up 0.24s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 35ms); }
+.stagger { animation: slide-up var(--dur-base) var(--ease-out) both; animation-delay: calc(var(--i, 0) * 70ms); }
+.stagger-fast { animation: slide-up 0.42s var(--ease-out) both; animation-delay: calc(var(--i, 0) * 50ms); }
 
 /* ── Task completion ──────────────────────────────────────────────────────── */
 @keyframes task-pop {
@@ -257,3 +260,17 @@ body::before {
 
 select, option { background-color: var(--elevated); color: var(--fg); }
 input, textarea { color-scheme: dark; }
+
+/* Every page fades and lifts in on navigation. */
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.page-enter { animation: page-in var(--dur-slow) var(--ease-out) both; }
+
+/* Sidebar width transition when collapsing to icons */
+.sidebar-anim { transition: width var(--dur-base) var(--ease-out); }
+.sidebar-label {
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+}
