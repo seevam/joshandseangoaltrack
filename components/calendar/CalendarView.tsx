@@ -6,6 +6,7 @@ import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, type Goal } from '@/lib/types';
 import { Icon } from '@/components/ui/icons';
 import { AnimatedCheck } from '@/components/ui/motion';
+import Modal from '@/components/ui/Modal';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -220,7 +221,7 @@ export default function CalendarView() {
                       key={key}
                       className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
                         flashTask === key ? 'task-flash task-complete-anim' : ''
-                      } ${isDone ? 'border-brand/30 bg-brand/5' : 'border-line bg-card hover:bg-elevated'}`}
+                      } ${isDone ? 'border-brand/30 bg-brand/5' : 'border-line bg-card glow-hover'}`}
                     >
                       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat?.hex }} />
                       <div className="flex-1 min-w-0">
@@ -263,39 +264,32 @@ export default function CalendarView() {
 
       {/* Export modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-card border border-line rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-pop-in">
-            <div className="flex items-start justify-between mb-4">
-              <h3 className="text-base font-bold text-fg">Export to Calendar</h3>
-              <button onClick={() => setShowExportModal(false)} className="p-1 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-sm text-muted mb-4">
-              Downloads a <strong className="text-fg">.ics file</strong> with all your goal deadlines as calendar events.
-            </p>
-            <div className="space-y-2 mb-5">
-              {[
-                { icon: 'calendar', app: 'Google Calendar', steps: 'calendar.google.com → Settings → Import & export → Import → select the .ics file' },
-                { icon: 'apple', app: 'Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
-                { icon: 'mail', app: 'Outlook', steps: 'File → Open & Export → Import/Export → Import an iCalendar → select the .ics file' },
-              ].map(({ icon, app, steps }) => (
-                <div key={app} className="bg-elevated rounded-xl p-3">
-                  <p className="text-xs font-semibold text-fg mb-0.5 flex items-center gap-1.5">
-                    <Icon name={icon} className="h-3.5 w-3.5 text-brand" />{app}
-                  </p>
-                  <p className="text-xs text-muted leading-relaxed">{steps}</p>
-                </div>
-              ))}
-            </div>
-            <button
-              onClick={() => { exportICS(); setShowExportModal(false); }}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl transition-colors press"
-            >
-              <Download className="h-4 w-4" /> Download .ics file
-            </button>
+        <Modal onClose={() => setShowExportModal(false)}>
+          <h3 className="text-base font-bold text-fg mb-2">Export to Calendar</h3>
+          <p className="text-sm text-muted mb-4">
+            Downloads a <strong className="text-fg">.ics file</strong> with all your goal deadlines as calendar events.
+          </p>
+          <div className="space-y-2 mb-5">
+            {[
+              { icon: 'calendar', app: 'Google Calendar', steps: 'calendar.google.com → Settings → Import & export → Import → select the .ics file' },
+              { icon: 'apple', app: 'Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
+              { icon: 'mail', app: 'Outlook', steps: 'File → Open & Export → Import/Export → Import an iCalendar → select the .ics file' },
+            ].map(({ icon, app, steps }) => (
+              <div key={app} className="bg-elevated border border-line rounded-xl p-3 glow-hover">
+                <p className="text-xs font-semibold text-fg mb-0.5 flex items-center gap-1.5">
+                  <Icon name={icon} className="h-3.5 w-3.5 text-brand" />{app}
+                </p>
+                <p className="text-xs text-muted leading-relaxed">{steps}</p>
+              </div>
+            ))}
           </div>
-        </div>
+          <button
+            onClick={() => { exportICS(); setShowExportModal(false); }}
+            className="w-full flex items-center justify-center gap-2 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl transition-colors press"
+          >
+            <Download className="h-4 w-4" /> Download .ics file
+          </button>
+        </Modal>
       )}
     </div>
   );

@@ -8,9 +8,6 @@ interface GoalStore {
   updateGoal: (goal: Goal) => void;
   removeGoal: (id: string) => void;
 
-  showAddGoal: boolean;
-  setShowAddGoal: (v: boolean) => void;
-
   /** Two-mode "New Goal" chooser (Quick vs Detailed). Global so nav can open it anywhere. */
   showCreateGoal: boolean;
   setShowCreateGoal: (v: boolean) => void;
@@ -44,9 +41,6 @@ export const useGoalStore = create<GoalStore>((set) => ({
   addGoal: (goal) => set(s => ({ goals: [goal, ...s.goals] })),
   updateGoal: (goal) => set(s => ({ goals: s.goals.map(g => g.id === goal.id ? goal : g) })),
   removeGoal: (id) => set(s => ({ goals: s.goals.filter(g => g.id !== id) })),
-
-  showAddGoal: false,
-  setShowAddGoal: (v) => set({ showAddGoal: v }),
 
   showCreateGoal: false,
   setShowCreateGoal: (v) => set({ showCreateGoal: v }),
