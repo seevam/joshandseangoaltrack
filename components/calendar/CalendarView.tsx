@@ -1,65 +1,85 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronLeft, ChevronRight, CheckCircle2, Circle, Download, X } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Download, X, CalendarDays } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { CATEGORY_COLORS } from '@/lib/types';
+import { CATEGORY_COLORS, type Goal } from '@/lib/types';
 import { Icon } from '@/components/ui/icons';
+import { AnimatedCheck } from '@/components/ui/motion';
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 
+interface DayTask {
+  goal: Goal;
+  task: Goal['dailyTasks'][0];
+  done: boolean;
+  dateStr: string;
+}
+
+/**
+ * Agenda layout: no grid, no cell borders. A week strip shows the shape of the
+ * week, and each day below is a section of task rows.
+ */
 export default function CalendarView() {
   const goals = useGoalStore(s => s.goals);
   const updateGoal = useGoalStore(s => s.updateGoal);
-  const [current, setCurrent] = useState(new Date());
-  const [selected, setSelected] = useState<Date | null>(new Date());
+
+  const [anchor, setAnchor] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
   const [showExportModal, setShowExportModal] = useState(false);
-  const [loggingTask, setLoggingTask] = useState<string | null>(null);
-  const [animatingTask, setAnimatingTask] = useState<string | null>(null);
+  const [flashTask, setFlashTask] = useState<string | null>(null);
 
-  const year = current.getFullYear();
-  const month = current.getMonth();
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const weekDays = useMemo(() => {
+    const start = new Date(anchor);
+    start.setDate(anchor.getDate() - anchor.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    });
+  }, [anchor]);
 
-  const prev = () => setCurrent(new Date(year, month - 1, 1));
-  const next = () => setCurrent(new Date(year, month + 1, 1));
+  const shiftWeek = (dir: 1 | -1) => {
+    const d = new Date(anchor);
+    d.setDate(d.getDate() + 7 * dir);
+    setAnchor(d);
+  };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  // Returns tasks scheduled for a given date across all goals
-  const getTasksForDate = (date: Date) => {
+  const getTasksForDate = (date: Date): DayTask[] => {
     const dow = date.getDay();
     const dateStr = date.toISOString().split('T')[0];
-    const result: { goal: typeof goals[0]; task: typeof goals[0]['dailyTasks'][0]; done: boolean; dateStr: string }[] = [];
-
+    const out: DayTask[] = [];
     goals.forEach(goal => {
       const start = goal.startDate ? new Date(goal.startDate) : null;
       const end = goal.endDate ? new Date(goal.endDate) : null;
-      if (start) { const s = new Date(start); s.setHours(0,0,0,0); if (date < s) return; }
-      if (end) { const e = new Date(end); e.setHours(0,0,0,0); if (date > e) return; }
-
+      if (start) { const s = new Date(start); s.setHours(0, 0, 0, 0); if (date < s) return; }
+      if (end) { const e = new Date(end); e.setHours(0, 0, 0, 0); if (date > e) return; }
       const dayCompletions = goal.taskCompletions?.[dateStr] || {};
       (goal.dailyTasks || []).forEach(task => {
         const days = task.daysOfWeek;
-        const scheduled = !days || days.length === 0 || days.includes(dow);
-        if (scheduled) {
-          result.push({ goal, task, done: !!dayCompletions[task.id], dateStr });
+        if (!days || days.length === 0 || days.includes(dow)) {
+          out.push({ goal, task, done: !!dayCompletions[task.id], dateStr });
         }
       });
     });
-    return result;
+    return out;
   };
 
   const logTask = async (goalId: string, taskId: number, dateStr: string, done: boolean) => {
-    const key = `${goalId}-${taskId}`;
-    setLoggingTask(key);
+    const key = `${goalId}-${taskId}-${dateStr}`;
     const goal = goals.find(g => g.id === goalId);
-    if (!goal) { setLoggingTask(null); return; }
+    if (!goal) return;
     const taskCompletions = {
       ...(goal.taskCompletions || {}),
       [dateStr]: { ...(goal.taskCompletions?.[dateStr] || {}), [taskId]: done },
@@ -73,53 +93,23 @@ export default function CalendarView() {
       if (res.ok) {
         updateGoal(await res.json());
         if (done) {
-          setAnimatingTask(key);
-          setTimeout(() => setAnimatingTask(null), 400);
+          setFlashTask(key);
+          setTimeout(() => setFlashTask(null), 700);
         }
       }
-    } catch { /* best effort */ } finally {
-      setLoggingTask(null);
-    }
-  };
-
-  const getActivityForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
-    const categories = new Set<string>();
-    let hasCheckIn = false;
-    const tasks = getTasksForDate(date);
-    const doneTasks = tasks.filter(t => t.done).length;
-
-    goals.forEach(goal => {
-      const start = goal.startDate ? new Date(goal.startDate) : null;
-      const end = goal.endDate ? new Date(goal.endDate) : null;
-      const inRange = (!start || date >= start) && (!end || date <= end);
-      if (inRange) categories.add(goal.category);
-      if (goal.checkIns?.some(c => c.startsWith(dateStr))) hasCheckIn = true;
-    });
-
-    return { categories: Array.from(categories), hasCheckIn, totalTasks: tasks.length, doneTasks };
+    } catch { /* best effort */ }
   };
 
   const exportICS = () => {
-    const lines = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//Goal Quest//EN',
-      'CALSCALE:GREGORIAN',
-    ];
+    const lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Goal Quest//EN', 'CALSCALE:GREGORIAN'];
     goals.forEach(g => {
       if (!g.endDate) return;
       const dt = g.endDate.replace(/-/g, '');
-      const uid = `goal-${g.id}@goalquest`;
       const now = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
       lines.push(
-        'BEGIN:VEVENT',
-        `UID:${uid}`,
-        `DTSTAMP:${now}Z`,
-        `DTSTART;VALUE=DATE:${dt}`,
-        `DTEND;VALUE=DATE:${dt}`,
-        `SUMMARY:${g.title}`,
-        `DESCRIPTION:Goal: ${g.title}\\nCategory: ${g.category}`,
+        'BEGIN:VEVENT', `UID:goal-${g.id}@goalquest`, `DTSTAMP:${now}Z`,
+        `DTSTART;VALUE=DATE:${dt}`, `DTEND;VALUE=DATE:${dt}`,
+        `SUMMARY:${g.title}`, `DESCRIPTION:Goal: ${g.title}\\nCategory: ${g.category}`,
         'END:VEVENT',
       );
     });
@@ -133,40 +123,35 @@ export default function CalendarView() {
     URL.revokeObjectURL(url);
   };
 
-  const cells: (number | null)[] = [
-    ...Array(firstDay).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-  while (cells.length % 7 !== 0) cells.push(null);
+  const rangeLabel = weekDays[0].getMonth() === weekDays[6].getMonth()
+    ? `${MONTHS[weekDays[0].getMonth()]} ${weekDays[0].getFullYear()}`
+    : `${MONTHS[weekDays[0].getMonth()].slice(0, 3)} – ${MONTHS[weekDays[6].getMonth()].slice(0, 3)} ${weekDays[6].getFullYear()}`;
 
-  const selectedTasks = selected ? getTasksForDate(selected) : [];
-  const selectedDateStr = selected?.toISOString().split('T')[0];
-  const selectedCheckIns = selected
-    ? goals.filter(g => g.checkIns?.some(c => c.startsWith(selectedDateStr!)))
-    : [];
+  const emptyWeek = weekDays.every(d => getTasksForDate(d).length === 0);
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-3xl mx-auto px-4 py-6 sm:px-6 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+      <div className="flex items-center justify-between flex-wrap gap-3 animate-slide-up">
         <h1 className="text-2xl font-bold text-fg">Calendar</h1>
         <div className="flex items-center gap-2">
-          {/* Month nav */}
-          <button onClick={prev} className="p-2 hover:bg-elevated rounded-lg transition-colors">
-            <ChevronLeft className="h-5 w-5 text-muted" />
+          <button onClick={() => shiftWeek(-1)} aria-label="Previous week" className="p-2 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors">
+            <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-sm font-semibold text-fg min-w-[7rem] text-center">
-            {MONTHS[month]} {year}
-          </span>
-          <button onClick={next} className="p-2 hover:bg-elevated rounded-lg transition-colors">
-            <ChevronRight className="h-5 w-5 text-muted" />
+          <span className="text-sm font-semibold text-fg min-w-[9rem] text-center">{rangeLabel}</span>
+          <button onClick={() => shiftWeek(1)} aria-label="Next week" className="p-2 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors">
+            <ChevronRight className="h-4 w-4" />
           </button>
-
-          {/* Export button */}
+          <button
+            onClick={() => setAnchor(today)}
+            className="px-3 py-1.5 rounded-lg border border-line text-muted hover:text-fg hover:border-line-strong text-xs font-medium transition-colors"
+          >
+            Today
+          </button>
           {goals.some(g => g.endDate) && (
             <button
               onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-card border border-line hover:border-[var(--brand)] text-muted hover:text-[var(--brand)] rounded-lg text-xs font-medium transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-muted hover:text-fg hover:border-line-strong text-xs font-medium transition-colors"
             >
               <Download className="h-3.5 w-3.5" /> Export
             </button>
@@ -174,23 +159,122 @@ export default function CalendarView() {
         </div>
       </div>
 
-      {/* Export modal — shown every time Export is clicked */}
+      {/* Week strip — borderless day summaries */}
+      <div className="grid grid-cols-7 gap-1.5">
+        {weekDays.map((d, i) => {
+          const tasks = getTasksForDate(d);
+          const done = tasks.filter(t => t.done).length;
+          const isToday = d.getTime() === today.getTime();
+          const allDone = tasks.length > 0 && done === tasks.length;
+          return (
+            <div
+              key={d.toISOString()}
+              style={{ ['--i' as string]: i }}
+              className={`stagger-fast rounded-xl py-2.5 text-center ${isToday ? 'bg-elevated' : ''}`}
+            >
+              <p className="text-[10px] text-muted uppercase tracking-wide">
+                {d.toLocaleDateString('en-US', { weekday: 'short' })}
+              </p>
+              <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-brand' : 'text-fg'}`}>{d.getDate()}</p>
+              {tasks.length > 0 && (
+                <p className="text-[10px] mt-0.5" style={{ color: allDone ? 'var(--brand)' : 'var(--muted)' }}>
+                  {done}/{tasks.length}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Agenda — one section per day */}
+      <div className="space-y-5">
+        {weekDays.map((d, di) => {
+          const tasks = getTasksForDate(d);
+          const dateStr = d.toISOString().split('T')[0];
+          const checkIns = goals.filter(g => g.checkIns?.some(c => c.startsWith(dateStr)));
+          if (tasks.length === 0 && checkIns.length === 0) return null;
+
+          const done = tasks.filter(t => t.done).length;
+          const isToday = d.getTime() === today.getTime();
+
+          return (
+            <section key={dateStr} style={{ ['--i' as string]: di }} className="stagger-fast">
+              <div className="flex items-baseline justify-between mb-2.5">
+                <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
+                  {d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  {isToday && (
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-brand border border-brand/40 rounded-full px-1.5 py-0.5">
+                      Today
+                    </span>
+                  )}
+                </h2>
+                {tasks.length > 0 && <span className="text-xs text-muted">{done}/{tasks.length} done</span>}
+              </div>
+
+              <div className="space-y-2">
+                {tasks.map(({ goal, task, done: isDone }) => {
+                  const key = `${goal.id}-${task.id}-${dateStr}`;
+                  const cat = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
+                  return (
+                    <div
+                      key={key}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                        flashTask === key ? 'task-flash task-complete-anim' : ''
+                      } ${isDone ? 'border-brand/30 bg-brand/5' : 'border-line bg-card hover:bg-elevated'}`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat?.hex }} />
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${isDone ? 'line-through text-muted' : 'text-fg'}`}>
+                          {task.title}
+                        </p>
+                        <p className="text-xs text-muted truncate">{goal.title}</p>
+                      </div>
+                      <AnimatedCheck
+                        checked={isDone}
+                        size={22}
+                        onClick={() => logTask(goal.id, task.id, dateStr, !isDone)}
+                      />
+                    </div>
+                  );
+                })}
+
+                {checkIns.map(g => (
+                  <div key={`ci-${g.id}`} className="flex items-center gap-3 p-3 rounded-xl border border-line bg-card">
+                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-amber-400" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-fg truncate">Checked in</p>
+                      <p className="text-xs text-muted truncate">{g.title}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })}
+
+        {emptyWeek && (
+          <div className="rounded-2xl border border-line bg-card p-12 text-center animate-slide-up">
+            <CalendarDays className="h-10 w-10 text-muted-dim mx-auto mb-3" />
+            <h3 className="text-base font-medium text-fg mb-1">Nothing scheduled this week</h3>
+            <p className="text-sm text-muted">Recurring tasks from your goals will show up here.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Export modal */}
       {showExportModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="bg-card border border-line rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-pop-in">
             <div className="flex items-start justify-between mb-4">
               <h3 className="text-base font-bold text-fg">Export to Calendar</h3>
-              <button onClick={() => setShowExportModal(false)} className="p-1 hover:bg-elevated rounded-lg">
-                <X className="h-4 w-4 text-muted" />
+              <button onClick={() => setShowExportModal(false)} className="p-1 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors">
+                <X className="h-4 w-4" />
               </button>
             </div>
-
             <p className="text-sm text-muted mb-4">
-              This downloads a <strong>.ics file</strong> containing all your goal deadlines as calendar events.
-              Follow the steps for your calendar app:
+              Downloads a <strong className="text-fg">.ics file</strong> with all your goal deadlines as calendar events.
             </p>
-
-            <div className="space-y-3 mb-5">
+            <div className="space-y-2 mb-5">
               {[
                 { icon: 'calendar', app: 'Google Calendar', steps: 'calendar.google.com → Settings → Import & export → Import → select the .ics file' },
                 { icon: 'apple', app: 'Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
@@ -204,144 +288,13 @@ export default function CalendarView() {
                 </div>
               ))}
             </div>
-
             <button
               onClick={() => { exportICS(); setShowExportModal(false); }}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black font-semibold rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl transition-colors press"
             >
               <Download className="h-4 w-4" /> Download .ics file
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Calendar grid */}
-      <div className="bg-card rounded-2xl shadow-sm border border-line overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-line">
-          {WEEKDAYS.map(d => (
-            <div key={d} className="py-2 text-center text-xs font-semibold text-muted">{d}</div>
-          ))}
-        </div>
-        <div className="grid grid-cols-7">
-          {cells.map((day, i) => {
-            if (!day) return <div key={i} className="h-14 border-b border-r border-gray-50" />;
-            const cellDate = new Date(year, month, day);
-            cellDate.setHours(0, 0, 0, 0);
-            const isToday = cellDate.getTime() === today.getTime();
-            const isSelected = selected?.getTime() === cellDate.getTime();
-            const isPast = cellDate < today;
-            const { categories, hasCheckIn, totalTasks, doneTasks } = getActivityForDate(cellDate);
-            const dotColors = Array.from(new Set(categories)).slice(0, 3).map(cat => CATEGORY_COLORS[cat as keyof typeof CATEGORY_COLORS]?.hex || 'var(--brand)');
-
-            return (
-              <button
-                key={i}
-                onClick={() => setSelected(cellDate)}
-                className={`h-14 border-b border-r border-gray-50 flex flex-col items-center justify-start pt-1.5 gap-1 transition-colors ${
-                  isSelected ? 'bg-[var(--brand)]/10' : 'hover:bg-elevated'
-                }`}
-              >
-                <span className={`text-xs font-medium w-7 h-7 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-[var(--brand)] text-black' :
-                  isSelected ? 'text-[var(--brand)] font-bold' :
-                  isPast ? 'text-muted' : 'text-fg'
-                }`}>{day}</span>
-                {(dotColors.length > 0 || hasCheckIn || totalTasks > 0) && (
-                  <div className="flex gap-0.5 items-center">
-                    {dotColors.map((color, ci) => (
-                      <div key={ci} className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />
-                    ))}
-                    {hasCheckIn && <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />}
-                    {totalTasks > 0 && (
-                      <div
-                        className="w-1.5 h-1.5 rounded-full"
-                        style={{ backgroundColor: doneTasks === totalTasks ? 'var(--brand)' : doneTasks > 0 ? '#FBBF24' : '#E5E7EB' }}
-                      />
-                    )}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-2">
-        {Object.entries(CATEGORY_COLORS).map(([cat, colors]) => (
-          <div key={cat} className="flex items-center gap-1.5">
-            <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.hex }} />
-            <span className="text-xs text-muted capitalize">{cat}</span>
-          </div>
-        ))}
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
-          <span className="text-xs text-muted">Check-in</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[var(--brand)]" />
-          <span className="text-xs text-muted">All tasks done</span>
-        </div>
-      </div>
-
-      {/* Selected day — task list */}
-      {selected && (
-        <div className="bg-card rounded-2xl shadow-sm border border-line p-4">
-          <h3 className="text-sm font-semibold text-fg mb-3">
-            {selected.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-          </h3>
-
-          {selectedTasks.length === 0 && selectedCheckIns.length === 0 ? (
-            <p className="text-sm text-muted">No tasks scheduled for this day.</p>
-          ) : (
-            <div className="space-y-2">
-              {/* Recurring tasks for this day */}
-              {selectedTasks.map(({ goal, task, done, dateStr }) => {
-                const c = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
-                const key = `${goal.id}-${task.id}`;
-                const isLogging = loggingTask === key;
-                return (
-                  <div key={key} className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 ${animatingTask === key ? 'task-flash task-complete-anim' : ''} ${
-                    done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line hover:border-[var(--brand)]/40'
-                  }`}>
-                    <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: c?.hex || 'var(--brand)' }} />
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${done ? 'line-through text-muted' : 'text-fg'}`}>
-                        {task.title}
-                      </p>
-                      <p className="text-xs text-muted truncate">{goal.title}</p>
-                    </div>
-                    <button
-                      onClick={() => logTask(goal.id, task.id, dateStr, !done)}
-                      disabled={isLogging}
-                      className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 ${
-                        done
-                          ? 'bg-[var(--brand)]/20 text-[var(--brand)] hover:bg-[var(--brand)]/30'
-                          : 'bg-[var(--brand)] text-black hover:bg-[var(--brand-dark)]'
-                      }`}
-                    >
-                      {done ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                    </button>
-                  </div>
-                );
-              })}
-
-              {/* Check-ins for this day */}
-              {selectedCheckIns.map(goal => {
-                const c = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
-                return (
-                  <div key={goal.id} className="flex items-center gap-3 p-3 rounded-xl border bg-amber-50 border-amber-200">
-                    <div className="w-2 h-2 rounded-full flex-shrink-0 bg-amber-400" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-fg">{goal.title}</p>
-                      <p className="text-xs text-amber-400 flex items-center gap-1"><CheckCircle2 className="h-3 w-3" />Checked in</p>
-                    </div>
-                    <CheckCircle2 className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                  </div>
-                );
-              })}
-            </div>
-          )}
         </div>
       )}
     </div>

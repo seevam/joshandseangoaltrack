@@ -124,18 +124,23 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
       <div className="bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden animate-pop-in shadow-2xl">
 
         {/* ── Header — never scrolls ─────────────────────────────── */}
-        <div style={{ backgroundColor: cat.hex }} className="rounded-t-2xl sm:rounded-t-2xl px-5 py-5 text-white flex-shrink-0">
+        <div className="bg-card border-b border-line rounded-t-2xl px-5 py-5 flex-shrink-0">
           <div className="flex items-start justify-between mb-3">
             <div className="flex-1 min-w-0 mr-2">
-              <span className="text-white/70 text-xs font-medium uppercase tracking-wide">{goal.category}</span>
-              <h2 className="text-xl font-bold mt-0.5 truncate">{goal.title}</h2>
-              {goal.description && <p className="text-white/80 text-sm mt-1 line-clamp-2">{goal.description}</p>}
+              <span
+                className="inline-block text-[11px] font-medium capitalize px-2 py-0.5 rounded-full border"
+                style={{ color: cat.hex, borderColor: `${cat.hex}4D` }}
+              >
+                {goal.category}
+              </span>
+              <h2 className="text-xl font-bold text-fg mt-1.5 truncate">{goal.title}</h2>
+              {goal.description && <p className="text-muted text-sm mt-1 line-clamp-2 leading-relaxed">{goal.description}</p>}
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setShowEdit(true)} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg" title="Edit Goal">
+              <button onClick={() => setShowEdit(true)} className="p-2 bg-elevated hover:bg-line rounded-lg text-muted hover:text-fg transition-colors" title="Edit Goal">
                 <Pencil className="h-4 w-4" />
               </button>
-              <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-lg">
+              <button onClick={onClose} className="p-2 bg-elevated hover:bg-line rounded-lg text-muted hover:text-fg transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -143,16 +148,16 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
 
           {/* Progress bar */}
           <div className="space-y-1">
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between text-sm text-muted">
               <span>
                 {(goal.subtasks || []).length > 0
                   ? `${goal.subtasks.filter(s => s.completed).length} of ${goal.subtasks.length} milestones`
                   : `${goal.currentValue} / ${goal.targetValue} ${goal.unit}`}
               </span>
-              <span className="font-semibold"><AnimatedNumber value={progress} />%</span>
+              <span className="font-semibold text-fg"><AnimatedNumber value={progress} />%</span>
             </div>
-            <div className="h-3 bg-black/25 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full transition-[width] duration-1000 ease-out" style={{ width: `${progress}%` }} />
+            <div className="h-2 bg-elevated rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-[width] duration-1000 ease-out" style={{ width: `${progress}%`, backgroundColor: cat.hex }} />
             </div>
           </div>
         </div>
@@ -185,7 +190,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* Stats row */}
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-elevated rounded-xl p-3 text-center">
-                <div className="text-lg font-bold text-orange-500 flex items-center justify-center gap-1">
+                <div className="text-lg font-bold text-orange-400 flex items-center justify-center gap-1">
                   <Flame className="h-4 w-4" /> {streak}
                 </div>
                 <p className="text-xs text-muted mt-0.5">Day Streak</p>
@@ -195,7 +200,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                 <p className="text-xs text-muted mt-0.5">Check-ins</p>
               </div>
               <div className="bg-elevated rounded-xl p-3 text-center">
-                <div className={`text-lg font-bold ${daysLeft !== null && daysLeft < 0 ? 'text-red-500' : 'text-fg'}`}>
+                <div className={`text-lg font-bold ${daysLeft !== null && daysLeft < 0 ? 'text-red-400' : 'text-fg'}`}>
                   {daysLeft !== null ? (daysLeft < 0 ? 'Overdue' : `${daysLeft}d`) : '∞'}
                 </div>
                 <p className="text-xs text-muted mt-0.5">Remaining</p>
@@ -392,7 +397,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                                 onClick={e => { e.stopPropagation(); handleToggleMilestone(goal.id, i); }}
                                 className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors ${
                                   s.completed
-                                    ? 'bg-elevated text-muted hover:bg-red-50 hover:text-red-600'
+                                    ? 'bg-elevated text-muted hover:text-red-400'
                                     : 'bg-[var(--brand)] text-black hover:bg-[var(--brand-dark)]'
                                 }`}
                               >
@@ -432,7 +437,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                             <span className="text-sm text-fg truncate">{email}</span>
                           </div>
                           <button onClick={() => removePartner(email)} className="flex-shrink-0">
-                            <X className="h-4 w-4 text-muted hover:text-red-500" />
+                            <X className="h-4 w-4 text-muted hover:text-red-400" />
                           </button>
                         </li>
                       ))}
@@ -445,7 +450,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       onChange={e => setShareEmail(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && addPartner()}
                       placeholder="Partner's email address"
-                      className="flex-1 px-3 py-2 border border-line rounded-xl text-sm focus:ring-2 focus:ring-[var(--brand)] focus:border-[var(--brand)]"
+                      className="flex-1 px-3 py-2 bg-elevated border border-line rounded-xl text-sm text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] transition-colors"
                     />
                     <button
                       onClick={addPartner}
@@ -455,7 +460,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       <UserPlus className="h-4 w-4" />
                     </button>
                   </div>
-                  {shareError && <p className="text-xs text-red-500">{shareError}</p>}
+                  {shareError && <p className="text-xs text-red-400">{shareError}</p>}
                   <p className="text-xs text-muted">Partners can view this goal's progress when they log in.</p>
                 </div>
               )}
@@ -464,7 +469,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
             {/* Delete */}
             <button
               onClick={() => { if (confirm('Delete this goal?')) onDelete(goal.id); }}
-              className="w-full flex items-center justify-center gap-2 py-2.5 border border-red-200 text-red-500 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-2.5 border border-line text-red-400 rounded-xl text-sm font-medium hover:border-red-500/50 transition-colors"
             >
               <Trash2 className="h-4 w-4" /> Delete Goal
             </button>

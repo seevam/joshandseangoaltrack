@@ -12,8 +12,10 @@ import { computeStats, earnedBadges, taskXp, milestoneXp } from '@/lib/xp';
 import { XPBar, CategoryBadge, BadgeTile, DifficultyPill, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
 import { IconTile } from '@/components/ui/icons';
 import {
-  AnimatedNumber, AnimatedCheck, Sparks, LevelUpOverlay, Reveal, DashboardSkeleton,
+  AnimatedNumber, AnimatedCheck, Sparks, LevelUpOverlay, Reveal,
 } from '@/components/ui/motion';
+import GoalCard from '@/components/goals/GoalCard';
+import Link from 'next/link';
 import GoalDetail from './GoalDetail';
 
 
@@ -210,6 +212,10 @@ export default function Dashboard() {
     return out.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 5);
   }, [goals]);
 
+  const previewGoals = useMemo(
+    () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 6),
+    [goals],
+  );
   const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
   const completedGoals = goals.filter(g => getGoalStatus(g) === 'completed').length;
   const doneToday = todaysTasks.filter(t => t.done).length;
@@ -231,9 +237,9 @@ export default function Dashboard() {
     return true;
   });
 
-  if (!isLoaded || isLoadingGoals) {
-    return <div className="min-h-screen bg-bg"><DashboardSkeleton /></div>;
-  }
+  // Josh: no blank loading placeholder — render nothing until data is ready,
+  // then let the normal entrance animations play.
+  if (!isLoaded || isLoadingGoals) return <div className="min-h-screen bg-bg" />;
 
   return (
     <div className="min-h-screen bg-bg pb-24 lg:pb-8">
@@ -298,7 +304,7 @@ export default function Dashboard() {
         )}
 
         {/* ── Today's tasks + upcoming milestones ───────────────────────── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Reveal><div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Today's missions */}
           <div className="lg:col-span-2 card-glow rounded-2xl p-4 animate-slide-up">
             <div className="flex items-center justify-between mb-3">
@@ -386,7 +392,7 @@ export default function Dashboard() {
               </div>
             )}
           </div>
-        </div>
+        </div></Reveal>
 
         {/* ── Badges ────────────────────────────────────────────────────── */}
         <Reveal><div className="card-glow rounded-2xl p-4">
@@ -403,144 +409,40 @@ export default function Dashboard() {
           </div>
         </div></Reveal>
 
-        {/* ── Goals: search + filter bar + grid ─────────────────────────── */}
-        <div className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted" />
-              <input
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search goals..."
-                className="w-full pl-9 pr-9 py-2.5 bg-card border border-line rounded-xl text-sm text-fg placeholder:text-muted/70 focus:outline-none focus:ring-2 focus:ring-brand focus:border-brand"
-              />
-              {searchQuery && (
-                <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2">
-                  <X className="h-4 w-4 text-muted hover:text-fg" />
-                </button>
-              )}
+        {/* ── Active goals — preview only (name, category, progress) ───── */}
+        <Reveal>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-semibold text-fg">Active Goals</h2>
+            <Link href="/goals" className="group flex items-center gap-1 text-xs text-muted hover:text-brand transition-colors">
+              See all goals <ChevronRight className="h-3.5 w-3.5 icon-shift" />
+            </Link>
+          </div>
+          {previewGoals.length === 0 ? (
+            <div className="card-glow rounded-2xl p-10 text-center">
+              <Target className="h-10 w-10 text-muted-dim mx-auto mb-3" />
+              <h3 className="text-base font-medium text-fg mb-1">No goals yet</h3>
+              <p className="text-sm text-muted mb-4">Create your first goal to start earning XP.</p>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl text-sm font-semibold press"
+              >
+                <Plus className="h-4 w-4" /> Create Goal
+              </button>
             </div>
-            <div className="flex items-center gap-1 bg-card rounded-xl p-1 border border-line">
-              {(['active', 'completed', 'all'] as const).map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab)}
-                  className={`flex-1 sm:flex-none px-4 py-1.5 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
-                    activeTab === tab ? 'bg-brand text-black' : 'text-muted hover:text-fg'
-                  }`}
-                >
-                  {tab === 'active' ? `Active (${activeGoals})` : tab === 'completed' ? `Done (${completedGoals})` : `All (${goals.length})`}
-                </button>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {previewGoals.map((goal, i) => (
+                <GoalCard
+                  key={goal.id}
+                  goal={goal}
+                  index={i}
+                  preview
+                  onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
+                />
               ))}
             </div>
-          </div>
-
-          {/* Bar-style category selector */}
-          <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-hide bg-card border border-line rounded-xl p-1">
-            {(['all', 'fitness', 'health', 'personal', 'career', 'finance', 'education'] as const).map(cat => {
-              const active = filterCategory === cat;
-              const hex = cat === 'all' ? '#5DBC70' : CATEGORY_COLORS[cat as Category].hex;
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCategory(cat)}
-                  className="flex-shrink-0 px-3.5 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all"
-                  style={active
-                    ? { backgroundColor: hex, color: '#0B0F10' }
-                    : { color: 'var(--muted)' }}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Goal cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {goals.length === 0 ? (
-              <div className="col-span-full card-glow rounded-2xl p-12 text-center">
-                <Target className="h-14 w-14 text-muted/30 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-fg mb-2">No goals yet</h3>
-                <p className="text-sm text-muted mb-4">Create your first goal to start earning XP.</p>
-                <button onClick={() => setShowCreate(true)} className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl text-sm font-semibold">
-                  <Plus className="h-4 w-4" /> Create Goal
-                </button>
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="col-span-full text-center py-12 text-muted text-sm">
-                {searchQuery ? `No goals match "${searchQuery}"` : activeTab === 'completed' ? 'No completed goals yet.' : 'No goals in this category.'}
-              </div>
-            ) : (
-              filtered.map((goal, i) => {
-                const progress = getGoalProgress(goal);
-                const status = getGoalStatus(goal);
-                const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
-                const streak = getStreak(goal.checkIns);
-                const checkedToday = (goal.checkIns || []).includes(todayStr);
-
-                return (
-                  <div
-                    key={goal.id}
-                    onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
-                    className="card-glow card-interactive sheen group rounded-2xl overflow-hidden stagger"
-                    style={{ ['--i' as string]: i }}
-                  >
-                    <div className="h-1" style={{ backgroundColor: cat.hex }} />
-                    <div className="p-4">
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <div className="flex-1 min-w-0">
-                          <CategoryBadge category={goal.category} />
-                          <h3 className="text-base font-semibold text-fg truncate mt-2">{goal.title}</h3>
-                          {goal.description && <p className="text-xs text-muted line-clamp-2 mt-0.5">{goal.description}</p>}
-                        </div>
-                        <ChevronRight className="h-5 w-5 text-muted flex-shrink-0 icon-shift" />
-                      </div>
-
-                      <div className="space-y-1 mb-3">
-                        <div className="flex justify-between text-xs text-muted">
-                          {(goal.subtasks || []).length > 0
-                            ? <span>{goal.subtasks.filter(s => s.completed).length} / {goal.subtasks.length} milestones</span>
-                            : <span>{goal.currentValue} / {goal.targetValue} {goal.unit}</span>
-                          }
-                          <span className="font-semibold text-fg"><AnimatedNumber value={progress} />%</span>
-                        </div>
-                        <div className="h-2 bg-elevated rounded-full overflow-hidden">
-                          <div className="h-full rounded-full transition-[width] duration-1000 ease-out" style={{ width: `${progress}%`, backgroundColor: cat.hex }} />
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 text-xs text-muted">
-                          {streak > 0 && (
-                            <span className="flex items-center gap-0.5 text-orange-400 font-medium">
-                              <Flame className="h-3 w-3" /> {streak}d
-                            </span>
-                          )}
-                          {goal.endDate && (
-                            <span className={status === 'overdue' ? 'text-red-400 font-medium' : ''}>
-                              {status === 'overdue' ? 'Overdue' : `${Math.ceil((new Date(goal.endDate).getTime() - Date.now()) / 86400000)}d left`}
-                            </span>
-                          )}
-                        </div>
-                        {status !== 'completed' && (
-                          <button
-                            onClick={e => { e.stopPropagation(); checkIn(goal.id); }}
-                            title={checkedToday ? 'Checked in today' : 'Check in'}
-                            className={`h-9 w-9 flex items-center justify-center rounded-xl transition-colors ${
-                              checkedToday ? 'bg-brand/20 text-brand' : 'bg-elevated text-muted hover:bg-brand/20 hover:text-brand'
-                            }`}
-                          >
-                            <CheckCircle className="h-5 w-5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+          )}
+        </Reveal>
       </div>
 
       {/* ── Overlays ────────────────────────────────────────────────────── */}

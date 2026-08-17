@@ -15,6 +15,11 @@ interface GoalStore {
   showCreateGoal: boolean;
   setShowCreateGoal: (v: boolean) => void;
 
+  /** Sidebar collapsed to icons only. Shared so the main column can offset itself. */
+  sidebarCollapsed: boolean;
+  toggleSidebar: () => void;
+  hydrateSidebar: () => void;
+
   isChatOpen: boolean;
   setIsChatOpen: (v: boolean) => void;
   chatSessionId: number;
@@ -45,6 +50,17 @@ export const useGoalStore = create<GoalStore>((set) => ({
 
   showCreateGoal: false,
   setShowCreateGoal: (v) => set({ showCreateGoal: v }),
+
+  sidebarCollapsed: false,
+  toggleSidebar: () => set(s => {
+    const next = !s.sidebarCollapsed;
+    if (typeof window !== 'undefined') localStorage.setItem('sidebar_collapsed', next ? '1' : '0');
+    return { sidebarCollapsed: next };
+  }),
+  hydrateSidebar: () => {
+    if (typeof window === 'undefined') return;
+    set({ sidebarCollapsed: localStorage.getItem('sidebar_collapsed') === '1' });
+  },
 
   isChatOpen: false,
   setIsChatOpen: (v) => set({ isChatOpen: v }),
