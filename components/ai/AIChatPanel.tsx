@@ -49,7 +49,14 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Collapsing to the floating icon is the panel's "close"; animate it out first.
-  const { closing, dismiss } = useDismiss(() => setIsIconOnly(true), 220);
+  const { closing, dismiss, reset } = useDismiss(() => setIsIconOnly(true), 220);
+
+  // This panel stays mounted when collapsed, so the exit flag has to be cleared
+  // when it comes back — otherwise it reopens mid-exit behind an invisible,
+  // click-blocking backdrop.
+  useEffect(() => {
+    if (!isIconOnly && !isMinimized) reset();
+  }, [isIconOnly, isMinimized, reset]);
 
   useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
 
@@ -240,7 +247,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
 
       {/* Darkened + blurred backdrop */}
       <div
-        className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
+        className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] ${closing ? 'animate-fade-out pointer-events-none' : 'animate-fade-in'}`}
         onClick={dismiss}
       />
 
