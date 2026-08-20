@@ -73,15 +73,22 @@ export default function Modal({
 
 /**
  * Same deferred-close behaviour for panels that aren't centered modals.
- * Returns the closing flag plus a dismiss fn to wire to triggers.
+ *
+ * Panels that stay mounted after "closing" (the AI coach collapses to an icon
+ * rather than unmounting) MUST call `reset` when they become visible again —
+ * otherwise `closing` stays true, the panel renders mid-exit and its backdrop
+ * survives as an invisible full-screen click blocker.
  */
 export function useDismiss(onClose: () => void, ms = 240) {
   const [closing, setClosing] = useState(false);
+
   const dismiss = useCallback(() => {
     if (closing) return;
     setClosing(true);
     setTimeout(onClose, ms);
   }, [closing, onClose, ms]);
+
+  const reset = useCallback(() => setClosing(false), []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') dismiss(); };
@@ -89,5 +96,5 @@ export function useDismiss(onClose: () => void, ms = 240) {
     return () => window.removeEventListener('keydown', onKey);
   }, [dismiss]);
 
-  return { closing, dismiss };
+  return { closing, dismiss, reset };
 }
