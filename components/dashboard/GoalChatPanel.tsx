@@ -7,6 +7,7 @@ import { type Goal } from '@/lib/types';
 import { getGoalProgress, getGoalStatus, getStreak } from '@/lib/types';
 import { useGoalStore, type CoachPersona } from '@/lib/store';
 import MarkdownText from '@/components/ui/MarkdownText';
+import { useDismiss } from '@/components/ui/Modal';
 
 interface Message {
   id: number;
@@ -125,6 +126,7 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
   const [showQuickPrompts, setShowQuickPrompts] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { closing, dismiss } = useDismiss(onClose);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -171,12 +173,13 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
 
   return (
     // Full-screen modal on mobile, side sheet on larger screens
-    <div className="fixed inset-0 z-50 flex flex-col bg-card sm:bg-black/50 sm:items-center sm:justify-center">
-      <div className="flex flex-col w-full h-full sm:max-w-md sm:h-[85vh] sm:rounded-3xl sm:overflow-hidden bg-card">
+    <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center sm:p-4">
+      <div onClick={dismiss} className={`absolute inset-0 bg-black/80 backdrop-blur-sm ${closing ? 'animate-fade-out' : 'animate-fade-in'}`} />
+      <div className={`relative flex flex-col w-full h-full sm:max-w-lg sm:h-[85vh] sm:rounded-2xl overflow-hidden bg-card sm:border sm:border-line ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}>
 
         {/* Header */}
         <div className="flex-shrink-0 bg-[var(--brand)] px-4 py-4 flex items-center gap-3">
-          <button onClick={onClose} className="p-2 bg-black/15 hover:bg-black/25 rounded-xl transition-colors">
+          <button onClick={dismiss} className="p-2 bg-black/15 hover:bg-black/25 rounded-xl transition-colors">
             <X className="h-5 w-5 text-black" />
           </button>
           <div className="h-9 w-9 rounded-full bg-black/20 flex items-center justify-center flex-shrink-0">

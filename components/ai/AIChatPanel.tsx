@@ -8,6 +8,7 @@ import { getGoalProgress } from '@/lib/types';
 import MarkdownText from '@/components/ui/MarkdownText';
 import { Icon } from '@/components/ui/icons';
 import { buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal } from '@/lib/aiGoal';
+import { useDismiss } from '@/components/ui/Modal';
 
 interface Message {
   id: number;
@@ -46,6 +47,9 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const [showGoalCreated, setShowGoalCreated] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Collapsing to the floating icon is the panel's "close"; animate it out first.
+  const { closing, dismiss } = useDismiss(() => setIsIconOnly(true), 220);
 
   useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
 
@@ -234,15 +238,19 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
         </div>
       )}
 
-      {/* Darkened + blurred backdrop across all breakpoints */}
+      {/* Darkened + blurred backdrop */}
       <div
-        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[55] animate-fade-in"
-        onClick={() => setIsIconOnly(true)}
+        className={`fixed inset-0 bg-black/80 backdrop-blur-sm z-[55] ${closing ? 'animate-fade-out' : 'animate-fade-in'}`}
+        onClick={dismiss}
       />
 
-      <div className="fixed right-0 top-0 bottom-0 w-full sm:w-[26rem] bg-card border-l border-line shadow-2xl z-[60] flex flex-col animate-slide-in-right">
+      {/* Centered popup */}
+      <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
+      <div className={`pointer-events-auto w-full sm:max-w-lg h-[85vh] sm:h-[38rem] max-h-[92vh] bg-card border border-line rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden ${
+        closing ? 'animate-pop-out' : 'animate-pop-in'
+      }`}>
         {/* Header */}
-        <div className="flex-shrink-0 bg-brand px-4 py-4 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-brand px-4 py-4 flex items-center justify-between rounded-t-2xl">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-black/20 flex items-center justify-center">
               <Bot className="h-6 w-6 text-black" />
@@ -256,7 +264,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
             <button onClick={() => setIsMinimized(true)} className="hidden lg:flex p-2 hover:bg-black/15 rounded-lg transition-colors" title="Minimize">
               <Minimize2 className="h-5 w-5 text-black" />
             </button>
-            <button onClick={() => setIsIconOnly(true)} className="p-2 hover:bg-black/15 rounded-lg transition-colors" title="Collapse to icon">
+            <button onClick={dismiss} className="p-2 hover:bg-black/15 rounded-lg transition-colors" title="Collapse to icon">
               <X className="h-5 w-5 text-black" />
             </button>
           </div>
@@ -391,6 +399,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
             </button>
           </form>
         </div>
+      </div>
       </div>
     </>
   );

@@ -31,7 +31,37 @@
 html, body {
   background-color: var(--bg);
   color: var(--fg);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
+
+/* Condensed display face for page headings */
+.font-display {
+  font-family: var(--font-display), Impact, sans-serif;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+}
+
+/* Headings are gradient-filled rather than flat */
+.text-brand-gradient {
+  background: linear-gradient(90deg, #3E8A50 0%, var(--brand) 50%, #8FE3A3 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Faint atmosphere so flat black isn't dead */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 50% 70% at 85% 15%, rgba(93, 188, 112, 0.05) 0%, transparent 65%);
+}
+
+/* Global press feedback */
+button:active:not(:disabled) { transform: scale(0.97); }
 
 
 .scrollbar-hide::-webkit-scrollbar { display: none; }
@@ -52,8 +82,20 @@ html, body {
               transform var(--dur-base) var(--ease-out);
 }
 .card-glow:hover {
-  border-color: var(--line-strong);
+  border-color: rgba(93, 188, 112, 0.55);
   background: var(--elevated);
+  box-shadow: 0 0 0 1px rgba(93, 188, 112, 0.12), 0 0 22px -4px rgba(93, 188, 112, 0.3);
+}
+
+/* Shared green-glow hover for any bordered box that isn't a .card-glow */
+.glow-hover {
+  transition: border-color var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out),
+              background-color var(--dur-fast) var(--ease-out);
+}
+.glow-hover:hover {
+  border-color: rgba(93, 188, 112, 0.55);
+  box-shadow: 0 0 0 1px rgba(93, 188, 112, 0.12), 0 0 22px -4px rgba(93, 188, 112, 0.3);
 }
 
 /* Any row/tile the user can pick — hover makes the target unmistakable. */
@@ -61,7 +103,11 @@ html, body {
   transition: background-color var(--dur-fast) var(--ease-out),
               border-color var(--dur-fast) var(--ease-out);
 }
-.selectable:hover { background: var(--elevated); border-color: var(--line-strong); }
+.selectable:hover {
+  background: var(--elevated);
+  border-color: rgba(93, 188, 112, 0.45);
+  box-shadow: 0 0 16px -6px rgba(93, 188, 112, 0.35);
+}
 .selectable[data-active='true'] { background: var(--elevated); border-color: var(--brand); }
 
 /* Interactive cards lift on hover and settle on press */
@@ -274,3 +320,19 @@ input, textarea { color-scheme: dark; }
   transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
   white-space: nowrap;
 }
+
+/* ── Exits ────────────────────────────────────────────────────────────────── */
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+.animate-fade-out { animation: fade-out var(--dur-fast) var(--ease-out) both; }
+
+@keyframes pop-out {
+  from { transform: scale(1); opacity: 1; }
+  to   { transform: scale(0.96); opacity: 0; }
+}
+.animate-pop-out { animation: pop-out 0.22s var(--ease-out) both; }
+
+@keyframes slide-down-out {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(24px); opacity: 0; }
+}
+.animate-slide-down-out { animation: slide-down-out 0.24s var(--ease-out) both; }

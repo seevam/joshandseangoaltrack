@@ -5,6 +5,7 @@ import { X, Trash2, CheckCircle, Circle, Flame, ChevronDown, ChevronUp, Pencil, 
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import { IconTile } from '@/components/ui/icons';
 import { AnimatedNumber, AnimatedCheck } from '@/components/ui/motion';
+import { useDismiss } from '@/components/ui/Modal';
 import GoalChatPanel from './GoalChatPanel';
 import GoalForm from './GoalForm';
 
@@ -47,6 +48,8 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState('');
+
+  const { closing, dismiss } = useDismiss(onClose);
 
   const partners = goal.sharedWith || [];
 
@@ -120,8 +123,9 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
   });
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center z-40 p-0 sm:p-4 animate-fade-in">
-      <div className="bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden animate-pop-in shadow-2xl">
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center p-0 sm:p-4">
+      <div onClick={dismiss} className={`absolute inset-0 bg-black/80 backdrop-blur-sm ${closing ? 'animate-fade-out' : 'animate-fade-in'}`} />
+      <div className={`relative bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col overflow-hidden shadow-2xl ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}>
 
         {/* ── Header — never scrolls ─────────────────────────────── */}
         <div className="bg-card border-b border-line rounded-t-2xl px-5 py-5 flex-shrink-0">
@@ -140,7 +144,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
               <button onClick={() => setShowEdit(true)} className="p-2 bg-elevated hover:bg-line rounded-lg text-muted hover:text-fg transition-colors" title="Edit Goal">
                 <Pencil className="h-4 w-4" />
               </button>
-              <button onClick={onClose} className="p-2 bg-elevated hover:bg-line rounded-lg text-muted hover:text-fg transition-colors">
+              <button onClick={dismiss} className="p-2 bg-elevated hover:bg-line rounded-lg text-muted hover:text-fg transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -248,7 +252,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                       return (
                         <div key={task.id} style={{ ['--i' as string]: idx }} className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 stagger-fast ${animatingTasks.has(task.id) ? 'task-flash task-complete-anim' : ''} ${
                           done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' :
-                          scheduledToday ? 'bg-elevated border-line' :
+                          scheduledToday ? 'bg-elevated border-line glow-hover' :
                           'bg-elevated/50 border-line opacity-60'
                         }`}>
                           <div className="flex-1 min-w-0">
@@ -349,7 +353,7 @@ export default function GoalDetail({ goal, onClose, onDelete, onUpdateProgress, 
                           key={i}
                           style={{ ['--i' as string]: i }}
                           className={`rounded-xl border overflow-hidden transition-all duration-300 stagger-fast ${animatingMilestone === i ? 'task-flash task-complete-anim' : ''} ${
-                            s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line hover:border-[var(--brand)]/40'
+                            s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line glow-hover'
                           }`}
                         >
                           {/* Row */}

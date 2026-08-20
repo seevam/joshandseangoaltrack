@@ -29,7 +29,7 @@ const MOTIVATION_LEVELS = [
 export default function OnboardingPage() {
   const { user } = useUser();
   const router = useRouter();
-  const setShowAddGoal = useGoalStore(s => s.setShowAddGoal);
+  const setShowCreateGoal = useGoalStore(s => s.setShowCreateGoal);
   const setCoachPersona = useGoalStore(s => s.setCoachPersona);
 
   const [step, setStep] = useState(0);
@@ -52,7 +52,7 @@ export default function OnboardingPage() {
 
   const handleCreateFirst = () => {
     router.push('/home');
-    setTimeout(() => setShowAddGoal(true), 100);
+    setTimeout(() => setShowCreateGoal(true), 150);
   };
 
   const STEPS = [
