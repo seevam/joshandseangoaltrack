@@ -2,11 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
-import { LogOut, Settings, Bot, Save, Download, Trophy, Lock, Award } from 'lucide-react';
+import { LogOut, Settings, Bot, Save, Download, Bell } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { Icon } from '@/components/ui/icons';
 import { AnimatedNumber, Reveal } from '@/components/ui/motion';
-import { computeStats, earnedBadges, RANK_TIERS } from '@/lib/xp';
+import { computeStats } from '@/lib/xp';
+import {
+  notificationsSupported, notificationsEnabled, requestNotifications,
+  setNotificationsEnabled, sendTestNotification,
+} from '@/lib/notifications';
 import { getGoalProgress, getGoalStatus, getStreak } from '@/lib/types';
 
 const PERSONAS = [
@@ -29,8 +33,21 @@ export default function ProfilePage() {
 
   const [aiNameInput, setAiNameInput] = useState(coachName);
   const [nameSaved, setNameSaved] = useState(false);
+  const [notifyOn, setNotifyOn] = useState(false);
+  const [notifySupported, setNotifySupported] = useState(true);
 
   useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
+  useEffect(() => {
+    setNotifySupported(notificationsSupported());
+    setNotifyOn(notificationsEnabled());
+  }, []);
+
+  const toggleNotifications = async () => {
+    if (notifyOn) { setNotificationsEnabled(false); setNotifyOn(false); return; }
+    const ok = await requestNotifications();
+    setNotifyOn(ok);
+    if (ok) sendTestNotification();
+  };
   useEffect(() => { setAiNameInput(coachName); }, [coachName]);
   useEffect(() => {
     if (goals.length) return;
@@ -38,7 +55,6 @@ export default function ProfilePage() {
   }, [goals.length, setGoals]);
 
   const stats = computeStats(goals);
-  const badges = earnedBadges(stats, goals);
   const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
   const levelPct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
 
@@ -125,89 +141,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* ── Rank tiers ───────────────────────────────────────────────────── */}
-      <Reveal>
-        <div className="card-glow rounded-2xl p-5">
-          <h2 className="flex items-center gap-2 font-semibold text-fg mb-4">
-            <Trophy className="h-4 w-4 text-brand" /> Rank Tiers
-          </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {RANK_TIERS.map((tier, i) => {
-              const unlocked = stats.totalXp >= tier.minXp;
-              const current = stats.rank.name === tier.name;
-              return (
-                <div
-                  key={tier.name}
-                  style={{
-                    ['--i' as string]: i,
-                    ...(current ? { borderColor: tier.color, boxShadow: `0 0 20px ${tier.color}22` } : {}),
-                  }}
-                  className={`relative rounded-xl border p-3 text-center stagger-fast transition-colors ${
-                    current ? 'bg-elevated' : unlocked ? 'border-line bg-card' : 'border-line bg-card opacity-40'
-                  }`}
-                >
-                  {current && (
-                    <span
-                      className="absolute -top-2 left-1/2 -translate-x-1/2 text-[9px] font-bold px-1.5 py-0.5 rounded-full text-black"
-                      style={{ backgroundColor: tier.color }}
-                    >
-                      YOU
-                    </span>
-                  )}
-                  <Icon
-                    name={tier.icon}
-                    className="h-6 w-6 mx-auto mb-1.5"
-                    style={{ color: unlocked ? tier.color : 'var(--muted-dim)' }}
-                  />
-                  <p className="text-xs font-semibold" style={{ color: unlocked ? tier.color : 'var(--muted)' }}>
-                    {tier.name}
-                  </p>
-                  <p className="text-[10px] text-muted mt-0.5">{tier.minXp.toLocaleString()} XP</p>
-                  {!unlocked && <Lock className="h-3 w-3 absolute bottom-2 right-2 text-muted-dim" />}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </Reveal>
-
-      {/* ── Achievement badges ───────────────────────────────────────────── */}
-      <Reveal>
-        <div className="card-glow rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="flex items-center gap-2 font-semibold text-fg">
-              <Award className="h-4 w-4 text-brand" /> Achievement Badges
-            </h2>
-            <span className="text-xs text-muted">
-              {badges.filter(b => b.isEarned).length} of {badges.length} unlocked
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-            {badges.map((b, i) => (
-              <div
-                key={b.id}
-                style={{ ['--i' as string]: i, ...(b.isEarned ? { borderColor: `${b.color}59` } : {}) }}
-                className={`relative rounded-xl border p-3 text-center stagger-fast transition-colors ${
-                  b.isEarned ? 'bg-elevated' : 'border-line bg-card opacity-40'
-                }`}
-              >
-                <Icon
-                  name={b.icon}
-                  className="h-6 w-6 mx-auto mb-1.5"
-                  style={{ color: b.isEarned ? b.color : 'var(--muted-dim)' }}
-                />
-                <p className={`text-xs font-semibold ${b.isEarned ? 'text-fg' : 'text-muted'}`}>{b.name}</p>
-                <p className="text-[10px] text-muted mt-0.5 leading-tight">{b.description}</p>
-                <p className={`text-[10px] font-semibold mt-1 ${b.isEarned ? 'text-brand' : 'text-muted-dim'}`}>
-                  +{b.xpReward} XP
-                </p>
-                {!b.isEarned && <Lock className="h-3 w-3 absolute top-2 right-2 text-muted-dim" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      </Reveal>
-
       {/* ── Settings ─────────────────────────────────────────────────────── */}
       <Reveal>
         <div className="card-glow rounded-2xl p-5 space-y-5">
@@ -261,6 +194,38 @@ export default function ProfilePage() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Task reminders */}
+          <div className="space-y-2 pt-1">
+            <label className="flex items-center gap-2 text-xs font-semibold text-muted uppercase tracking-wider">
+              <Bell className="h-3.5 w-3.5" /> Task Reminders
+            </label>
+            <button
+              onClick={toggleNotifications}
+              disabled={!notifySupported}
+              className="w-full flex items-center justify-between gap-3 p-3 rounded-xl border border-line bg-elevated glow-hover disabled:opacity-40 text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fg">Browser notifications</span>
+                <span className="block text-xs text-muted mt-0.5">
+                  {notifySupported
+                    ? 'A daily nudge if tasks are still open in the evening.'
+                    : 'Not supported in this browser.'}
+                </span>
+              </span>
+              <span
+                className={`h-6 w-11 rounded-full flex-shrink-0 transition-colors relative ${
+                  notifyOn ? 'bg-brand' : 'bg-line'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-transform ${
+                    notifyOn ? 'translate-x-[1.375rem]' : 'translate-x-0.5'
+                  }`}
+                />
+              </span>
+            </button>
           </div>
         </div>
       </Reveal>

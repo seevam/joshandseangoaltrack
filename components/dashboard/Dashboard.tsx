@@ -4,13 +4,15 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Target, Plus, CheckCircle, AlertTriangle, ChevronRight, Search, X,
-  Zap, Trophy, Flame, ListChecks,
+  Zap, Trophy, Flame, ListChecks, Activity,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import { computeStats, earnedBadges, taskXp, milestoneXp } from '@/lib/xp';
-import { XPBar, CategoryBadge, BadgeTile, DifficultyPill, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
-import { IconTile } from '@/components/ui/icons';
+import { buildActivityFeed } from '@/lib/activity';
+import { maybeNotifyTodaysTasks } from '@/lib/notifications';
+import { XPBar, CategoryBadge, BadgeTile, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
+import { IconTile, Icon } from '@/components/ui/icons';
 import {
   AnimatedNumber, AnimatedCheck, Sparks, LevelUpOverlay, Reveal,
 } from '@/components/ui/motion';
@@ -167,6 +169,10 @@ export default function Dashboard() {
   // ── Derived data ──────────────────────────────────────────────────────────
   const stats = useMemo(() => computeStats(goals), [goals]);
   const badges = useMemo(() => earnedBadges(stats, goals), [stats, goals]);
+  const feed = useMemo(() => buildActivityFeed(goals, 8), [goals]);
+
+  // Daily reminder, throttled to once per day inside the helper.
+  useEffect(() => { maybeNotifyTodaysTasks(goals); }, [goals]);
   const earnedCount = badges.filter(b => b.isEarned).length;
 
   // Level is derived, so watching it here catches gains from any source.
@@ -196,24 +202,8 @@ export default function Dashboard() {
     return out.sort((a, b) => Number(a.done) - Number(b.done));
   }, [goals, todayStr, todayDow]);
 
-  /** Upcoming milestones across all goals, soonest first. */
-  const upcomingMilestones = useMemo(() => {
-    const out: { goal: Goal; title: string; date: Date; idx: number; difficulty?: string }[] = [];
-    for (const goal of goals) {
-      if (!goal.startDate) continue;
-      (goal.subtasks || []).forEach((s, idx) => {
-        if (s.completed) return;
-        out.push({
-          goal, title: s.title, idx, difficulty: s.difficulty,
-          date: new Date(new Date(goal.startDate!).getTime() + s.daysFromStart * 86400000),
-        });
-      });
-    }
-    return out.sort((a, b) => a.date.getTime() - b.date.getTime()).slice(0, 5);
-  }, [goals]);
-
   const previewGoals = useMemo(
-    () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 6),
+    () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 3),
     [goals],
   );
   const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
@@ -346,8 +336,8 @@ export default function Dashboard() {
                           {task.title}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs truncate" style={{ color: cat.hex }}>{goal.title}</span>
-                          <DifficultyPill difficulty={task.difficulty} />
+                          <span className="text-xs text-muted truncate">{goal.title}</span>
+                          <CategoryBadge category={goal.category} />
                         </div>
                       </div>
                       <XpPill xp={taskXp(task.difficulty)} />
@@ -358,30 +348,32 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Upcoming milestones */}
+          {/* Activity feed */}
           <div className="card-glow rounded-2xl p-4 animate-slide-up">
             <h2 className="font-semibold text-fg flex items-center gap-2 mb-3">
-              <Target className="h-4 w-4 text-brand" /> Next Milestones
+              <Activity className="h-4 w-4 text-brand" /> Activity
             </h2>
-            {upcomingMilestones.length === 0 ? (
-              <p className="text-sm text-muted text-center py-6">No upcoming milestones.</p>
+            {feed.length === 0 ? (
+              <p className="text-sm text-muted text-center py-6">
+                No activity yet. Complete your first task!
+              </p>
             ) : (
-              <div className="space-y-2">
-                {upcomingMilestones.map((m, i) => (
-                  <button
-                    key={`${m.goal.id}-${m.idx}`}
-                    onClick={() => { setSelectedGoal(m.goal); setShowGoalDetails(true); }}
-                    className="w-full text-left p-2.5 rounded-xl border border-line bg-elevated hover:border-brand/40 hover:-translate-y-0.5 transition-all duration-200 stagger-fast"
+              <div className="space-y-1 max-h-96 overflow-y-auto thin-scroll">
+                {feed.map((item, i) => (
+                  <div
+                    key={item.id}
                     style={{ ['--i' as string]: i }}
+                    className="stagger-fast flex items-start gap-2.5 py-2 border-b border-line last:border-0"
                   >
-                    <p className="text-xs font-medium text-fg line-clamp-2">{m.title}</p>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <span className="text-[10px] text-muted">
-                        {m.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                      <XpPill xp={milestoneXp(m.difficulty)} />
+                    <Icon name={item.icon} className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: item.color }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-fg truncate">{item.title}</p>
+                      {item.description && <p className="text-[11px] text-muted truncate">{item.description}</p>}
                     </div>
-                  </button>
+                    {item.xpGained > 0 && (
+                      <span className="text-[11px] font-semibold text-brand flex-shrink-0">+{item.xpGained}</span>
+                    )}
+                  </div>
                 ))}
               </div>
             )}
@@ -406,9 +398,11 @@ export default function Dashboard() {
         {/* ── Active goals — preview only (name, category, progress) ───── */}
         <Reveal>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-fg">Active Goals</h2>
-            <Link href="/goals" className="group flex items-center gap-1 text-xs text-muted hover:text-brand transition-colors">
-              See all goals <ChevronRight className="h-3.5 w-3.5 icon-shift" />
+            <h2 className="font-semibold text-fg flex items-center gap-2">
+              <Target className="h-4 w-4 text-brand" /> Active Goals
+            </h2>
+            <Link href="/goals" className="text-xs font-medium text-muted hover:text-brand transition-colors">
+              View all
             </Link>
           </div>
           {previewGoals.length === 0 ? (

@@ -1,0 +1,89 @@
+import type { Goal } from './types';
+import { taskXp, milestoneXp } from './xp';
+
+export interface ActivityItem {
+  id: string;
+  type: 'task_completed' | 'milestone_completed' | 'goal_created' | 'check_in';
+  title: string;
+  description?: string;
+  xpGained: number;
+  date: string;
+  icon: string;
+  color: string;
+}
+
+/**
+ * Derived from goal data — there's no activity table, so completions and
+ * check-ins are reconstructed and sorted newest first.
+ */
+export function buildActivityFeed(goals: Goal[], limit = 25): ActivityItem[] {
+  const items: ActivityItem[] = [];
+
+  for (const goal of goals) {
+    const taskById = new Map((goal.dailyTasks || []).map(t => [String(t.id), t]));
+
+    for (const [date, day] of Object.entries(goal.taskCompletions || {})) {
+      for (const [taskId, value] of Object.entries(day)) {
+        if (!value) continue;
+        const task = taskById.get(taskId);
+        items.push({
+          id: `task-${goal.id}-${taskId}-${date}`,
+          type: 'task_completed',
+          title: task?.title || 'Task completed',
+          description: goal.title,
+          xpGained: taskXp(task?.difficulty),
+          date,
+          icon: 'footprints',
+          color: '#5DBC70',
+        });
+      }
+    }
+
+    (goal.subtasks || []).forEach((s, i) => {
+      if (!s.completed) return;
+      const date = goal.startDate
+        ? new Date(new Date(goal.startDate).getTime() + s.daysFromStart * 86400000).toISOString().split('T')[0]
+        : (goal.updatedAt || '').split('T')[0];
+      items.push({
+        id: `ms-${goal.id}-${i}`,
+        type: 'milestone_completed',
+        title: s.title,
+        description: goal.title,
+        xpGained: milestoneXp(s.difficulty),
+        date,
+        icon: 'flag',
+        color: '#3B82F6',
+      });
+    });
+
+    for (const date of goal.checkIns || []) {
+      items.push({
+        id: `ci-${goal.id}-${date}`,
+        type: 'check_in',
+        title: 'Checked in',
+        description: goal.title,
+        xpGained: 5,
+        date,
+        icon: 'zap',
+        color: '#FBBF24',
+      });
+    }
+
+    if (goal.createdAt) {
+      items.push({
+        id: `new-${goal.id}`,
+        type: 'goal_created',
+        title: `Created "${goal.title}"`,
+        xpGained: 0,
+        date: goal.createdAt.split('T')[0],
+        icon: 'target',
+        color: '#A78BFA',
+      });
+    }
+  }
+
+  return items
+    .filter(i => i.date)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit);
+}

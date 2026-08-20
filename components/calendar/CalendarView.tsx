@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Download, X, CalendarDays } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, CalendarDays, AlertTriangle } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, type Goal } from '@/lib/types';
 import { Icon } from '@/components/ui/icons';
@@ -33,6 +33,11 @@ export default function CalendarView() {
   });
   const [showExportModal, setShowExportModal] = useState(false);
   const [flashTask, setFlashTask] = useState<string | null>(null);
+  const [selected, setSelected] = useState(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
 
   const today = useMemo(() => {
     const d = new Date();
@@ -128,7 +133,20 @@ export default function CalendarView() {
     ? `${MONTHS[weekDays[0].getMonth()]} ${weekDays[0].getFullYear()}`
     : `${MONTHS[weekDays[0].getMonth()].slice(0, 3)} – ${MONTHS[weekDays[6].getMonth()].slice(0, 3)} ${weekDays[6].getFullYear()}`;
 
-  const emptyWeek = weekDays.every(d => getTasksForDate(d).length === 0);
+  const selectedTasks = getTasksForDate(selected);
+  const selectedDone = selectedTasks.filter(t => t.done).length;
+
+  // Incomplete tasks from the previous 14 days — surfaced only when non-empty.
+  const overdue = useMemo(() => {
+    const out: DayTask[] = [];
+    for (let back = 1; back <= 14; back++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - back);
+      out.push(...getTasksForDate(d).filter(t => !t.done));
+    }
+    return out.sort((a, b) => b.dateStr.localeCompare(a.dateStr)).slice(0, 10);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [goals, today]);
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 sm:px-6 space-y-5">
@@ -168,10 +186,13 @@ export default function CalendarView() {
           const isToday = d.getTime() === today.getTime();
           const allDone = tasks.length > 0 && done === tasks.length;
           return (
-            <div
+            <button
               key={d.toISOString()}
+              onClick={() => setSelected(d)}
               style={{ ['--i' as string]: i }}
-              className={`stagger-fast rounded-xl py-2.5 text-center ${isToday ? 'bg-elevated' : ''}`}
+              className={`stagger-fast rounded-xl py-2.5 text-center transition-colors ${
+                d.getTime() === selected.getTime() ? 'bg-elevated border border-brand/50' : 'border border-transparent hover:bg-elevated'
+              }`}
             >
               <p className="text-[10px] text-muted uppercase tracking-wide">
                 {d.toLocaleDateString('en-US', { weekday: 'short' })}
@@ -182,85 +203,96 @@ export default function CalendarView() {
                   {done}/{tasks.length}
                 </p>
               )}
-            </div>
+            </button>
           );
         })}
       </div>
 
-      {/* Agenda — one section per day */}
-      <div className="space-y-5">
-        {weekDays.map((d, di) => {
-          const tasks = getTasksForDate(d);
-          const dateStr = d.toISOString().split('T')[0];
-          const checkIns = goals.filter(g => g.checkIns?.some(c => c.startsWith(dateStr)));
-          if (tasks.length === 0 && checkIns.length === 0) return null;
-
-          const done = tasks.filter(t => t.done).length;
-          const isToday = d.getTime() === today.getTime();
-
-          return (
-            <section key={dateStr} style={{ ['--i' as string]: di }} className="stagger-fast">
-              <div className="flex items-baseline justify-between mb-2.5">
-                <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
-                  {d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  {isToday && (
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-brand border border-brand/40 rounded-full px-1.5 py-0.5">
-                      Today
-                    </span>
-                  )}
-                </h2>
-                {tasks.length > 0 && <span className="text-xs text-muted">{done}/{tasks.length} done</span>}
-              </div>
-
-              <div className="space-y-2">
-                {tasks.map(({ goal, task, done: isDone }) => {
-                  const key = `${goal.id}-${task.id}-${dateStr}`;
-                  const cat = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
-                  return (
-                    <div
-                      key={key}
-                      className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                        flashTask === key ? 'task-flash task-complete-anim' : ''
-                      } ${isDone ? 'border-brand/30 bg-brand/5' : 'border-line bg-card glow-hover'}`}
-                    >
-                      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat?.hex }} />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${isDone ? 'line-through text-muted' : 'text-fg'}`}>
-                          {task.title}
-                        </p>
-                        <p className="text-xs text-muted truncate">{goal.title}</p>
-                      </div>
-                      <AnimatedCheck
-                        checked={isDone}
-                        size={22}
-                        onClick={() => logTask(goal.id, task.id, dateStr, !isDone)}
-                      />
-                    </div>
-                  );
-                })}
-
-                {checkIns.map(g => (
-                  <div key={`ci-${g.id}`} className="flex items-center gap-3 p-3 rounded-xl border border-line bg-card">
-                    <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-amber-400" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-fg truncate">Checked in</p>
-                      <p className="text-xs text-muted truncate">{g.title}</p>
-                    </div>
+      {/* Overdue — hidden unless there is something overdue */}
+      {overdue.length > 0 && (
+        <section className="animate-slide-up">
+          <div className="flex items-baseline justify-between mb-2.5">
+            <h2 className="text-sm font-semibold text-red-400 flex items-center gap-1.5">
+              <AlertTriangle className="h-4 w-4" /> Overdue
+            </h2>
+            <span className="text-xs text-muted">{overdue.length} task{overdue.length === 1 ? '' : 's'}</span>
+          </div>
+          <div className="space-y-2">
+            {overdue.map(({ goal, task, dateStr }) => {
+              const key = `${goal.id}-${task.id}-${dateStr}`;
+              return (
+                <div key={key} className="flex items-center gap-3 p-3 rounded-xl border border-red-500/30 bg-red-500/5">
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-red-400" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-fg truncate">{task.title}</p>
+                    <p className="text-xs text-muted truncate">
+                      {goal.title} · {new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
                   </div>
-                ))}
-              </div>
-            </section>
-          );
-        })}
+                  <AnimatedCheck
+                    checked={false}
+                    size={22}
+                    onClick={() => logTask(goal.id, task.id, dateStr, true)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
-        {emptyWeek && (
-          <div className="rounded-2xl border border-line bg-card p-12 text-center animate-slide-up">
-            <CalendarDays className="h-10 w-10 text-muted-dim mx-auto mb-3" />
-            <h3 className="text-base font-medium text-fg mb-1">Nothing scheduled this week</h3>
-            <p className="text-sm text-muted">Recurring tasks from your goals will show up here.</p>
+      {/* Selected day only */}
+      <section className="animate-slide-up">
+        <div className="flex items-baseline justify-between mb-2.5">
+          <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
+            {selected.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            {selected.getTime() === today.getTime() && (
+              <span className="text-[10px] font-bold uppercase tracking-wide text-brand border border-brand/40 rounded-full px-1.5 py-0.5">
+                Today
+              </span>
+            )}
+          </h2>
+          {selectedTasks.length > 0 && (
+            <span className="text-xs text-muted">{selectedDone}/{selectedTasks.length} done</span>
+          )}
+        </div>
+
+        {selectedTasks.length === 0 ? (
+          <div className="rounded-2xl border border-line bg-card p-10 text-center">
+            <CalendarDays className="h-9 w-9 text-muted-dim mx-auto mb-3" />
+            <p className="text-sm text-muted">Nothing scheduled for this day.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {selectedTasks.map(({ goal, task, done: isDone, dateStr }, i) => {
+              const key = `${goal.id}-${task.id}-${dateStr}`;
+              const cat = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
+              return (
+                <div
+                  key={key}
+                  style={{ ['--i' as string]: i }}
+                  className={`stagger-fast flex items-center gap-3 p-3 rounded-xl border transition-colors ${
+                    flashTask === key ? 'task-flash task-complete-anim' : ''
+                  } ${isDone ? 'border-brand/30 bg-brand/5' : 'border-line bg-card glow-hover'}`}
+                >
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat?.hex }} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium truncate ${isDone ? 'line-through text-muted' : 'text-fg'}`}>
+                      {task.title}
+                    </p>
+                    <p className="text-xs text-muted truncate">{goal.title}</p>
+                  </div>
+                  <AnimatedCheck
+                    checked={isDone}
+                    size={22}
+                    onClick={() => logTask(goal.id, task.id, dateStr, !isDone)}
+                  />
+                </div>
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
 
       {/* Export modal */}
       {showExportModal && (

@@ -1,60 +1,438 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { Zap, MessageSquare, ChevronRight } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Zap, MessageSquare, ChevronRight, ChevronDown, ArrowLeft, Loader2, Send, Sparkles } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
+import { buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, CATEGORY_HEX } from '@/lib/aiGoal';
+import { type Category } from '@/lib/types';
 import Modal from '@/components/ui/Modal';
+import MarkdownText from '@/components/ui/MarkdownText';
 
-/**
- * Chooser only — two large squares. Quick Create routes to the new-goal page;
- * Detailed hands off to the chat coach.
- */
+const CATEGORIES: Category[] = ['fitness', 'health', 'personal', 'career', 'finance', 'education'];
+const TIMEFRAMES = [1, 3, 6, 12, 24];
+const TOTAL_STEPS = 3;
+
+const QUICK_STARTERS = [
+  'Run my first marathon',
+  'Read 24 books this year',
+  'Get fit & build core strength',
+  'Master a new coding language',
+];
+
+type Step = 'pick' | 'quick' | 'detailed';
+
 export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
-  const router = useRouter();
-  const openChat = useGoalStore(s => s.openChat);
+  const [step, setStep] = useState<Step>('pick');
+  const addGoal = useGoalStore(s => s.addGoal);
   const coachName = useGoalStore(s => s.coachName);
-
-  const MODES = [
-    {
-      id: 'quick',
-      icon: Zap,
-      title: 'Quick Create',
-      desc: 'Directly enter your ambition and let the AI break it down for you.',
-      action: 'Get started',
-      onSelect: () => { onClose(); router.push('/goals/new'); },
-    },
-    {
-      id: 'detailed',
-      icon: MessageSquare,
-      title: 'Detailed Consultation',
-      desc: `Chat with ${coachName} to tailor the exact milestones and schedule to your life.`,
-      action: 'Start chat',
-      onSelect: () => { onClose(); openChat(); },
-    },
-  ];
+  const persona = useGoalStore(s => s.coachPersona);
 
   return (
-    <Modal onClose={onClose} maxWidth="sm:max-w-2xl">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {MODES.map(({ id, icon: Icon, title, desc, action, onSelect }, i) => (
+    <Modal onClose={onClose} maxWidth={step === 'pick' ? 'sm:max-w-2xl' : 'sm:max-w-lg'} padded={false}>
+      <div className="p-5 pt-5">
+        <h2 className="font-display text-2xl tracking-wide mb-5">
+          <span className="text-brand-gradient">NEW</span>{' '}
+          <span className="text-fg">GOAL</span>
+        </h2>
+
+        {step === 'pick' && <Chooser onPick={setStep} coachName={coachName} />}
+        {step === 'quick' && (
+          <QuickCreate
+            onBack={() => setStep('pick')}
+            onCreated={g => { addGoal(g); onClose(); }}
+            coachName={coachName}
+            persona={persona}
+          />
+        )}
+        {step === 'detailed' && (
+          <DetailedConsultation
+            onBack={() => setStep('pick')}
+            onCreated={g => { addGoal(g); onClose(); }}
+            coachName={coachName}
+            persona={persona}
+          />
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+/* ── Step 1: two big squares ─────────────────────────────────────────────── */
+function Chooser({ onPick, coachName }: { onPick: (s: Step) => void; coachName: string }) {
+  const MODES = [
+    {
+      id: 'quick' as const, icon: Zap, title: 'QUICK CREATE',
+      desc: 'Directly enter your ambition or use standard AI decomposition.',
+      action: 'Get started',
+    },
+    {
+      id: 'detailed' as const, icon: MessageSquare, title: 'DETAILED CONSULTATION',
+      desc: `Chat with ${coachName} to tailor the exact milestones and schedule to your life.`,
+      action: 'Start chat',
+    },
+  ];
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {MODES.map(({ id, icon: Icon, title, desc, action }, i) => (
+        <button
+          key={id}
+          onClick={() => onPick(id)}
+          style={{ ['--i' as string]: i }}
+          className="group stagger-fast glow-hover text-left rounded-2xl border border-line bg-elevated p-5 flex flex-col sm:min-h-[15rem] lift"
+        >
+          <div className="h-11 w-11 rounded-xl bg-brand/15 border border-brand/25 flex items-center justify-center mb-5">
+            <Icon className="h-5 w-5 text-brand" />
+          </div>
+          <h3 className="font-display text-lg tracking-wide text-fg">{title}</h3>
+          <p className="text-sm text-muted mt-2 leading-relaxed flex-1">{desc}</p>
+          <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand">
+            {action}<ChevronRight className="h-4 w-4 icon-shift" />
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function StepHeader({ onBack, title, right }: { onBack: () => void; title: string; right?: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <button onClick={onBack} aria-label="Back" className="p-1 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors">
+        <ArrowLeft className="h-4 w-4" />
+      </button>
+      <h3 className="text-base font-bold text-fg flex-1">{title}</h3>
+      {right}
+    </div>
+  );
+}
+
+/* ── Step 2a: Quick — AI Generation | Manual Entry ───────────────────────── */
+function QuickCreate({ onBack, onCreated, coachName, persona }: {
+  onBack: () => void;
+  onCreated: (g: Awaited<ReturnType<typeof materialiseGoal>> extends infer T ? NonNullable<T> : never) => void;
+  coachName: string;
+  persona: 'energetic' | 'calm' | 'direct';
+}) {
+  const [mode, setMode] = useState<'ai' | 'manual'>('ai');
+  const [category, setCategory] = useState<Category>('fitness');
+  const [ambition, setAmbition] = useState('');
+  const [months, setMonths] = useState(6);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [targetDate, setTargetDate] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const fieldCls = 'w-full bg-elevated border border-line rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-muted-dim focus:outline-none focus:border-brand glow-hover';
+  const selectCls = `${fieldCls} appearance-none pr-9 cursor-pointer capitalize`;
+
+  const submit = async () => {
+    if (isLoading) return;
+    setError('');
+
+    if (mode === 'manual') {
+      if (!title.trim()) { setError('Enter a title.'); return; }
+      setIsLoading(true);
+      try {
+        const end = targetDate ? new Date(targetDate) : new Date(Date.now() + 180 * 86400000);
+        const res = await fetch('/api/goals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title: title.trim(), description, category,
+            targetValue: 1, currentValue: 0, unit: '',
+            startDate: new Date().toISOString(), endDate: end.toISOString(),
+            color: CATEGORY_HEX[category] || '#5DBC70',
+            subtasks: [], dailyTasks: [],
+            progressHistory: [{ date: new Date().toISOString(), value: 0 }],
+            checkIns: [], taskCompletions: {}, milestones: [],
+          }),
+        });
+        if (!res.ok) throw new Error();
+        onCreated(await res.json());
+      } catch {
+        setError('Could not save that goal. Please try again.');
+      } finally { setIsLoading(false); }
+      return;
+    }
+
+    if (!ambition.trim()) { setError('Describe your ambition.'); return; }
+    setIsLoading(true);
+    try {
+      const deadline = new Date();
+      deadline.setMonth(deadline.getMonth() + months);
+      const res = await fetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'gpt-4o',
+          messages: [
+            { role: 'system', content: quickCreatePrompt(coachName, personaStyle(persona)) },
+            {
+              role: 'user',
+              content: `Goal: ${ambition.trim()}\nCategory: ${category}\nTimeframe: ${months} month${months === 1 ? '' : 's'} `
+                + `(deadline ${deadline.toISOString().split('T')[0]}). Use exactly this category and deadline.`,
+            },
+          ],
+          tools: buildGoalTools().filter(t => t.function.name === 'create_goal'),
+          tool_choice: { type: 'function', function: { name: 'create_goal' } },
+          max_tokens: 2000,
+          temperature: 0.4,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      const toolCall = (await res.json()).choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) throw new Error();
+      const saved = await materialiseGoal(JSON.parse(toolCall.function.arguments));
+      if (!saved) throw new Error();
+      onCreated(saved);
+    } catch {
+      setError("Couldn't build that plan. Try rephrasing, or use Manual Entry.");
+    } finally { setIsLoading(false); }
+  };
+
+  return (
+    <div className="animate-slide-up">
+      <StepHeader onBack={onBack} title="Quick Create" />
+
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {([['ai', 'AI Generation'], ['manual', 'Manual Entry']] as const).map(([id, label]) => (
           <button
             key={id}
-            onClick={onSelect}
-            style={{ ['--i' as string]: i }}
-            className="group stagger-fast glow-hover text-left rounded-2xl border border-line bg-elevated p-6 flex flex-col sm:aspect-square sm:justify-center lift"
+            onClick={() => setMode(id)}
+            className={`py-2.5 rounded-xl text-sm font-semibold border transition-colors ${
+              mode === id ? 'bg-brand border-brand text-black' : 'bg-elevated border-line text-muted hover:text-fg'
+            }`}
           >
-            <div className="h-14 w-14 rounded-2xl bg-brand/15 border border-brand/25 flex items-center justify-center mb-5">
-              <Icon className="h-6 w-6 text-brand" />
-            </div>
-            <h3 className="text-lg font-bold text-fg">{title}</h3>
-            <p className="text-sm text-muted mt-2 leading-relaxed">{desc}</p>
-            <span className="mt-5 inline-flex items-center gap-1 text-sm font-semibold text-brand">
-              {action}
-              <ChevronRight className="h-4 w-4 icon-shift" />
-            </span>
+            {label}
           </button>
         ))}
       </div>
-    </Modal>
+
+      <div className="space-y-3.5">
+        <div>
+          <label className="block text-xs font-semibold text-fg mb-1.5">Category</label>
+          <div className="relative">
+            <select value={category} onChange={e => setCategory(e.target.value as Category)} className={selectCls}>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+            <ChevronDown className="h-4 w-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        </div>
+
+        {mode === 'ai' ? (
+          <>
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">Ambition</label>
+              <input
+                autoFocus value={ambition} onChange={e => setAmbition(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submit(); }}
+                disabled={isLoading}
+                placeholder="e.g. Read 24 books this year, run a sub-4 hour marathon…"
+                className={fieldCls}
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">Timeframe (Months)</label>
+              <div className="relative">
+                <select value={months} onChange={e => setMonths(Number(e.target.value))} className={selectCls}>
+                  {TIMEFRAMES.map(m => <option key={m} value={m}>{m} month{m === 1 ? '' : 's'}</option>)}
+                </select>
+                <ChevronDown className="h-4 w-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">Title</label>
+              <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Read 24 books" className={fieldCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">Description</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Optional" className={`${fieldCls} resize-none`} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">Target date</label>
+              <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className={fieldCls} />
+            </div>
+          </>
+        )}
+
+        {error && <p className="text-xs text-red-400">{error}</p>}
+
+        <button
+          onClick={submit}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-2 py-3 bg-brand hover:bg-brand-dark disabled:bg-elevated disabled:text-muted-dim text-black font-semibold rounded-xl text-sm transition-colors"
+        >
+          {isLoading
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> Building…</>
+            : mode === 'ai' ? <><Sparkles className="h-4 w-4" /> Generate AI Plan</> : 'Create Goal'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Step 2b: Detailed consultation, in-modal ────────────────────────────── */
+function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
+  onBack: () => void;
+  onCreated: (g: NonNullable<Awaited<ReturnType<typeof materialiseGoal>>>) => void;
+  coachName: string;
+  persona: 'energetic' | 'calm' | 'direct';
+}) {
+  const [messages, setMessages] = useState<{ id: number; role: 'ai' | 'user'; text: string }[]>([
+    { id: 0, role: 'ai', text: `I'm ${coachName}. Tell me the ambitious outcome you want to make real, and I'll help shape the right plan around your life.` },
+  ]);
+  const [history, setHistory] = useState<{ role: string; content: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [stepNo, setStepNo] = useState(1);
+  const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages]);
+
+  const call = async (msgs: { role: string; content: string }[], force: boolean) => {
+    const res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [{ role: 'system', content: chatCoachPrompt(coachName, personaStyle(persona), 'Creating a new goal.') }, ...msgs],
+        tools: force
+          ? buildGoalTools().filter(t => t.function.name === 'create_goal')
+          : buildGoalTools(),
+        tool_choice: force ? { type: 'function', function: { name: 'create_goal' } } : 'required',
+        max_tokens: 2000,
+        temperature: 0.4,
+      }),
+    });
+    if (!res.ok) throw new Error();
+    return (await res.json()).choices?.[0]?.message?.tool_calls?.[0];
+  };
+
+  const send = async (text: string) => {
+    if (!text.trim() || isLoading) return;
+    setMessages(m => [...m, { id: Date.now(), role: 'user', text }]);
+    setInput('');
+    setIsLoading(true);
+    const next = [...history, { role: 'user', content: text }];
+    try {
+      const toolCall = await call(next, false);
+      if (toolCall?.function.name === 'create_goal') {
+        const saved = await materialiseGoal(JSON.parse(toolCall.function.arguments));
+        if (saved) { onCreated(saved); return; }
+        throw new Error();
+      }
+      const args = JSON.parse(toolCall.function.arguments);
+      setHistory([...next, { role: 'assistant', content: args.message }]);
+      setMessages(m => [...m, { id: Date.now() + 1, role: 'ai', text: args.message }]);
+      setStepNo(n => Math.min(n + 1, TOTAL_STEPS));
+    } catch {
+      setMessages(m => [...m, { id: Date.now() + 1, role: 'ai', text: 'I had trouble connecting. Please try again.' }]);
+    } finally { setIsLoading(false); }
+  };
+
+  const buildNow = async () => {
+    if (isLoading) return;
+    setIsLoading(true);
+    try {
+      const toolCall = await call(
+        history.length ? history : [{ role: 'user', content: 'Build the best plan you can from what you know so far.' }],
+        true,
+      );
+      const saved = await materialiseGoal(JSON.parse(toolCall.function.arguments));
+      if (saved) onCreated(saved);
+    } catch {
+      setMessages(m => [...m, { id: Date.now(), role: 'ai', text: "I couldn't build that yet — tell me a bit more about the goal." }]);
+    } finally { setIsLoading(false); }
+  };
+
+  return (
+    <div className="animate-slide-up">
+      <StepHeader
+        onBack={onBack}
+        title="Detailed Consultation"
+        right={
+          <span className="text-[11px] font-semibold text-brand border border-brand/40 bg-brand/10 rounded-full px-2 py-0.5">
+            Step {stepNo} of {TOTAL_STEPS}
+          </span>
+        }
+      />
+
+      <div className="rounded-xl border border-line bg-elevated p-3 h-64 overflow-y-auto thin-scroll space-y-3">
+        {messages.map(m => (
+          <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : ''}>
+            <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
+              m.role === 'user' ? 'bg-brand text-black' : 'bg-card border border-line text-fg'
+            }`}>
+              {m.role === 'user' ? m.text : <MarkdownText content={m.text} />}
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+          <div className="flex gap-1 px-3">
+            {[0, 0.15, 0.3].map(d => (
+              <span key={d} className="w-1.5 h-1.5 bg-brand rounded-full animate-bounce" style={{ animationDelay: `${d}s` }} />
+            ))}
+          </div>
+        )}
+        <div ref={endRef} />
+      </div>
+
+      {messages.length <= 1 && (
+        <div className="mt-3">
+          <p className="text-[10px] font-semibold text-muted uppercase tracking-wider mb-2">Quick starters:</p>
+          <div className="flex flex-wrap gap-2">
+            {QUICK_STARTERS.map(q => (
+              <button
+                key={q}
+                onClick={() => send(q)}
+                disabled={isLoading}
+                className="px-3 py-1.5 rounded-lg border border-line bg-card text-xs text-fg glow-hover disabled:opacity-40"
+              >
+                {q}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex gap-2 mt-3">
+        <input
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          disabled={isLoading}
+          placeholder={`Reply to ${coachName} or pick a suggestion above…`}
+          className="flex-1 bg-elevated border border-line rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-muted-dim focus:outline-none focus:border-brand glow-hover"
+        />
+        <button
+          type="submit"
+          disabled={!input.trim() || isLoading}
+          className="h-11 w-11 flex-shrink-0 bg-brand hover:bg-brand-dark disabled:bg-elevated disabled:text-muted-dim text-black rounded-xl flex items-center justify-center transition-colors"
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </form>
+
+      <div className="grid grid-cols-2 gap-2 mt-3">
+        <button
+          onClick={buildNow}
+          disabled={isLoading}
+          className="py-2.5 rounded-xl border border-line bg-card text-sm font-semibold text-fg glow-hover disabled:opacity-40"
+        >
+          Skip &amp; Build Now
+        </button>
+        <button
+          onClick={buildNow}
+          disabled={isLoading}
+          className="py-2.5 rounded-xl bg-brand hover:bg-brand-dark disabled:bg-elevated disabled:text-muted-dim text-black text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
+        >
+          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+          Build Tailored Plan
+        </button>
+      </div>
+    </div>
   );
 }
