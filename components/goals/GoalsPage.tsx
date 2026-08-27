@@ -52,7 +52,7 @@ export default function GoalsPage() {
       <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 space-y-5">
         <div className="animate-slide-up">
           <div>
-            <h1 className="text-2xl font-bold text-fg">Goals</h1>
+            <h1 className="font-display text-3xl tracking-wide"><span className="text-brand-gradient">GO</span><span className="text-fg">ALS</span></h1>
             <p className="text-sm text-muted mt-0.5">{goals.length} goal{goals.length === 1 ? '' : 's'}</p>
           </div>
         </div>

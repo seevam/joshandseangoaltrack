@@ -174,8 +174,13 @@ export default function GoalForm({ onClose, editGoal }: Props) {
             <div>
               <label className="block text-sm font-medium text-fg mb-1">Target *</label>
               <input
-                type="number" value={form.targetValue}
-                onChange={e => setForm(f => ({ ...f, targetValue: e.target.value }))}
+                type="text"
+                inputMode="decimal"
+                value={form.targetValue}
+                onChange={e => {
+                  const v = e.target.value;
+                  if (v === '' || /^\d*\.?\d*$/.test(v)) setForm(f => ({ ...f, targetValue: v }));
+                }}
                 placeholder={tpl.target}
                 className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
                 required

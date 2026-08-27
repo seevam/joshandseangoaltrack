@@ -31,6 +31,34 @@ export const EXPERT_ROLES = `EXPERT ROLE: Adopt the specific expert role that ma
 - Business/side project → startup advisor
 - Other → general performance coach`;
 
+export interface Availability {
+  deadlineType: 'hard' | 'soft';
+  weeklyHours: number;
+  freeDays: number[]; // 0=Sun … 6=Sat
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Turns the user's stated availability into scheduling instructions. */
+export function availabilityRules(a: Availability, otherGoalTaskCount: number): string {
+  const free = a.freeDays.length ? a.freeDays.map(d => DAY_NAMES[d]).join(', ') : 'no particular day';
+  return `USER AVAILABILITY — schedule around this, it is not optional:
+- Deadline is ${a.deadlineType.toUpperCase()}. ${a.deadlineType === 'hard'
+    ? 'The date is fixed: fit the work into it, even if that means denser weeks.'
+    : 'The date is flexible: prefer a sustainable pace over hitting the date exactly.'}
+- They have about ${a.weeklyHours} free hours per week in total.
+- Their freest days are: ${free}.
+SCHEDULING:
+- Put the heaviest work on their free days and the lightest on the rest. If a task
+  has an amount in it, scale that amount by the day: a big session on a free day,
+  a token one on a busy day (e.g. "Read 30 pages" Sunday vs "Read 10 pages" Wednesday).
+  Emit these as SEPARATE tasks with different daysOfWeek, not one averaged task.
+- Total weekly load across all tasks must fit inside ${a.weeklyHours} hours.
+- They already have ${otherGoalTaskCount} recurring task(s) from other goals, so leave
+  room — do not fill every day.
+`;
+}
+
 const PLAN_RULES = `PLAN RULES (for create_goal):
 - 10-12 milestones spaced every 2-3 weeks — highly specific and measurable, never generic
 - Each milestone MUST include a 2-3 sentence description: a practical action guide for that phase
@@ -41,7 +69,7 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
   based on genuine effort required. This drives the user's XP, so be honest and varied —
   early/simple items are easy, sustained or demanding ones are hard/epic. Never make everything medium.`;
 
-export function quickCreatePrompt(coachName: string, style: string): string {
+export function quickCreatePrompt(coachName: string, style: string, availability?: Availability, otherTasks = 0): string {
   const today = new Date().toISOString().split('T')[0];
   return `You are ${coachName}, an expert goal coach. ${style}
 
@@ -56,6 +84,7 @@ any questions. Infer every missing detail yourself using sensible defaults for t
 
 Call create_goal immediately. Do not ask anything.
 
+${availability ? availabilityRules(availability, otherTasks) : ''}
 ${PLAN_RULES}
 Today: ${today}.`;
 }
@@ -67,7 +96,13 @@ Always call one of the two tools. Keep replies to 2-3 sentences max.
 
 ${EXPERT_ROLES}
 
-CONVERSATION FLOW
+SCOPE: You are a general coach, not only a goal-creation funnel. If the user asks
+about progress, priorities, motivation, or anything else, just answer with the respond tool.
+Only enter the goal-creation flow below when they actually want to create a goal.
+If their skills show a neglected area, you may suggest ONE relevant goal — offer it,
+never force it, and never derail what they asked about.
+
+GOAL-CREATION FLOW (only when they want a new goal)
 
 STEP 0 — ESTABLISH THE GOAL FIRST. This is mandatory and overrides everything below.
 You must know WHAT the user is actually trying to achieve before anything else.

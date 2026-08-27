@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Zap, MessageSquare, ChevronRight, ChevronDown, ArrowLeft, Loader2, Send, Sparkles } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, CATEGORY_HEX } from '@/lib/aiGoal';
+import { buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, CATEGORY_HEX, type Availability } from '@/lib/aiGoal';
 import { type Category } from '@/lib/types';
 import Modal from '@/components/ui/Modal';
 import MarkdownText from '@/components/ui/MarkdownText';
@@ -11,6 +11,7 @@ import MarkdownText from '@/components/ui/MarkdownText';
 const CATEGORIES: Category[] = ['fitness', 'health', 'personal', 'career', 'finance', 'education'];
 const TIMEFRAMES = [1, 3, 6, 12, 24];
 const TOTAL_STEPS = 3;
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const QUICK_STARTERS = [
   'Run my first marathon',
@@ -26,6 +27,8 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
   const addGoal = useGoalStore(s => s.addGoal);
   const coachName = useGoalStore(s => s.coachName);
   const persona = useGoalStore(s => s.coachPersona);
+  const goals = useGoalStore(s => s.goals);
+  const otherTaskCount = goals.reduce((n, g) => n + (g.dailyTasks?.length || 0), 0);
 
   return (
     <Modal onClose={onClose} maxWidth={step === 'pick' ? 'sm:max-w-2xl' : 'sm:max-w-lg'} padded={false}>
@@ -42,6 +45,7 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
             onCreated={g => { addGoal(g); onClose(); }}
             coachName={coachName}
             persona={persona}
+            otherTaskCount={otherTaskCount}
           />
         )}
         {step === 'detailed' && (
@@ -107,16 +111,20 @@ function StepHeader({ onBack, title, right }: { onBack: () => void; title: strin
 }
 
 /* ── Step 2a: Quick — AI Generation | Manual Entry ───────────────────────── */
-function QuickCreate({ onBack, onCreated, coachName, persona }: {
+function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: {
   onBack: () => void;
   onCreated: (g: Awaited<ReturnType<typeof materialiseGoal>> extends infer T ? NonNullable<T> : never) => void;
   coachName: string;
   persona: 'energetic' | 'calm' | 'direct';
+  otherTaskCount: number;
 }) {
   const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [category, setCategory] = useState<Category>('fitness');
   const [ambition, setAmbition] = useState('');
   const [months, setMonths] = useState(6);
+  const [deadlineType, setDeadlineType] = useState<'hard' | 'soft'>('soft');
+  const [weeklyHours, setWeeklyHours] = useState(5);
+  const [freeDays, setFreeDays] = useState<number[]>([0, 6]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [targetDate, setTargetDate] = useState('');
@@ -157,6 +165,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona }: {
     }
 
     if (!ambition.trim()) { setError('Describe your ambition.'); return; }
+    const availability: Availability = { deadlineType, weeklyHours, freeDays };
     setIsLoading(true);
     try {
       const deadline = new Date();
@@ -167,7 +176,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona }: {
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: [
-            { role: 'system', content: quickCreatePrompt(coachName, personaStyle(persona)) },
+            { role: 'system', content: quickCreatePrompt(coachName, personaStyle(persona), availability, otherTaskCount) },
             {
               role: 'user',
               content: `Goal: ${ambition.trim()}\nCategory: ${category}\nTimeframe: ${months} month${months === 1 ? '' : 's'} `
@@ -239,6 +248,66 @@ function QuickCreate({ onBack, onCreated, coachName, persona }: {
                   {TIMEFRAMES.map(m => <option key={m} value={m}>{m} month{m === 1 ? '' : 's'}</option>)}
                 </select>
                 <ChevronDown className="h-4 w-4 text-muted absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">Deadline</label>
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  ['soft', 'Flexible', 'Pace over date'],
+                  ['hard', 'Fixed date', 'Must hit it'],
+                ] as const).map(([id, label, hint]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setDeadlineType(id)}
+                    className={`py-2 px-3 rounded-xl border text-left transition-colors ${
+                      deadlineType === id ? 'border-brand text-fg' : 'border-line text-muted hover:text-fg'
+                    }`}
+                  >
+                    <span className="block text-xs font-semibold">{label}</span>
+                    <span className="block text-[10px] text-muted mt-0.5">{hint}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">
+                Free time <span className="text-muted font-normal">— about {weeklyHours}h per week</span>
+              </label>
+              <input
+                type="range"
+                min={1}
+                max={30}
+                value={weeklyHours}
+                onChange={e => setWeeklyHours(Number(e.target.value))}
+                className="w-full accent-[color:var(--brand)]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">
+                Freest days <span className="text-muted font-normal">— heavier work lands here</span>
+              </label>
+              <div className="grid grid-cols-7 gap-1.5">
+                {DAY_LABELS.map((d, i) => {
+                  const on = freeDays.includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setFreeDays(prev => on ? prev.filter(x => x !== i) : [...prev, i])}
+                      aria-pressed={on}
+                      className={`py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                        on ? 'border-brand bg-brand/10 text-brand' : 'border-line text-muted hover:text-fg'
+                      }`}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </>

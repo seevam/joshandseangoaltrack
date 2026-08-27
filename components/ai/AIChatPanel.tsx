@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { X, Maximize2, Minimize2, Bot, User as UserIcon, Send, Target, Pencil } from 'lucide-react';
+import { X, Bot, User as UserIcon, Send, Target, Pencil } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { getGoalProgress } from '@/lib/types';
 import MarkdownText from '@/components/ui/MarkdownText';
 import { Icon } from '@/components/ui/icons';
 import { buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal } from '@/lib/aiGoal';
+import { skillsContext } from '@/lib/skills';
 import { useDismiss } from '@/components/ui/Modal';
 
 interface Message {
@@ -42,32 +43,25 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const [history, setHistory] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isMinimized, setIsMinimized] = useState(false);
-  const [isIconOnly, setIsIconOnly] = useState(false);
   const [showGoalCreated, setShowGoalCreated] = useState(false);
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Collapsing to the floating icon is the panel's "close"; animate it out first.
-  const { closing, dismiss, reset } = useDismiss(() => setIsIconOnly(true), 220);
+  const { closing, dismiss, reset } = useDismiss(onClose, 220);
 
-  // This panel stays mounted when collapsed, so the exit flag has to be cleared
-  // when it comes back — otherwise it reopens mid-exit behind an invisible,
-  // click-blocking backdrop.
-  useEffect(() => {
-    if (!isIconOnly && !isMinimized) reset();
-  }, [isIconOnly, isMinimized, reset]);
+  // The panel stays mounted between openings, so the exit flag must be cleared
+  // on reopen — otherwise it renders mid-exit behind an invisible backdrop.
+  useEffect(() => { if (isOpen) reset(); }, [isOpen, reset]);
 
   useEffect(() => { hydrateCoachSettings(); }, [hydrateCoachSettings]);
 
   const greeting = (name?: string | null) =>
-    `Hi ${name || 'there'}! 👋 What goal would you like to work on? Tell me what you're aiming for and I'll help you set it up.`;
+    `Hi ${name || 'there'}! 👋 Ask me anything about your goals — progress, what to focus on today, `
+    + `or how to get unstuck. I can also set up a new goal whenever you're ready.`;
 
   // Reset whenever a new goal-creation session starts
   useEffect(() => {
     if (chatSessionId > 0 && user) {
-      setIsIconOnly(false);
-      setIsMinimized(false);
       setHistory([]);
       setOpenGroup(null);
       setMessages([{ id: Date.now(), type: 'ai', timestamp: new Date(), content: greeting(user.firstName) }]);
@@ -110,7 +104,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
         body: JSON.stringify({
           model: 'gpt-4o',
           messages: [
-            { role: 'system', content: chatCoachPrompt(assistantName, personaStyle(persona), buildGoalsContext()) },
+            { role: 'system', content: chatCoachPrompt(assistantName, personaStyle(persona), buildGoalsContext() + '\n' + skillsContext(goals)) },
             ...updatedHistory,
           ],
           tools: buildGoalTools(),
@@ -163,77 +157,6 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
 
   if (!isOpen) return null;
 
-  // ── Icon-only ─────────────────────────────────────────────────────────────
-  if (isIconOnly) {
-    return (
-      <div className="fixed bottom-6 right-6 z-[60]">
-        <div className="relative">
-          <button
-            onClick={() => setIsIconOnly(false)}
-            className="h-14 w-14 bg-brand hover:bg-brand-dark rounded-full shadow-2xl flex items-center justify-center transition-colors"
-            title="Open AI Coach"
-          >
-            <Bot className="h-7 w-7 text-black" />
-          </button>
-          <button
-            onClick={onClose}
-            className="absolute -top-1 -right-1 h-5 w-5 bg-elevated border border-line hover:bg-line rounded-full flex items-center justify-center transition-colors"
-            title="Close"
-          >
-            <X className="h-2.5 w-2.5 text-fg" />
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Minimized widget ──────────────────────────────────────────────────────
-  if (isMinimized) {
-    const lastMsg = messages[messages.length - 1];
-    return (
-      <div className="fixed bottom-6 right-6 z-[60] w-72 bg-card border border-line rounded-2xl shadow-2xl overflow-hidden animate-pop-in">
-        <div className="bg-brand px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-7 w-7 rounded-full bg-black/20 flex items-center justify-center">
-              <Bot className="h-4 w-4 text-black" />
-            </div>
-            <span className="text-black font-semibold text-sm">{assistantName}</span>
-          </div>
-          <div className="flex gap-1">
-            <button onClick={() => setIsMinimized(false)} className="p-1.5 hover:bg-black/15 rounded-lg" title="Expand">
-              <Maximize2 className="h-4 w-4 text-black" />
-            </button>
-            <button onClick={() => setIsIconOnly(true)} className="p-1.5 hover:bg-black/15 rounded-lg" title="Minimize to icon">
-              <X className="h-4 w-4 text-black" />
-            </button>
-          </div>
-        </div>
-        {lastMsg && (
-          <div className="px-4 py-3 border-b border-line bg-elevated">
-            <p className="text-xs text-muted line-clamp-2 leading-relaxed">
-              {lastMsg.content.replace(/\*\*/g, '').replace(/\*/g, '')}
-            </p>
-          </div>
-        )}
-        <form onSubmit={e => { e.preventDefault(); send(input); setIsMinimized(false); }} className="flex gap-2 p-3">
-          <input
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder="Type a message…"
-            className="flex-1 px-3 py-2 bg-elevated border border-line rounded-xl text-xs text-fg placeholder:text-muted/70 focus:outline-none focus:border-brand transition-colors"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="h-8 w-8 bg-brand hover:bg-brand-dark disabled:bg-elevated disabled:text-muted text-black rounded-xl flex items-center justify-center flex-shrink-0 transition-colors"
-          >
-            <Send className="h-3.5 w-3.5" />
-          </button>
-        </form>
-      </div>
-    );
-  }
-
   const isFirstTurn = messages.length <= 1;
 
   // ── Full overlay panel ────────────────────────────────────────────────────
@@ -268,10 +191,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
             </div>
           </div>
           <div className="flex gap-2">
-            <button onClick={() => setIsMinimized(true)} className="hidden lg:flex p-2 hover:bg-black/15 rounded-lg transition-colors" title="Minimize">
-              <Minimize2 className="h-5 w-5 text-black" />
-            </button>
-            <button onClick={dismiss} className="p-2 hover:bg-black/15 rounded-lg transition-colors" title="Collapse to icon">
+            <button onClick={dismiss} className="p-2 hover:bg-black/15 rounded-lg transition-colors" title="Close">
               <X className="h-5 w-5 text-black" />
             </button>
           </div>
@@ -348,7 +268,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
         {/* Category starters — only before the conversation has begun */}
         {isFirstTurn && (
           <div className="flex-shrink-0 p-3 border-t border-line bg-card max-h-56 overflow-y-auto thin-scroll">
-            <p className="text-xs font-medium text-muted mb-2">Pick a category, or just type your goal below</p>
+            <p className="text-xs font-medium text-muted mb-2">Ask anything, or start a goal from a category</p>
             <div className="flex flex-wrap gap-1.5">
               {STARTER_GROUPS.map(g => {
                 const active = openGroup === g.label;
