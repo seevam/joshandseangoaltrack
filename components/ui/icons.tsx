@@ -8,6 +8,7 @@ import {
   CalendarDays, Apple, Mail,
 } from 'lucide-react';
 import type { Category } from '@/lib/types';
+import { RANK_EMBLEMS, BADGE_ART } from '@/lib/art';
 
 /**
  * Single icon registry. Everything structural in the UI references an icon by
@@ -70,4 +71,46 @@ export const CATEGORY_ICONS: Record<Category, string> = {
 
 export function categoryIcon(category: string): string {
   return CATEGORY_ICONS[category as Category] ?? 'target';
+}
+
+/* eslint-disable @next/next/no-img-element */
+
+/** Rank emblem artwork from public/rank-emblems, falling back to the icon. */
+export function RankEmblem({ slug, size = 40, dim = false, className = '' }: {
+  slug: string; size?: number; dim?: boolean; className?: string;
+}) {
+  const src = RANK_EMBLEMS[slug];
+  if (!src) return <Icon name="star" className={className} />;
+  return (
+    <img
+      src={src}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      className={`object-contain ${dim ? 'grayscale opacity-35' : ''} ${className}`}
+      style={{ width: size, height: size }}
+    />
+  );
+}
+
+/** Achievement artwork from public/achievement-badges. */
+export function BadgeArt({ slug, size = 48, dim = false, className = '' }: {
+  slug: string; size?: number; dim?: boolean; className?: string;
+}) {
+  const src = BADGE_ART[slug];
+  if (!src) return <Icon name="medal" className={className} />;
+  return (
+    <img
+      src={src}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      className={`object-contain ${dim ? 'grayscale opacity-30' : ''} ${className}`}
+      style={{ width: size, height: size }}
+    />
+  );
 }

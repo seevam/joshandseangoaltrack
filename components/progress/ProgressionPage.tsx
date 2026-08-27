@@ -1,16 +1,18 @@
 'use client';
 
 import { useEffect, useMemo } from 'react';
-import { Trophy, Lock, Award, Activity } from 'lucide-react';
+import { Trophy, Lock, Award, Activity, Swords, ChevronRight } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { computeStats, earnedBadges, RANK_TIERS } from '@/lib/xp';
 import { buildActivityFeed } from '@/lib/activity';
-import { Icon } from '@/components/ui/icons';
+import { Icon, RankEmblem, BadgeArt } from '@/components/ui/icons';
+import { computeSkills, findSkillGaps } from '@/lib/skills';
 import { AnimatedNumber, Reveal } from '@/components/ui/motion';
 
 export default function ProgressionPage() {
   const goals = useGoalStore(s => s.goals);
   const setGoals = useGoalStore(s => s.setGoals);
+  const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
 
   useEffect(() => {
     if (goals.length) return;
@@ -20,6 +22,8 @@ export default function ProgressionPage() {
   const stats = useMemo(() => computeStats(goals), [goals]);
   const badges = useMemo(() => earnedBadges(stats, goals), [stats, goals]);
   const feed = useMemo(() => buildActivityFeed(goals), [goals]);
+  const skills = useMemo(() => computeSkills(goals), [goals]);
+  const gaps = useMemo(() => findSkillGaps(skills), [skills]);
   const levelPct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
 
   return (
@@ -33,12 +37,11 @@ export default function ProgressionPage() {
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <div>
             <p className="text-[11px] text-muted uppercase tracking-wider mb-1.5">Current Rank</p>
-            <span
-              className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5"
-              style={{ color: stats.rank.color, borderColor: `${stats.rank.color}55`, background: `${stats.rank.color}18` }}
-            >
-              <Icon name={stats.rank.icon} className="h-4 w-4" />
-              <span className="font-bold text-sm">{stats.rank.name}</span>
+            <span className="inline-flex items-center gap-2.5">
+              <RankEmblem slug={stats.rank.slug} size={56} />
+              <span className="font-display text-xl tracking-wide" style={{ color: stats.rank.color }}>
+                {stats.rank.name}
+              </span>
             </span>
           </div>
           <div className="text-right">
@@ -74,11 +77,88 @@ export default function ProgressionPage() {
         </div>
       </div>
 
+      {/* Skills */}
+      <Reveal>
+        <div className="card-glow rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="flex items-center gap-2 font-semibold text-fg">
+              <Swords className="h-4 w-4 text-brand" /> <span className="section-title">Skills</span>
+            </h2>
+            <span className="text-xs text-muted">Goals level the skills behind them</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            {skills.map((sk, i) => {
+              const pct = sk.levelSpan > 0 ? Math.min((sk.levelXp / sk.levelSpan) * 100, 100) : 0;
+              return (
+                <div
+                  key={sk.id}
+                  style={{ ['--i' as string]: i }}
+                  className="stagger-fast glow-hover rounded-xl border border-line p-3"
+                >
+                  <div className="flex items-center gap-2.5 mb-2">
+                    <span
+                      className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${sk.color}1F`, border: `1px solid ${sk.color}33` }}
+                    >
+                      <Icon name={sk.icon} className="h-4 w-4" style={{ color: sk.color }} />
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-semibold text-fg truncate">{sk.name}</span>
+                      <span className="block text-[11px] text-muted truncate">{sk.blurb}</span>
+                    </span>
+                    <span className="text-sm font-bold flex-shrink-0" style={{ color: sk.color }}>
+                      Lv.{sk.level}
+                    </span>
+                  </div>
+                  <div className="h-1.5 bg-elevated border border-line rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full transition-[width] duration-1000 ease-out"
+                      style={{ width: `${pct}%`, backgroundColor: sk.color }}
+                    />
+                  </div>
+                  <div className="flex justify-between mt-1.5">
+                    <span className="text-[10px] text-muted">
+                      {sk.goalCount > 0 ? `${sk.goalCount} goal${sk.goalCount === 1 ? '' : 's'}` : 'No goals yet'}
+                    </span>
+                    <span className="text-[10px] text-muted">{sk.xp} XP</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {gaps.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-line">
+              <p className="text-[11px] font-semibold text-muted uppercase tracking-wider mb-2.5">
+                Where you&apos;re falling behind
+              </p>
+              <div className="space-y-2">
+                {gaps.map(g => (
+                  <button
+                    key={g.skill.id}
+                    onClick={() => setShowCreate(true)}
+                    className="w-full glow-hover flex items-center gap-3 p-3 rounded-xl border border-line text-left"
+                  >
+                    <Icon name={g.skill.icon} className="h-4 w-4 flex-shrink-0" style={{ color: g.skill.color }} />
+                    <span className="flex-1 min-w-0">
+                      <span className="block text-sm font-medium text-fg truncate">{g.suggestion}</span>
+                      <span className="block text-xs text-muted truncate">{g.reason}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-muted flex-shrink-0 icon-shift" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Reveal>
+
       {/* Rank tiers */}
       <Reveal>
         <div className="card-glow rounded-2xl p-5">
           <h2 className="flex items-center gap-2 font-semibold text-fg mb-4">
-            <Trophy className="h-4 w-4 text-brand" /> Rank Tiers
+            <Trophy className="h-4 w-4 text-brand" /> <span className="section-title">Rank Tiers</span>
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
             {RANK_TIERS.map((tier, i) => {
@@ -103,7 +183,7 @@ export default function ProgressionPage() {
                       YOU
                     </span>
                   )}
-                  <Icon name={tier.icon} className="h-6 w-6 mx-auto mb-1.5" style={{ color: unlocked ? tier.color : 'var(--muted-dim)' }} />
+                  <RankEmblem slug={tier.slug} size={56} dim={!unlocked} className="mx-auto mb-1.5" />
                   <p className="text-xs font-semibold" style={{ color: unlocked ? tier.color : 'var(--muted)' }}>{tier.name}</p>
                   <p className="text-[10px] text-muted mt-0.5">{tier.minXp.toLocaleString()} XP</p>
                   {!unlocked && <Lock className="h-3 w-3 absolute bottom-2 right-2 text-muted-dim" />}
@@ -119,7 +199,7 @@ export default function ProgressionPage() {
         <div className="card-glow rounded-2xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h2 className="flex items-center gap-2 font-semibold text-fg">
-              <Award className="h-4 w-4 text-brand" /> Achievement Badges
+              <Award className="h-4 w-4 text-brand" /> <span className="section-title">Achievements</span>
             </h2>
             <span className="text-xs text-muted">{badges.filter(b => b.isEarned).length} of {badges.length} unlocked</span>
           </div>
@@ -132,7 +212,7 @@ export default function ProgressionPage() {
                   b.isEarned ? 'bg-elevated' : 'border-line bg-card opacity-40'
                 }`}
               >
-                <Icon name={b.icon} className="h-6 w-6 mx-auto mb-1.5" style={{ color: b.isEarned ? b.color : 'var(--muted-dim)' }} />
+                <BadgeArt slug={b.slug} size={60} dim={!b.isEarned} className="mx-auto mb-1.5" />
                 <p className={`text-xs font-semibold ${b.isEarned ? 'text-fg' : 'text-muted'}`}>{b.name}</p>
                 <p className="text-[10px] text-muted mt-0.5 leading-tight">{b.description}</p>
                 <p className={`text-[10px] font-semibold mt-1 ${b.isEarned ? 'text-brand' : 'text-muted-dim'}`}>+{b.xpReward} XP</p>
@@ -147,7 +227,7 @@ export default function ProgressionPage() {
       <Reveal>
         <div className="card-glow rounded-2xl p-5">
           <h2 className="flex items-center gap-2 font-semibold text-fg mb-4">
-            <Activity className="h-4 w-4 text-brand" /> Activity History
+            <Activity className="h-4 w-4 text-brand" /> <span className="section-title">Activity History</span>
           </h2>
           {feed.length === 0 ? (
             <p className="text-sm text-muted text-center py-6">No activity yet. Complete your first task!</p>

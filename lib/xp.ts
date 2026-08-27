@@ -34,16 +34,16 @@ export function milestoneXp(difficulty?: string): number {
 
 /** `icon` is a key into the registry in components/ui/icons.tsx, not an emoji. */
 export const RANK_TIERS = [
-  { name: 'Initiate',     minXp: 0,      icon: 'sprout',   color: '#A1A1A1' },
-  { name: 'Apprentice',   minXp: 500,    icon: 'footprints', color: '#5DBC70' },
-  { name: 'Journeyman',   minXp: 1500,   icon: 'zap',      color: '#3B82F6' },
-  { name: 'Adept',        minXp: 3500,   icon: 'flame',    color: '#A78BFA' },
-  { name: 'Expert',       minXp: 7000,   icon: 'gem',      color: '#F59E0B' },
-  { name: 'Master',       minXp: 12000,  icon: 'crown',    color: '#EC4899' },
-  { name: 'Grandmaster',  minXp: 20000,  icon: 'medal',    color: '#14B8A6' },
-  { name: 'Legend',       minXp: 35000,  icon: 'trophy',   color: '#FBBF24' },
-  { name: 'Mythic',       minXp: 60000,  icon: 'sparkles', color: '#F87171' },
-  { name: 'Transcendent', minXp: 100000, icon: 'star',     color: '#E8F0EC' },
+  { name: 'Initiate',     minXp: 0,      slug: 'initiate',     icon: 'sprout',     color: '#A1A1A1' },
+  { name: 'Apprentice',   minXp: 500,    slug: 'apprentice',   icon: 'footprints', color: '#5DBC70' },
+  { name: 'Journeyman',   minXp: 1500,   slug: 'journeyman',   icon: 'zap',        color: '#3B82F6' },
+  { name: 'Adept',        minXp: 3500,   slug: 'adept',        icon: 'flame',      color: '#A78BFA' },
+  { name: 'Expert',       minXp: 7000,   slug: 'expert',       icon: 'gem',        color: '#F59E0B' },
+  { name: 'Master',       minXp: 12000,  slug: 'master',       icon: 'crown',      color: '#EC4899' },
+  { name: 'Grandmaster',  minXp: 20000,  slug: 'grandmaster',  icon: 'medal',      color: '#14B8A6' },
+  { name: 'Legend',       minXp: 35000,  slug: 'legend',       icon: 'trophy',     color: '#FBBF24' },
+  { name: 'Mythic',       minXp: 60000,  slug: 'mythic',       icon: 'sparkles',   color: '#F87171' },
+  { name: 'Transcendent', minXp: 100000, slug: 'transcendent', icon: 'star',       color: '#E8F0EC' },
 ];
 
 /** Each level costs 250 XP more than the last: 0, 250, 750, 1500, 2500 … */
@@ -183,6 +183,8 @@ export function computeStats(goals: Goal[]): UserStats {
 
 export interface BadgeDef {
   id: string;
+  /** Filename slug in public/achievement-badges. */
+  slug: string;
   name: string;
   icon: string;
   color: string;
@@ -194,18 +196,22 @@ export interface BadgeDef {
 
 /** `icon` is a key into the registry in components/ui/icons.tsx, not an emoji. */
 export const BADGES: BadgeDef[] = [
-  { id: 'first-task',   name: 'First Step',      icon: 'footprints', color: '#5DBC70', xpReward: 50,   description: 'Complete your first task',   earned: s => s.tasksCompleted >= 1 },
-  { id: 'streak-3',     name: 'On a Roll',       icon: 'flame',      color: '#FB923C', xpReward: 75,   description: 'Maintain a 3-day streak',    earned: s => s.longestStreak >= 3 },
-  { id: 'streak-7',     name: 'Week Warrior',    icon: 'zap',        color: '#FB923C', xpReward: 150,  description: 'Maintain a 7-day streak',    earned: s => s.longestStreak >= 7 },
-  { id: 'first-goal',   name: 'Goal Setter',     icon: 'target',     color: '#5DBC70', xpReward: 50,   description: 'Create your first goal',     earned: (_s, g) => g.length >= 1 },
-  { id: 'milestone-5',  name: 'Milestone Maker', icon: 'flag',       color: '#3B82F6', xpReward: 200,  description: 'Complete 5 milestones',      earned: s => s.milestonesCompleted >= 5 },
-  { id: 'tasks-100',    name: 'Centurion',       icon: 'dumbbell',   color: '#3B82F6', xpReward: 300,  description: 'Complete 100 tasks',         earned: s => s.tasksCompleted >= 100 },
-  { id: 'level-5',      name: 'Rising Star',     icon: 'star',       color: '#FBBF24', xpReward: 150,  description: 'Reach Level 5',              earned: s => s.level >= 5 },
-  { id: 'level-10',     name: 'Veteran',         icon: 'medal',      color: '#A78BFA', xpReward: 400,  description: 'Reach Level 10',             earned: s => s.level >= 10 },
-  { id: 'streak-30',    name: 'Iron Will',       icon: 'gem',        color: '#FB923C', xpReward: 500,  description: 'Maintain a 30-day streak',   earned: s => s.longestStreak >= 30 },
-  { id: 'goal-done',    name: 'Finisher',        icon: 'trophy',     color: '#FBBF24', xpReward: 250,  description: 'Complete a goal',            earned: s => s.goalsCompleted >= 1 },
-  { id: 'tasks-500',    name: 'Unstoppable',     icon: 'rocket',     color: '#F87171', xpReward: 1000, description: 'Complete 500 tasks',         earned: s => s.tasksCompleted >= 500 },
-  { id: 'milestone-25', name: 'Conqueror',       icon: 'crown',      color: '#FBBF24', xpReward: 800,  description: 'Complete 25 milestones',     earned: s => s.milestonesCompleted >= 25 },
+  { id: 'first-task',   slug: 'first-step',      name: 'First Step',      icon: 'footprints', color: '#5DBC70', xpReward: 50,   description: 'Complete your first task', earned: s => s.tasksCompleted >= 1 },
+  { id: 'steady',       slug: 'steady-hand',     name: 'Steady Hand',     icon: 'target',     color: '#5DBC70', xpReward: 250,  description: 'Complete 25 tasks',        earned: s => s.tasksCompleted >= 25 },
+  { id: 'tasks-100',    slug: 'centurion',       name: 'Centurion',       icon: 'dumbbell',   color: '#3B82F6', xpReward: 300,  description: 'Complete 100 tasks',       earned: s => s.tasksCompleted >= 100 },
+  { id: 'tasks-500',    slug: 'unstoppable',     name: 'Unstoppable',     icon: 'rocket',     color: '#F87171', xpReward: 1000, description: 'Complete 500 tasks',       earned: s => s.tasksCompleted >= 500 },
+  { id: 'streak-3',     slug: 'on-a-roll',       name: 'On a Roll',       icon: 'flame',      color: '#FB923C', xpReward: 75,   description: 'Maintain a 3-day streak',  earned: s => s.longestStreak >= 3 },
+  { id: 'streak-7',     slug: 'week-warrior',    name: 'Week Warrior',    icon: 'zap',        color: '#FB923C', xpReward: 150,  description: 'Maintain a 7-day streak',  earned: s => s.longestStreak >= 7 },
+  { id: 'streak-30',    slug: 'iron-will',       name: 'Iron Will',       icon: 'gem',        color: '#FB923C', xpReward: 500,  description: 'Maintain a 30-day streak', earned: s => s.longestStreak >= 30 },
+  { id: 'first-goal',   slug: 'north-star',      name: 'North Star',      icon: 'target',     color: '#5DBC70', xpReward: 50,   description: 'Create your first goal',   earned: (_s, g) => g.length >= 1 },
+  { id: 'multi-3',      slug: 'balanced-force',  name: 'Balanced Force',  icon: 'layers',     color: '#14B8A6', xpReward: 150,  description: 'Run 3 goals at once',      earned: (_s, g) => g.length >= 3 },
+  { id: 'milestone-5',  slug: 'milestone-man',   name: 'Milestone Maker', icon: 'flag',       color: '#3B82F6', xpReward: 200,  description: 'Complete 5 milestones',    earned: s => s.milestonesCompleted >= 5 },
+  { id: 'milestone-25', slug: 'conqueror',       name: 'Conqueror',       icon: 'crown',      color: '#FBBF24', xpReward: 800,  description: 'Complete 25 milestones',   earned: s => s.milestonesCompleted >= 25 },
+  { id: 'goal-done',    slug: 'pathfinder',      name: 'Pathfinder',      icon: 'trophy',     color: '#FBBF24', xpReward: 250,  description: 'Complete a goal',          earned: s => s.goalsCompleted >= 1 },
+  { id: 'goals-5',      slug: 'guardian-light',  name: 'Guardian',        icon: 'sparkles',   color: '#A78BFA', xpReward: 600,  description: 'Complete 5 goals',         earned: s => s.goalsCompleted >= 5 },
+  { id: 'level-5',      slug: 'rising-star',     name: 'Rising Star',     icon: 'star',       color: '#FBBF24', xpReward: 150,  description: 'Reach Level 5',            earned: s => s.level >= 5 },
+  { id: 'level-10',     slug: 'veteran',         name: 'Veteran',         icon: 'medal',      color: '#A78BFA', xpReward: 400,  description: 'Reach Level 10',           earned: s => s.level >= 10 },
+  { id: 'checkins-30',  slug: 'calendar-keeper', name: 'Calendar Keeper', icon: 'calendar',   color: '#3B82F6', xpReward: 200,  description: 'Log 30 check-ins',         earned: (_s, g) => g.reduce((n, x) => n + (x.checkIns?.length || 0), 0) >= 30 },
 ];
 
 export function earnedBadges(stats: UserStats, goals: Goal[]) {

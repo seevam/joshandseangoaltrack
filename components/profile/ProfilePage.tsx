@@ -145,7 +145,7 @@ export default function ProfilePage() {
       <Reveal>
         <div className="card-glow rounded-2xl p-5 space-y-5">
           <h2 className="flex items-center gap-2 font-semibold text-fg">
-            <Settings className="h-4 w-4 text-brand" /> Settings
+            <Settings className="h-4 w-4 text-brand" /> <span className="section-title">Settings</span>
           </h2>
 
           <div className="space-y-2">

@@ -293,7 +293,7 @@ export default function Dashboard() {
           <div className="lg:col-span-2 card-glow rounded-2xl p-4 animate-slide-up">
             <div className="flex items-center justify-between mb-3">
               <h2 className="font-semibold text-fg flex items-center gap-2">
-                <ListChecks className="h-4 w-4 text-brand" /> Today&apos;s Tasks
+                <ListChecks className="h-4 w-4 text-brand" /> <span className="section-title">Today&apos;s Tasks</span>
               </h2>
               <span className="text-xs text-muted">{doneToday}/{todaysTasks.length} done</span>
             </div>
@@ -351,7 +351,7 @@ export default function Dashboard() {
           {/* Activity feed */}
           <div className="card-glow rounded-2xl p-4 animate-slide-up">
             <h2 className="font-semibold text-fg flex items-center gap-2 mb-3">
-              <Activity className="h-4 w-4 text-brand" /> Activity
+              <Activity className="h-4 w-4 text-brand" /> <span className="section-title">Activity</span>
             </h2>
             {feed.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
@@ -384,13 +384,13 @@ export default function Dashboard() {
         <Reveal><div className="card-glow rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-fg flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-brand" /> Achievements
+              <Trophy className="h-4 w-4 text-brand" /> <span className="section-title">Achievements</span>
             </h2>
             <span className="text-xs text-muted">{earnedCount} of {badges.length} unlocked</span>
           </div>
           <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
             {badges.map(b => (
-              <BadgeTile key={b.id} icon={b.icon} name={b.name} description={b.description} color={b.color} earned={b.isEarned} compact />
+              <BadgeTile key={b.id} slug={b.slug} name={b.name} description={b.description} color={b.color} earned={b.isEarned} compact />
             ))}
           </div>
         </div></Reveal>
@@ -399,7 +399,7 @@ export default function Dashboard() {
         <Reveal>
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-semibold text-fg flex items-center gap-2">
-              <Target className="h-4 w-4 text-brand" /> Active Goals
+              <Target className="h-4 w-4 text-brand" /> <span className="section-title">Active Goals</span>
             </h2>
             <Link href="/goals" className="text-xs font-medium text-muted hover:text-brand transition-colors">
               View all

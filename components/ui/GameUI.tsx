@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Zap, Flame, Lock, Check } from 'lucide-react';
 import { CATEGORY_COLORS, type Category } from '@/lib/types';
 import { DIFFICULTY_META, type Difficulty, type UserStats } from '@/lib/xp';
-import { Icon, IconTile, categoryIcon } from './icons';
+import { Icon, IconTile, categoryIcon, BadgeArt } from './icons';
 import { AnimatedNumber, useDidIncrease } from './motion';
 
 export function XPBar({ stats }: { stats: UserStats }) {
@@ -122,8 +122,8 @@ export function StreakBadge({ days }: { days: number }) {
   );
 }
 
-export function BadgeTile({ icon, name, description, color, earned, compact = false }: {
-  icon: string; name: string; description: string; color: string; earned: boolean; compact?: boolean;
+export function BadgeTile({ slug, name, description, color, earned, compact = false }: {
+  slug: string; name: string; description: string; color: string; earned: boolean; compact?: boolean;
 }) {
   const justUnlocked = useDidIncrease(earned ? 1 : 0);
   return (
@@ -134,18 +134,7 @@ export function BadgeTile({ icon, name, description, color, earned, compact = fa
       style={earned ? { borderColor: `${color}4D`, boxShadow: `0 0 16px ${color}14` } : undefined}
       title={earned ? description : `Locked — ${description}`}
     >
-      <div className={`mx-auto flex items-center justify-center rounded-xl ${compact ? 'h-8 w-8' : 'h-10 w-10'}`}
-        style={{
-          backgroundColor: earned ? `${color}1F` : 'var(--elevated)',
-          border: `1px solid ${earned ? `${color}33` : 'var(--line)'}`,
-        }}
-      >
-        <Icon
-          name={icon}
-          className={compact ? 'h-4 w-4' : 'h-5 w-5'}
-          style={{ color: earned ? color : 'var(--muted)', opacity: earned ? 1 : 0.5 }}
-        />
-      </div>
+      <BadgeArt slug={slug} size={compact ? 40 : 52} dim={!earned} className="mx-auto" />
       <p className={`font-semibold mt-1.5 leading-tight ${compact ? 'text-[10px]' : 'text-xs'} ${earned ? 'text-fg' : 'text-muted'}`}>
         {name}
       </p>

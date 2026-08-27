@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Download, CalendarDays, AlertTriangle } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, type Goal } from '@/lib/types';
@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
+const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 interface DayTask {
   goal: Goal;
@@ -18,69 +19,42 @@ interface DayTask {
   dateStr: string;
 }
 
-/**
- * Agenda layout: no grid, no cell borders. A week strip shows the shape of the
- * week, and each day below is a section of task rows.
- */
+const iso = (d: Date) => {
+  const c = new Date(d);
+  c.setHours(12, 0, 0, 0); // midday avoids DST/UTC date shifts
+  return c.toISOString().split('T')[0];
+};
+
+/** Mini calendar on the left, the selected day's tasks on the right. */
 export default function CalendarView() {
   const goals = useGoalStore(s => s.goals);
   const updateGoal = useGoalStore(s => s.updateGoal);
 
-  const [anchor, setAnchor] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
+  const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selected, setSelected] = useState(today);
   const [showExportModal, setShowExportModal] = useState(false);
   const [flashTask, setFlashTask] = useState<string | null>(null);
-  const [selected, setSelected] = useState(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
-  const weekDays = useMemo(() => {
-    const start = new Date(anchor);
-    start.setDate(anchor.getDate() - anchor.getDay());
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      d.setHours(0, 0, 0, 0);
-      return d;
-    });
-  }, [anchor]);
-
-  const shiftWeek = (dir: 1 | -1) => {
-    const d = new Date(anchor);
-    d.setDate(d.getDate() + 7 * dir);
-    setAnchor(d);
-  };
-
-  const getTasksForDate = (date: Date): DayTask[] => {
+  const getTasksForDate = useCallback((date: Date): DayTask[] => {
     const dow = date.getDay();
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = iso(date);
     const out: DayTask[] = [];
     goals.forEach(goal => {
       const start = goal.startDate ? new Date(goal.startDate) : null;
       const end = goal.endDate ? new Date(goal.endDate) : null;
       if (start) { const s = new Date(start); s.setHours(0, 0, 0, 0); if (date < s) return; }
       if (end) { const e = new Date(end); e.setHours(0, 0, 0, 0); if (date > e) return; }
-      const dayCompletions = goal.taskCompletions?.[dateStr] || {};
+      const done = goal.taskCompletions?.[dateStr] || {};
       (goal.dailyTasks || []).forEach(task => {
         const days = task.daysOfWeek;
         if (!days || days.length === 0 || days.includes(dow)) {
-          out.push({ goal, task, done: !!dayCompletions[task.id], dateStr });
+          out.push({ goal, task, done: !!done[task.id], dateStr });
         }
       });
     });
     return out;
-  };
+  }, [goals]);
 
   const logTask = async (goalId: string, taskId: number, dateStr: string, done: boolean) => {
     const key = `${goalId}-${taskId}-${dateStr}`;
@@ -98,10 +72,7 @@ export default function CalendarView() {
       });
       if (res.ok) {
         updateGoal(await res.json());
-        if (done) {
-          setFlashTask(key);
-          setTimeout(() => setFlashTask(null), 700);
-        }
+        if (done) { setFlashTask(key); setTimeout(() => setFlashTask(null), 700); }
       }
     } catch { /* best effort */ }
   };
@@ -129,172 +100,200 @@ export default function CalendarView() {
     URL.revokeObjectURL(url);
   };
 
-  const rangeLabel = weekDays[0].getMonth() === weekDays[6].getMonth()
-    ? `${MONTHS[weekDays[0].getMonth()]} ${weekDays[0].getFullYear()}`
-    : `${MONTHS[weekDays[0].getMonth()].slice(0, 3)} – ${MONTHS[weekDays[6].getMonth()].slice(0, 3)} ${weekDays[6].getFullYear()}`;
+  /** Month grid, padded to whole weeks. */
+  const cells = useMemo(() => {
+    const first = new Date(month.getFullYear(), month.getMonth(), 1);
+    const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+    const out: (Date | null)[] = Array(first.getDay()).fill(null);
+    for (let i = 1; i <= days; i++) {
+      const d = new Date(month.getFullYear(), month.getMonth(), i);
+      d.setHours(0, 0, 0, 0);
+      out.push(d);
+    }
+    while (out.length % 7 !== 0) out.push(null);
+    return out;
+  }, [month]);
 
   const selectedTasks = getTasksForDate(selected);
   const selectedDone = selectedTasks.filter(t => t.done).length;
 
-  // Incomplete tasks from the previous 14 days — surfaced only when non-empty.
+  /** Incomplete tasks before today — shown whatever day is selected. */
   const overdue = useMemo(() => {
     const out: DayTask[] = [];
-    for (let back = 1; back <= 14; back++) {
+    for (let back = 1; back <= 21; back++) {
       const d = new Date(today);
       d.setDate(d.getDate() - back);
       out.push(...getTasksForDate(d).filter(t => !t.done));
     }
-    return out.sort((a, b) => b.dateStr.localeCompare(a.dateStr)).slice(0, 10);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [goals, today]);
+    return out.sort((a, b) => b.dateStr.localeCompare(a.dateStr)).slice(0, 12);
+  }, [getTasksForDate, today]);
+
+  const TaskRow = ({ item, overdueRow = false, index = 0 }: { item: DayTask; overdueRow?: boolean; index?: number }) => {
+    const key = `${item.goal.id}-${item.task.id}-${item.dateStr}`;
+    const cat = CATEGORY_COLORS[item.goal.category as keyof typeof CATEGORY_COLORS];
+    return (
+      <div
+        style={{ ['--i' as string]: index }}
+        className={`stagger-fast flex items-center gap-3 p-3 rounded-xl border ${
+          flashTask === key ? 'task-flash task-complete-anim' : ''
+        } ${
+          overdueRow ? 'border-red-500/30' : item.done ? 'border-brand/30' : 'border-line glow-hover'
+        }`}
+      >
+        <span
+          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
+          style={{ backgroundColor: overdueRow ? '#F87171' : cat?.hex }}
+        />
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm font-medium truncate ${item.done ? 'line-through text-muted' : 'text-fg'}`}>
+            {item.task.title}
+          </p>
+          <p className="text-xs text-muted truncate">
+            {item.goal.title}
+            {overdueRow && ` · ${new Date(item.dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
+          </p>
+        </div>
+        <AnimatedCheck
+          checked={item.done}
+          size={22}
+          onClick={() => logTask(item.goal.id, item.task.id, item.dateStr, !item.done)}
+        />
+      </div>
+    );
+  };
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 sm:px-6 space-y-5">
-      {/* Header */}
+    <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3 animate-slide-up">
-        <h1 className="text-2xl font-bold text-fg">Calendar</h1>
-        <div className="flex items-center gap-2">
-          <button onClick={() => shiftWeek(-1)} aria-label="Previous week" className="p-2 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors">
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-          <span className="text-sm font-semibold text-fg min-w-[9rem] text-center">{rangeLabel}</span>
-          <button onClick={() => shiftWeek(1)} aria-label="Next week" className="p-2 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors">
-            <ChevronRight className="h-4 w-4" />
-          </button>
+        <h1 className="font-display text-3xl tracking-wide">
+          <span className="text-brand-gradient">CALEN</span><span className="text-fg">DAR</span>
+        </h1>
+        {goals.some(g => g.endDate) && (
           <button
-            onClick={() => setAnchor(today)}
-            className="px-3 py-1.5 rounded-lg border border-line text-muted hover:text-fg hover:border-line-strong text-xs font-medium transition-colors"
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-muted hover:text-fg text-xs font-medium glow-hover"
+          >
+            <Download className="h-3.5 w-3.5" /> Export
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-5 items-start">
+        {/* ── Mini calendar ─────────────────────────────────────────────── */}
+        <div className="card-glow rounded-2xl p-4 animate-slide-up">
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+              aria-label="Previous month"
+              className="p-1.5 rounded-lg text-muted hover:text-fg transition-colors"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="text-sm font-semibold text-fg">
+              {MONTHS[month.getMonth()]} {month.getFullYear()}
+            </span>
+            <button
+              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+              aria-label="Next month"
+              className="p-1.5 rounded-lg text-muted hover:text-fg transition-colors"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid grid-cols-7 mb-1">
+            {WEEKDAYS.map((d, i) => (
+              <span key={i} className="text-[10px] text-muted text-center py-1">{d}</span>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-7 gap-0.5">
+            {cells.map((d, i) => {
+              if (!d) return <span key={i} />;
+              const tasks = getTasksForDate(d);
+              const done = tasks.filter(t => t.done).length;
+              const isToday = d.getTime() === today.getTime();
+              const isSel = d.getTime() === selected.getTime();
+              const allDone = tasks.length > 0 && done === tasks.length;
+              return (
+                <button
+                  key={i}
+                  onClick={() => setSelected(d)}
+                  className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-0.5 text-xs transition-colors border ${
+                    isSel ? 'border-brand text-fg font-bold' : 'border-transparent hover:border-line-strong'
+                  } ${isToday && !isSel ? 'text-brand font-bold' : isSel ? '' : 'text-muted'}`}
+                >
+                  {d.getDate()}
+                  {tasks.length > 0 && (
+                    <span
+                      className="w-1 h-1 rounded-full"
+                      style={{ backgroundColor: allDone ? 'var(--brand)' : 'var(--muted-dim)' }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => { setSelected(today); setMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }}
+            className="w-full mt-3 py-2 rounded-lg border border-line text-xs font-medium text-muted hover:text-fg glow-hover"
           >
             Today
           </button>
-          {goals.some(g => g.endDate) && (
-            <button
-              onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-muted hover:text-fg hover:border-line-strong text-xs font-medium transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" /> Export
-            </button>
-          )}
         </div>
-      </div>
 
-      {/* Week strip — borderless day summaries */}
-      <div className="grid grid-cols-7 gap-1.5">
-        {weekDays.map((d, i) => {
-          const tasks = getTasksForDate(d);
-          const done = tasks.filter(t => t.done).length;
-          const isToday = d.getTime() === today.getTime();
-          const allDone = tasks.length > 0 && done === tasks.length;
-          return (
-            <button
-              key={d.toISOString()}
-              onClick={() => setSelected(d)}
-              style={{ ['--i' as string]: i }}
-              className={`stagger-fast rounded-xl py-2.5 text-center transition-colors ${
-                d.getTime() === selected.getTime() ? 'bg-elevated border border-brand/50' : 'border border-transparent hover:bg-elevated'
-              }`}
-            >
-              <p className="text-[10px] text-muted uppercase tracking-wide">
-                {d.toLocaleDateString('en-US', { weekday: 'short' })}
-              </p>
-              <p className={`text-lg font-bold mt-0.5 ${isToday ? 'text-brand' : 'text-fg'}`}>{d.getDate()}</p>
-              {tasks.length > 0 && (
-                <p className="text-[10px] mt-0.5" style={{ color: allDone ? 'var(--brand)' : 'var(--muted)' }}>
-                  {done}/{tasks.length}
-                </p>
+        {/* ── Selected day + overdue ────────────────────────────────────── */}
+        <div className="space-y-5">
+          {overdue.length > 0 && (
+            <section className="animate-slide-up">
+              <div className="flex items-baseline justify-between mb-2.5">
+                <h2 className="flex items-center gap-1.5 text-red-400">
+                  <AlertTriangle className="h-4 w-4" /> <span className="section-title">Overdue</span>
+                </h2>
+                <span className="text-xs text-muted">{overdue.length} task{overdue.length === 1 ? '' : 's'}</span>
+              </div>
+              <div className="space-y-2">
+                {overdue.map((item, i) => (
+                  <TaskRow key={`${item.goal.id}-${item.task.id}-${item.dateStr}`} item={item} overdueRow index={i} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          <section className="animate-slide-up">
+            <div className="flex items-baseline justify-between mb-2.5">
+              <h2 className="flex items-center gap-2 text-fg">
+                <span className="section-title">
+                  {selected.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                </span>
+                {selected.getTime() === today.getTime() && (
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-brand border border-brand/40 rounded-full px-1.5 py-0.5">
+                    Today
+                  </span>
+                )}
+              </h2>
+              {selectedTasks.length > 0 && (
+                <span className="text-xs text-muted">{selectedDone}/{selectedTasks.length} done</span>
               )}
-            </button>
-          );
-        })}
+            </div>
+
+            {selectedTasks.length === 0 ? (
+              <div className="rounded-2xl border border-line p-10 text-center">
+                <CalendarDays className="h-9 w-9 text-muted-dim mx-auto mb-3" />
+                <p className="text-sm text-muted">Nothing scheduled for this day.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {selectedTasks.map((item, i) => (
+                  <TaskRow key={`${item.goal.id}-${item.task.id}-${item.dateStr}`} item={item} index={i} />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
       </div>
 
-      {/* Overdue — hidden unless there is something overdue */}
-      {overdue.length > 0 && (
-        <section className="animate-slide-up">
-          <div className="flex items-baseline justify-between mb-2.5">
-            <h2 className="text-sm font-semibold text-red-400 flex items-center gap-1.5">
-              <AlertTriangle className="h-4 w-4" /> Overdue
-            </h2>
-            <span className="text-xs text-muted">{overdue.length} task{overdue.length === 1 ? '' : 's'}</span>
-          </div>
-          <div className="space-y-2">
-            {overdue.map(({ goal, task, dateStr }) => {
-              const key = `${goal.id}-${task.id}-${dateStr}`;
-              return (
-                <div key={key} className="flex items-center gap-3 p-3 rounded-xl border border-red-500/30 bg-red-500/5">
-                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-red-400" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-fg truncate">{task.title}</p>
-                    <p className="text-xs text-muted truncate">
-                      {goal.title} · {new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </p>
-                  </div>
-                  <AnimatedCheck
-                    checked={false}
-                    size={22}
-                    onClick={() => logTask(goal.id, task.id, dateStr, true)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
-
-      {/* Selected day only */}
-      <section className="animate-slide-up">
-        <div className="flex items-baseline justify-between mb-2.5">
-          <h2 className="text-sm font-semibold text-fg flex items-center gap-2">
-            {selected.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            {selected.getTime() === today.getTime() && (
-              <span className="text-[10px] font-bold uppercase tracking-wide text-brand border border-brand/40 rounded-full px-1.5 py-0.5">
-                Today
-              </span>
-            )}
-          </h2>
-          {selectedTasks.length > 0 && (
-            <span className="text-xs text-muted">{selectedDone}/{selectedTasks.length} done</span>
-          )}
-        </div>
-
-        {selectedTasks.length === 0 ? (
-          <div className="rounded-2xl border border-line bg-card p-10 text-center">
-            <CalendarDays className="h-9 w-9 text-muted-dim mx-auto mb-3" />
-            <p className="text-sm text-muted">Nothing scheduled for this day.</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {selectedTasks.map(({ goal, task, done: isDone, dateStr }, i) => {
-              const key = `${goal.id}-${task.id}-${dateStr}`;
-              const cat = CATEGORY_COLORS[goal.category as keyof typeof CATEGORY_COLORS];
-              return (
-                <div
-                  key={key}
-                  style={{ ['--i' as string]: i }}
-                  className={`stagger-fast flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-                    flashTask === key ? 'task-flash task-complete-anim' : ''
-                  } ${isDone ? 'border-brand/30 bg-brand/5' : 'border-line bg-card glow-hover'}`}
-                >
-                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: cat?.hex }} />
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium truncate ${isDone ? 'line-through text-muted' : 'text-fg'}`}>
-                      {task.title}
-                    </p>
-                    <p className="text-xs text-muted truncate">{goal.title}</p>
-                  </div>
-                  <AnimatedCheck
-                    checked={isDone}
-                    size={22}
-                    onClick={() => logTask(goal.id, task.id, dateStr, !isDone)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Export modal */}
       {showExportModal && (
         <Modal onClose={() => setShowExportModal(false)}>
           <h3 className="text-base font-bold text-fg mb-2">Export to Calendar</h3>
@@ -307,7 +306,7 @@ export default function CalendarView() {
               { icon: 'apple', app: 'Apple Calendar', steps: 'Double-click the .ics file on Mac, or on iPhone: Files app → tap the file → Add All' },
               { icon: 'mail', app: 'Outlook', steps: 'File → Open & Export → Import/Export → Import an iCalendar → select the .ics file' },
             ].map(({ icon, app, steps }) => (
-              <div key={app} className="bg-elevated border border-line rounded-xl p-3 glow-hover">
+              <div key={app} className="border border-line rounded-xl p-3 glow-hover">
                 <p className="text-xs font-semibold text-fg mb-0.5 flex items-center gap-1.5">
                   <Icon name={icon} className="h-3.5 w-3.5 text-brand" />{app}
                 </p>
@@ -317,7 +316,7 @@ export default function CalendarView() {
           </div>
           <button
             onClick={() => { exportICS(); setShowExportModal(false); }}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl transition-colors press"
+            className="w-full flex items-center justify-center gap-2 py-3 bg-brand hover:bg-brand-dark text-black font-semibold rounded-xl transition-colors"
           >
             <Download className="h-4 w-4" /> Download .ics file
           </button>

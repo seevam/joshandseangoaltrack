@@ -69,7 +69,7 @@ export function Reveal({ children, delay = 0, className = '' }: {
     if (!el) return;
     const io = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) { setShown(true); io.disconnect(); } },
-      { rootMargin: '0px 0px -40px 0px', threshold: 0.05 },
+      { rootMargin: '0px 0px 120px 0px', threshold: 0.01 },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -82,7 +82,7 @@ export function Reveal({ children, delay = 0, className = '' }: {
       style={{
         opacity: shown ? 1 : 0,
         transform: shown ? 'translateY(0)' : 'translateY(18px)',
-        transition: `opacity 0.5s var(--ease-out) ${delay}ms, transform 0.5s var(--ease-out) ${delay}ms`,
+        transition: `opacity 0.38s var(--ease-out) ${delay}ms, transform 0.38s var(--ease-out) ${delay}ms`,
       }}
     >
       {children}
