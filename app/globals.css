@@ -362,3 +362,13 @@ input, textarea { color-scheme: dark; }
   font-size: 1.05rem;
   line-height: 1.2;
 }
+
+/* Locked rank/badge artwork. Deliberately *not* greyscale: the piece keeps its
+   colour and is simply darkened, so a locked badge still reads as itself and
+   the earned/locked distinction is carried by an explicit indicator rather
+   than by saturation alone. */
+.art-locked {
+  filter: brightness(0.42) saturate(0.75);
+  opacity: 0.85;
+  transition: filter 200ms var(--ease-out), opacity 200ms var(--ease-out);
+}

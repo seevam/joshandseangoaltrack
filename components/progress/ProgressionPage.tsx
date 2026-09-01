@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Trophy, Lock, Award, Activity, Swords, ChevronRight } from 'lucide-react';
+import { Trophy, Lock, Award, Activity, Swords, ChevronRight, Check } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { computeStats, earnedBadges, RANK_TIERS } from '@/lib/xp';
 import { buildActivityFeed } from '@/lib/activity';
@@ -134,7 +134,11 @@ export default function ProgressionPage() {
                   </div>
                   <div className="flex justify-between mt-1.5">
                     <span className="text-[10px] text-muted">
-                      {sk.goalCount > 0 ? `${sk.goalCount} goal${sk.goalCount === 1 ? '' : 's'}` : 'No goals yet'}
+                      {sk.derived
+                        ? 'Derived from consistency'
+                        : sk.goalCount > 0
+                          ? `${sk.goalCount} goal${sk.goalCount === 1 ? '' : 's'}`
+                          : 'No goals yet'}
                     </span>
                     <span className="text-[10px] text-muted">{sk.xp} XP</span>
                   </div>
@@ -186,8 +190,8 @@ export default function ProgressionPage() {
                     ['--i' as string]: i,
                     ...(current ? { borderColor: `${tier.color}80`, boxShadow: `0 0 20px ${tier.color}30` } : {}),
                   }}
-                  className={`relative rounded-xl border p-3 text-center stagger-fast ${
-                    current ? 'bg-elevated' : unlocked ? 'border-line bg-card' : 'border-line bg-card opacity-40'
+                  className={`relative rounded-xl border p-3 text-center stagger-fast glow-hover ${
+                    current ? 'bg-elevated' : 'border-line bg-card'
                   }`}
                 >
                   {current && (
@@ -223,15 +227,24 @@ export default function ProgressionPage() {
               <div
                 key={b.id}
                 style={{ ['--i' as string]: i, ...(b.isEarned ? { borderColor: `${b.color}59` } : {}) }}
-                className={`relative rounded-xl border p-3 text-center stagger-fast ${
-                  b.isEarned ? 'bg-elevated' : 'border-line bg-card opacity-40'
+                className={`relative rounded-xl border p-3 text-center stagger-fast glow-hover ${
+                  b.isEarned ? 'bg-elevated' : 'border-line bg-card'
                 }`}
               >
                 <BadgeArt slug={b.slug} size={60} dim={!b.isEarned} className="mx-auto mb-1.5" />
                 <p className={`text-xs font-semibold ${b.isEarned ? 'text-fg' : 'text-muted'}`}>{b.name}</p>
                 <p className="text-[10px] text-muted mt-0.5 leading-tight">{b.description}</p>
                 <p className={`text-[10px] font-semibold mt-1 ${b.isEarned ? 'text-brand' : 'text-muted-dim'}`}>+{b.xpReward} XP</p>
-                {!b.isEarned && <Lock className="h-3 w-3 absolute top-2 right-2 text-muted-dim" />}
+                {b.isEarned ? (
+                  <span
+                    title="Earned"
+                    className="absolute top-2 right-2 h-4 w-4 rounded-full bg-brand flex items-center justify-center"
+                  >
+                    <Check className="h-2.5 w-2.5 text-black" strokeWidth={3.5} />
+                  </span>
+                ) : (
+                  <Lock className="h-3 w-3 absolute top-2 right-2 text-muted-dim" />
+                )}
               </div>
             ))}
           </div>
