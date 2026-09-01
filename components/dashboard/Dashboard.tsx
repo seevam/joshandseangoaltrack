@@ -20,6 +20,8 @@ import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
+/** Last level we played the celebration for, so a reload never replays it. */
+const LEVEL_KEY = 'gq_celebrated_level';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
@@ -37,6 +39,7 @@ export default function Dashboard() {
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
   const prevLevel = useRef<number | null>(null);
+  const [goalsSettled, setGoalsSettled] = useState(false);
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -50,6 +53,7 @@ export default function Dashboard() {
         setGoals([]);
       } finally {
         setIsLoadingGoals(false);
+        setGoalsSettled(true);
       }
     };
     load();
@@ -174,13 +178,29 @@ export default function Dashboard() {
   useEffect(() => { maybeNotifyTodaysTasks(goals); }, [goals]);
   const earnedCount = badges.filter(b => b.isEarned).length;
 
-  // Level is derived, so watching it here catches gains from any source.
+  /*
+   * Level is derived from goal data, so watching it catches gains from any
+   * source. Two things stop it from firing spuriously:
+   *
+   *  - We wait for the goals fetch to settle. Before it does, `goals` is empty
+   *    and the derived level is 1; when the real data arrived, that read as a
+   *    jump from 1 to the true level and replayed the celebration on every
+   *    page load.
+   *  - The last celebrated level is persisted, so a reload at the same level
+   *    is silent while a genuine level-up still plays exactly once.
+   */
   useEffect(() => {
-    if (prevLevel.current !== null && stats.level > prevLevel.current) {
+    if (!goalsSettled) return;
+
+    const stored = Number(localStorage.getItem(LEVEL_KEY) ?? 'NaN');
+    const last = Number.isFinite(stored) ? stored : prevLevel.current;
+
+    if (last !== null && stats.level > last) {
       setLevelUp({ level: stats.level, name: stats.rank.name, color: stats.rank.color });
     }
     prevLevel.current = stats.level;
-  }, [stats.level, stats.rank]);
+    localStorage.setItem(LEVEL_KEY, String(stats.level));
+  }, [goalsSettled, stats.level, stats.rank]);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayDow = new Date().getDay();
@@ -366,8 +386,8 @@ export default function Dashboard() {
                   >
                     <Icon name={item.icon} className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: item.color }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-fg truncate">{item.title}</p>
-                      {item.description && <p className="text-[11px] text-muted truncate">{item.description}</p>}
+                      <p className="text-xs font-medium text-fg break-words">{item.title}</p>
+                      {item.description && <p className="text-[11px] text-muted break-words">{item.description}</p>}
                     </div>
                     {item.xpGained > 0 && (
                       <span className="text-[11px] font-semibold text-brand flex-shrink-0">+{item.xpGained}</span>

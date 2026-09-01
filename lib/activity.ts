@@ -41,9 +41,20 @@ export function buildActivityFeed(goals: Goal[], limit = 25): ActivityItem[] {
 
     (goal.subtasks || []).forEach((s, i) => {
       if (!s.completed) return;
-      const date = goal.startDate
+      /*
+       * We don't store a completion timestamp, so the best available date is
+       * the milestone's planned date — but that is frequently in the future,
+       * which pushed unfinished-looking entries to the top of a feed labelled
+       * "recent". Clamp to today so a completed milestone can never be dated
+       * later than the moment it was observed complete.
+       */
+      const planned = goal.startDate
         ? new Date(new Date(goal.startDate).getTime() + s.daysFromStart * 86400000).toISOString().split('T')[0]
-        : (goal.updatedAt || '').split('T')[0];
+        : '';
+      const fallback = (goal.updatedAt || goal.createdAt || '').split('T')[0];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const candidate = planned || fallback;
+      const date = candidate > todayStr ? (fallback && fallback <= todayStr ? fallback : todayStr) : candidate;
       items.push({
         id: `ms-${goal.id}-${i}`,
         type: 'milestone_completed',
