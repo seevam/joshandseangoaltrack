@@ -18,17 +18,17 @@ import {
 } from '@/components/ui/motion';
 import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
-import GoalDetail from './GoalDetail';
+import { useRouter } from 'next/navigation';
 
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
+  const router = useRouter();
   const { goals, setGoals, updateGoal, removeGoal, selectedGoal, setSelectedGoal } = useGoalStore();
   const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [celebratingGoal, setCelebratingGoal] = useState<Goal | null>(null);
-  const [showGoalDetails, setShowGoalDetails] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
@@ -79,7 +79,6 @@ export default function Dashboard() {
     try {
       await apiCall(`/api/goals/${id}`, 'DELETE');
       removeGoal(id);
-      setShowGoalDetails(false);
     } catch (err) { console.error('Failed to delete goal:', err); }
   };
 
@@ -104,7 +103,7 @@ export default function Dashboard() {
       const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { currentValue: newValue, progressHistory });
       updateGoal(saved);
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-      if (!wasComplete && getGoalProgress(saved) >= 100) { setShowGoalDetails(false); setCelebratingGoal(saved); }
+      if (!wasComplete && getGoalProgress(saved) >= 100) setCelebratingGoal(saved)
     } catch (err) { console.error('Failed to update progress:', err); }
   };
 
@@ -119,7 +118,7 @@ export default function Dashboard() {
       updateGoal(saved);
       if (!target.completed) fireXp(milestoneXp(target.difficulty));
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-      if (!wasComplete && getGoalProgress(saved) >= 100) { setShowGoalDetails(false); setCelebratingGoal(saved); }
+      if (!wasComplete && getGoalProgress(saved) >= 100) setCelebratingGoal(saved)
     } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
@@ -277,7 +276,7 @@ export default function Dashboard() {
             {dueSoon.map(g => {
               const d = Math.ceil((new Date(g.endDate!).getTime() - Date.now()) / 86400000);
               return (
-                <div key={g.id} onClick={() => { setSelectedGoal(g); setShowGoalDetails(true); }}
+                <div key={g.id} onClick={() => router.push(`/goals/${g.id}`)}
                   className="flex justify-between items-center cursor-pointer hover:opacity-80 py-0.5">
                   <span className="text-sm text-amber-100 truncate">{g.title}</span>
                   <span className="text-xs text-amber-400 ml-2 flex-shrink-0">{d <= 0 ? 'Today' : `${d}d left`}</span>
@@ -425,7 +424,7 @@ export default function Dashboard() {
                   goal={goal}
                   index={i}
                   preview
-                  onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
+                  onClick={() => router.push(`/goals/${goal.id}`)}
                 />
               ))}
             </div>
@@ -442,19 +441,6 @@ export default function Dashboard() {
           rankName={levelUp.name}
           rankColor={levelUp.color}
           onDone={() => setLevelUp(null)}
-        />
-      )}
-      {showGoalDetails && selectedGoal && (
-        <GoalDetail
-          goal={goals.find(g => g.id === selectedGoal.id) || selectedGoal}
-          onClose={() => setShowGoalDetails(false)}
-          onDelete={deleteGoal}
-          onUpdateProgress={updateProgress}
-          onCheckIn={checkIn}
-          onToggleSubtask={toggleSubtask}
-          onLogTask={logTask}
-          onAddDailyTask={addDailyTask}
-          onRemoveDailyTask={removeDailyTask}
         />
       )}
 

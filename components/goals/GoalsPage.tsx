@@ -2,23 +2,20 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { Plus, Search, X, ChevronDown, Target } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { getGoalStatus, type Goal } from '@/lib/types';
+import { getGoalStatus } from '@/lib/types';
 import GoalCard from './GoalCard';
-import GoalDetail from '@/components/dashboard/GoalDetail';
-import { useGoalActions } from '@/lib/useGoalActions';
 
 const CATEGORIES = ['all', 'fitness', 'health', 'personal', 'career', 'finance', 'education'] as const;
 const STATUSES = ['active', 'completed', 'all'] as const;
 
 export default function GoalsPage() {
   const { user, isLoaded } = useUser();
-  const { goals, setGoals, selectedGoal, setSelectedGoal } = useGoalStore();
+  const router = useRouter();
+  const { goals, setGoals } = useGoalStore();
   const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
-  const actions = useGoalActions();
-
-  const [showDetail, setShowDetail] = useState(false);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<(typeof STATUSES)[number]>('active');
   const [category, setCategory] = useState<string>('all');
@@ -103,20 +100,13 @@ export default function GoalsPage() {
                 key={goal.id}
                 goal={goal}
                 index={i}
-                onClick={() => { setSelectedGoal(goal); setShowDetail(true); }}
+                onClick={() => router.push(`/goals/${goal.id}`)}
               />
             ))}
           </div>
         )}
       </div>
 
-      {showDetail && selectedGoal && (
-        <GoalDetail
-          goal={goals.find((g: Goal) => g.id === selectedGoal.id) || selectedGoal}
-          onClose={() => setShowDetail(false)}
-          {...actions}
-        />
-      )}
     </div>
   );
 }
