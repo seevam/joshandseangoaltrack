@@ -46,7 +46,7 @@ export default function GoalsPage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 space-y-5">
+      <div className="w-full mx-auto px-4 py-6 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
         <div className="animate-slide-up">
           <div>
             <h1 className="font-display text-3xl tracking-wide"><span className="text-brand-gradient">GO</span><span className="text-fg">ALS</span></h1>
@@ -94,7 +94,7 @@ export default function GoalsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
             {filtered.map((goal, i) => (
               <GoalCard
                 key={goal.id}

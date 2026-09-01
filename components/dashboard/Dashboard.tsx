@@ -246,13 +246,36 @@ export default function Dashboard() {
     return true;
   });
 
-  // Josh: no blank loading placeholder — render nothing until data is ready,
-  // then let the normal entrance animations play.
-  if (!isLoaded || isLoadingGoals) return <div className="min-h-screen bg-bg" />;
+  /*
+   * Two pieces of feedback pull against each other here: no shimmering
+   * skeleton placeholder, but also no long blank screen. So the static chrome
+   * — greeting and date, which need no data — paints immediately, and only the
+   * data-dependent body carries a short loading label.
+   */
+  if (!isLoaded || isLoadingGoals) {
+    return (
+      <div className="min-h-screen bg-bg pb-24 lg:pb-8">
+        <div className="w-full mx-auto px-4 py-5 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
+          <div className="animate-slide-up">
+            <h1 className="text-2xl font-bold text-fg">
+              {`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}`}
+            </h1>
+            <p className="text-sm text-muted mt-0.5">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <p className="text-sm text-muted flex items-center gap-2 animate-slide-up" role="status">
+            <span className="h-3.5 w-3.5 rounded-full border-2 border-line border-t-brand animate-spin" />
+            Preparing today&apos;s tasks…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-bg pb-24 lg:pb-8">
-      <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 space-y-5">
+      <div className="w-full mx-auto px-4 py-5 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
 
         {/* ── Header + rank ─────────────────────────────────────────────── */}
         <div className="animate-slide-up">
@@ -407,7 +430,7 @@ export default function Dashboard() {
             </h2>
             <span className="text-xs text-muted">{earnedCount} of {badges.length} unlocked</span>
           </div>
-          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(5.5rem,1fr))]">
             {badges.map(b => (
               <BadgeTile key={b.id} slug={b.slug} name={b.name} description={b.description} color={b.color} earned={b.isEarned} compact />
             ))}
@@ -437,7 +460,7 @@ export default function Dashboard() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
               {previewGoals.map((goal, i) => (
                 <GoalCard
                   key={goal.id}

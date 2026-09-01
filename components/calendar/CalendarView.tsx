@@ -178,9 +178,11 @@ export default function CalendarView() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[20rem_1fr] gap-5 items-start">
-        {/* ── Mini calendar ─────────────────────────────────────────────── */}
-        <div className="card-glow rounded-2xl p-4 animate-slide-up">
+      {/* Roughly two thirds calendar to one third day panel — the calendar was
+          the cramped half before, which is backwards for a calendar page. */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
+        {/* ── Calendar ──────────────────────────────────────────────────── */}
+        <div className="lg:col-span-2 card-glow rounded-2xl p-4 sm:p-5 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
             <button
               onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
@@ -203,11 +205,11 @@ export default function CalendarView() {
 
           <div className="grid grid-cols-7 mb-1">
             {WEEKDAYS.map((d, i) => (
-              <span key={i} className="text-[10px] text-muted text-center py-1">{d}</span>
+              <span key={i} className="text-[11px] font-medium text-muted text-center py-1.5">{d}</span>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-0.5">
+          <div className="grid grid-cols-7 gap-1">
             {cells.map((d, i) => {
               if (!d) return <span key={i} />;
               const tasks = getTasksForDate(d);
@@ -219,14 +221,19 @@ export default function CalendarView() {
                 <button
                   key={i}
                   onClick={() => setSelected(d)}
-                  className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-0.5 text-xs transition-colors border ${
+                  aria-label={d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  aria-current={isToday ? 'date' : undefined}
+                  aria-pressed={isSel}
+                  className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 text-sm transition-colors border ${
+                    isToday ? 'day-today' : ''
+                  } ${
                     isSel ? 'border-brand text-fg font-bold' : 'border-transparent hover:border-line-strong'
                   } ${isToday && !isSel ? 'text-brand font-bold' : isSel ? '' : 'text-muted'}`}
                 >
                   {d.getDate()}
                   {tasks.length > 0 && (
                     <span
-                      className="w-1 h-1 rounded-full"
+                      className="w-1.5 h-1.5 rounded-full"
                       style={{ backgroundColor: allDone ? 'var(--brand)' : 'var(--muted-dim)' }}
                     />
                   )}
