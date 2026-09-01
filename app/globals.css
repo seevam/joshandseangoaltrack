@@ -4,18 +4,21 @@
 
 /* ── Dark theme, green accent ─────────────────────────────────────────────── */
 :root {
-  /* Pure black page; surfaces are near-black with subtle grey borders. */
-  --bg: #000000;
-  --card: #000000;
-  --elevated: #000000;
-  /* Only borders separate surfaces now, so they carry more weight. */
-  --line: #262626;
-  --line-strong: #3A3A3A;
+  /* Surfaces, matched to the reference app's palette. Effectively flat black
+     with a faint cool tint, so cards read as one plane and only the border
+     separates them. */
+  --bg: #010101;
+  --card: #020204;
+  --elevated: #08090D;
+  /* Deliberately dark. Bright borders were the single loudest thing on the
+     page; the reference sits far lower and reads much cleaner. */
+  --line: #101116;
+  --line-strong: #1E2028;
 
-  /* Text hierarchy: white = action//title, grey = description, green = XP only. */
-  --fg: #FFFFFF;
-  --muted: #A1A1A1;
-  --muted-dim: #6B6B6B;
+  /* Text hierarchy: near-white = action/title, grey = description, green = XP only. */
+  --fg: #F2EEE7;
+  --muted: #8F8B85;
+  --muted-dim: #625F5A;
 
   --brand: #5DBC70;
   --brand-dark: #4EAA5F;
@@ -61,36 +64,53 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
 .thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
-.thin-scroll:hover::-webkit-scrollbar-thumb { background: #344245; }
+.thin-scroll:hover::-webkit-scrollbar-thumb { background: var(--line-strong); }
 
 /* ── Surfaces ─────────────────────────────────────────────────────────────── */
+/*
+ * Hover glow is expressed purely through *transitioned properties*, never the
+ * `animation` shorthand. Cards also carry an entrance animation (.stagger,
+ * .animate-slide-up) with fill-mode `both`; setting `animation` on :hover
+ * replaced that entrance mid-flight and, on mouse-out, replayed it from
+ * opacity 0 — which is why cards appeared to vanish as the cursor crossed them.
+ */
 .card-glow {
   position: relative;
+  isolation: isolate;
   background: var(--card);
   border: 1px solid var(--line);
-  transition: border-color var(--dur-fast) var(--ease-out),
-              transform var(--dur-base) var(--ease-out);
+  transition: border-color 200ms var(--ease-out),
+              box-shadow 200ms var(--ease-out),
+              background-color 200ms var(--ease-out);
+}
+/* Soft corner light, faded in on hover rather than painted on permanently. */
+.card-glow::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(circle at 12% 0%, rgba(93, 188, 112, 0.06), transparent 30%);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
 }
 .card-glow:hover {
-  border-color: rgba(93, 188, 112, 0.5);
-  animation: edge-pulse 2.2s ease-in-out infinite;
+  border-color: rgba(93, 188, 112, 0.25);
+  background-color: #04050A;
+  box-shadow: 0 0 15px rgba(93, 188, 112, 0.05);
 }
+.card-glow:hover::after { opacity: 1; }
 
-/* Edges breathe light instead of just switching colour */
-@keyframes edge-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(93, 188, 112, 0.14), 0 0 12px -4px rgba(93, 188, 112, 0.35); }
-  50%      { box-shadow: 0 0 0 2px rgba(93, 188, 112, 0.10), 0 0 30px -2px rgba(93, 188, 112, 0.55); }
-}
-
-/* Shared green-glow hover for any bordered box that isn't a .card-glow */
+/* Shared hover treatment for any bordered box that isn't a .card-glow */
 .glow-hover {
-  transition: border-color var(--dur-fast) var(--ease-out),
-              box-shadow var(--dur-fast) var(--ease-out),
-              background-color var(--dur-fast) var(--ease-out);
+  transition: border-color 200ms var(--ease-out),
+              box-shadow 200ms var(--ease-out),
+              background-color 200ms var(--ease-out);
 }
 .glow-hover:hover {
-  border-color: rgba(93, 188, 112, 0.5);
-  animation: edge-pulse 2.2s ease-in-out infinite;
+  border-color: rgba(93, 188, 112, 0.25);
+  box-shadow: 0 0 15px rgba(93, 188, 112, 0.05);
 }
 
 /* Any row/tile the user can pick — hover makes the target unmistakable. */
@@ -99,8 +119,8 @@ button:active:not(:disabled) { transform: scale(0.97); }
               border-color var(--dur-fast) var(--ease-out);
 }
 .selectable:hover {
-  border-color: rgba(93, 188, 112, 0.45);
-  box-shadow: 0 0 18px -6px rgba(93, 188, 112, 0.4);
+  border-color: rgba(93, 188, 112, 0.25);
+  box-shadow: 0 0 15px rgba(93, 188, 112, 0.05);
 }
 .selectable[data-active='true'] { background: var(--elevated); border-color: var(--brand); }
 
@@ -157,7 +177,9 @@ button:active:not(:disabled) { transform: scale(0.97); }
   from { transform: translateY(22px); opacity: 0; }
   to   { transform: translateY(0); opacity: 1; }
 }
-.animate-slide-up { animation: slide-up var(--dur-base) var(--ease-out) both; }
+/* `backwards`, not `both`: a filled-forwards transform keeps applying after the
+   entrance ends and outranks :hover, which silently disabled every card lift. */
+.animate-slide-up { animation: slide-up var(--dur-base) var(--ease-out) backwards; }
 
 @keyframes pop-in {
   0%   { transform: scale(0.94); opacity: 0; }
@@ -173,8 +195,8 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .animate-scale-in { animation: scale-in var(--dur-base) var(--ease-spring) both; }
 
 /* Staggered list entrance — set --i on each row */
-.stagger { animation: slide-up var(--dur-base) var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 6) * 45ms); }
-.stagger-fast { animation: slide-up 0.32s var(--ease-out) both; animation-delay: calc(min(var(--i, 0), 8) * 28ms); }
+.stagger { animation: slide-up var(--dur-base) var(--ease-out) backwards; animation-delay: calc(min(var(--i, 0), 6) * 45ms); }
+.stagger-fast { animation: slide-up 0.32s var(--ease-out) backwards; animation-delay: calc(min(var(--i, 0), 8) * 28ms); }
 
 /* ── Task completion ──────────────────────────────────────────────────────── */
 @keyframes task-pop {
@@ -266,7 +288,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
   100% { background-position: 200% 0; }
 }
 .skeleton {
-  background: linear-gradient(90deg, var(--elevated) 25%, #223033 50%, var(--elevated) 75%);
+  background: linear-gradient(90deg, var(--elevated) 25%, var(--line-strong) 50%, var(--elevated) 75%);
   background-size: 200% 100%;
   animation: skeleton-sweep 1.5s linear infinite;
 }
@@ -306,7 +328,7 @@ input, textarea { color-scheme: dark; }
   from { opacity: 0; transform: translateY(12px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-.page-enter { animation: page-in 0.45s var(--ease-out) both; }
+.page-enter { animation: page-in 0.45s var(--ease-out) backwards; }
 
 /* Sidebar width transition when collapsing to icons */
 .sidebar-anim { transition: width var(--dur-base) var(--ease-out); }
