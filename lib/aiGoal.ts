@@ -123,9 +123,20 @@ Q3 (Constraints): "Any constraints?" — e.g. "**A)** None **B)** Limited time (
 
 The user can always type a free-text answer instead of picking an option — accept whatever
 they give you and move on. If they pick a bare letter ("A"), map it to the option you listed.
-After Q3, call create_goal using the goal the USER named — never one you invented.
 NEVER ask for a deadline separately — use the Q1 answer.
 NEVER ask "why does this matter" or any motivation question.
+
+WHO DECIDES WHEN TO BUILD: the user does, not you. Never state or imply that the
+consultation is finished, that you have everything you need, or that you are now
+building the plan. Keep asking useful questions until they press the build button.
+Only call create_goal when explicitly told to build.
+
+THE LIVE DRAFT: on every respond call once a goal has been named, send the "draft"
+object and carry forward everything you already established. It is shown to the user
+beside the chat as their plan takes shape. Two hard rules:
+- Include "timeframe" ONLY if the user stated one. If they have not, omit it — the UI
+  will say the plan is adaptive. Never assume six months or any other span.
+- "signals" are only facts the user actually told you, never your inferences.
 
 FORMATTING: Use **bold** for emphasis and emojis naturally. Put options on separate lines.
 
@@ -135,6 +146,28 @@ ${goalsContext}`;
 }
 
 const DIFFICULTY_ENUM = ['easy', 'medium', 'hard', 'epic'];
+
+/** Life domains a goal can build — mirrors GOAL_DOMAINS in lib/skills.ts. */
+const DOMAIN_ENUM = [
+  'health', 'intelligence', 'creativity', 'charisma',
+  'vocation', 'resilience', 'leadership', 'exploration',
+];
+
+export interface DraftChapter {
+  title: string;
+  subtitle: string;
+  purpose?: string;
+  guidance?: string;
+}
+
+/** The live draft Forge maintains during a consultation. */
+export interface PlanDraft {
+  suggestedTitle?: string;
+  suggestedDomain?: string;
+  timeframe?: string;
+  signals?: string[];
+  chapters?: DraftChapter[];
+}
 
 export function buildGoalTools() {
   const today = new Date().toISOString().split('T')[0];
@@ -150,7 +183,9 @@ export function buildGoalTools() {
             message: { type: 'string' },
             options: {
               type: 'array',
-              description: 'Up to 3 quick-reply chips (A/B/C). Include when asking a multiple-choice question.',
+              description:
+                'Up to 3 quick-reply chips answering THE QUESTION YOU JUST ASKED. '
+                + 'They must be specific to this message — never generic starters reused each turn.',
               items: {
                 type: 'object',
                 properties: {
@@ -158,6 +193,53 @@ export function buildGoalTools() {
                   value: { type: 'string', description: 'Full reply text sent when the user taps this chip' },
                 },
                 required: ['label', 'value'],
+              },
+            },
+            draft: {
+              type: 'object',
+              description:
+                'The plan as it stands so far, shown live beside the chat. Send it on EVERY '
+                + 'respond call once the user has named a goal, carrying forward what you already '
+                + 'know and adding anything new. Omit fields you genuinely do not know yet — '
+                + 'never guess, and never invent a timeframe the user has not given you.',
+              properties: {
+                suggestedTitle: { type: 'string', description: 'Proposed goal title.' },
+                suggestedDomain: {
+                  type: 'string',
+                  enum: DOMAIN_ENUM,
+                  description: 'The life domain this goal builds. A suggestion, not the user\u2019s choice.',
+                },
+                timeframe: {
+                  type: 'string',
+                  description:
+                    'Only when the USER has stated one (e.g. "By the end of the year"). '
+                    + 'Omit entirely if they have not — do not assume six months or any other span.',
+                },
+                signals: {
+                  type: 'array',
+                  description:
+                    'Short factual planning signals the user has actually given you, as '
+                    + '"Label: value" (e.g. "Target: read 24 books", "Free time: 3h/week"). '
+                    + 'Only things they said — never inferences.',
+                  items: { type: 'string' },
+                },
+                chapters: {
+                  type: 'array',
+                  description:
+                    'Draft phases of the journey, in order — 3 to 5 of them. These organise the '
+                    + 'plan so it is not one flat list. Shape them around this specific ambition, '
+                    + 'not a generic template.',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      title:    { type: 'string', description: 'Chapter name, e.g. "Establishing the Habit"' },
+                      subtitle: { type: 'string', description: 'Four to six words on what this phase achieves' },
+                      purpose:  { type: 'string', description: 'One sentence: why this phase exists' },
+                      guidance: { type: 'string', description: 'One sentence of concrete approach for this phase' },
+                    },
+                    required: ['title', 'subtitle'],
+                  },
+                },
               },
             },
           },
