@@ -49,7 +49,6 @@ export default function GoalForm({ onClose, editGoal }: Props) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o',
           messages: [
             { role: 'system', content: 'Generate 5-7 actionable sub-tasks for the goal. Respond with valid JSON only — an array of {title, daysFromStart} objects.' },
             { role: 'user', content: `Goal: ${form.title}\nCategory: ${form.category}\nTarget: ${form.targetValue} ${form.unit}\nDeadline: ${form.endDate || 'none'}` },

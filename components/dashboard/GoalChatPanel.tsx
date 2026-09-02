@@ -155,7 +155,6 @@ export default function GoalChatPanel({ goal, onClose, seed }: {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o',
           messages: [{ role: 'system', content: systemPrompt }, ...updatedHistory],
           max_tokens: 350,
           temperature: 0.6,
