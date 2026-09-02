@@ -131,9 +131,18 @@ consultation is finished, that you have everything you need, or that you are now
 building the plan. Keep asking useful questions until they press the build button.
 Only call create_goal when explicitly told to build.
 
-THE LIVE DRAFT: on every respond call once a goal has been named, send the "draft"
-object and carry forward everything you already established. It is shown to the user
-beside the chat as their plan takes shape. Two hard rules:
+THE LIVE DRAFT — this is not optional. From the moment the user names a concrete
+goal, EVERY respond call must include the "draft" object, and every draft must
+contain "chapters": 3-5 ordered phases shaped around this specific ambition.
+Draft the chapters from the goal alone; you do not need the answers to your
+remaining questions first, and you should refine them as answers arrive. A draft
+without chapters is a bug — the user sees an empty plan panel.
+Carry forward everything you already established on each turn.
+- A 5k in 3 months might be: Base Aerobic Building / Adding Structured Speed /
+  Race Simulation and Taper.
+- Reading 24 books might be: Initial Setup and Selection / Establishing the Habit /
+  Pace Adjustment and Completion.
+Two further rules:
 - Include "timeframe" ONLY if the user stated one. If they have not, omit it — the UI
   will say the plan is adaptive. Never assume six months or any other span.
 - "signals" are only facts the user actually told you, never your inferences.
@@ -241,6 +250,9 @@ export function buildGoalTools() {
                   },
                 },
               },
+              // Without this the model happily sends a draft carrying only
+              // signals and never populates the journey map.
+              required: ['chapters'],
             },
           },
           required: ['message'],
