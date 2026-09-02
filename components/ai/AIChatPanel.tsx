@@ -102,7 +102,6 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o',
           messages: [
             { role: 'system', content: chatCoachPrompt(assistantName, personaStyle(persona), buildGoalsContext() + '\n' + skillsContext(goals)) },
             ...updatedHistory,

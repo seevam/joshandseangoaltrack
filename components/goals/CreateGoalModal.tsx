@@ -175,7 +175,6 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          model: 'gpt-4o',
           messages: [
             { role: 'system', content: quickCreatePrompt(coachName, personaStyle(persona), availability, otherTaskCount) },
             {
@@ -372,7 +371,6 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'gpt-4o',
         messages: [{ role: 'system', content: chatCoachPrompt(coachName, personaStyle(persona), 'Creating a new goal.') }, ...msgs],
         tools: force
           ? buildGoalTools().filter(t => t.function.name === 'create_goal')
