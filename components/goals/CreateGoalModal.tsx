@@ -583,15 +583,41 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
             Live Journey Map
           </p>
           {chapters.length === 0 ? (
+            /*
+             * Three distinct states, not one placeholder: nothing yet, a goal
+             * named while chapters are still forming, and the full map. The
+             * middle one matters — signals can land a turn before chapters do,
+             * and a panel reading "your plan will appear here" next to captured
+             * signals looks broken.
+             */
             <>
               <h4 className="flex items-start gap-2 text-base font-bold text-fg leading-snug">
                 <ListChecks className="h-4 w-4 text-brand mt-0.5 flex-shrink-0" />
-                Your plan will appear here
+                <span className="min-w-0 break-words">
+                  {draft?.suggestedTitle ? draft.suggestedTitle : 'Your plan will appear here'}
+                </span>
               </h4>
               <p className="text-sm text-muted mt-2 leading-relaxed">
-                Name the outcome you&apos;re after and {coachName} will start shaping it into
-                chapters, updating this as you talk.
+                {draft
+                  ? `${coachName} is shaping this into chapters — they'll appear here as the plan takes form.`
+                  : `Name the outcome you're after and ${coachName} will start shaping it into chapters, updating this as you talk.`}
               </p>
+              {draft && (
+                <div className="mt-3 space-y-2" aria-hidden>
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      style={{ ['--i' as string]: i }}
+                      className="stagger-fast rounded-xl border border-line bg-elevated p-3 flex items-center gap-2.5 opacity-50"
+                    >
+                      <span className="h-6 w-6 rounded-full bg-card border border-line flex items-center justify-center text-[11px] text-muted flex-shrink-0">
+                        {i + 1}
+                      </span>
+                      <span className="h-2 flex-1 rounded-full bg-track" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </>
           ) : (
             <>
