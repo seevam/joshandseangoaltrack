@@ -64,10 +64,10 @@ export const useGoalStore = create<GoalStore>((set) => ({
   selectedGoal: null,
   setSelectedGoal: (goal) => set({ selectedGoal: goal }),
 
-  coachName: 'My Assistant',
+  coachName: 'Forge',
   coachPersona: 'calm',
   setCoachName: (name) => {
-    const v = name.trim() || 'My Assistant';
+    const v = name.trim() || 'Forge';
     if (typeof window !== 'undefined') localStorage.setItem('ai_assistant_name', v);
     set({ coachName: v });
   },
