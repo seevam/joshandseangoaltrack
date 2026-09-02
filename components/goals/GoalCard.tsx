@@ -41,7 +41,7 @@ export default function GoalCard({ goal, onClick, preview = false, index = 0 }: 
           <span className="text-muted">Progress</span>
           <span className="text-fg font-medium"><AnimatedNumber value={progress} />%</span>
         </div>
-        <div className="h-1.5 bg-elevated rounded-full overflow-hidden">
+        <div className="h-1.5 bg-track rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-[width] duration-1000 ease-out"
             style={{ width: `${progress}%`, backgroundColor: cat.hex }}

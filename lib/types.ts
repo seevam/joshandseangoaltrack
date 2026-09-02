@@ -13,6 +13,10 @@ export interface Subtask {
 export interface DailyTask {
   id: number;
   title: string;
+  /** First concrete instruction, surfaced by Next Action. AI-populated. */
+  description?: string;
+  /** Planned minutes. Only rendered when present — never guessed. */
+  estimatedMinutes?: number;
   targetValue: number | null;
   unit: string;
   type: 'number' | 'checkbox';

@@ -34,7 +34,7 @@ export function XPBar({ stats }: { stats: UserStats }) {
           <p className="text-xs text-muted">{stats.levelXp} / {stats.levelSpan} to next</p>
         </div>
       </div>
-      <div className="h-2.5 bg-elevated rounded-full overflow-hidden">
+      <div className="h-2.5 bg-track rounded-full overflow-hidden">
         <div className="xp-bar-fill h-full rounded-full" style={{ width: `${width}%` }} />
       </div>
       {stats.nextRank && (

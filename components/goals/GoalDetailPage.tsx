@@ -229,7 +229,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
           <span className="text-muted">Overall Progress</span>
           <span className="font-semibold text-fg"><AnimatedNumber value={progress} />%</span>
         </div>
-        <div className="h-2 bg-elevated rounded-full overflow-hidden">
+        <div className="h-2 bg-track rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-[width] duration-1000 ease-out"
             style={{ width: `${progress}%`, backgroundColor: cat.hex }}
