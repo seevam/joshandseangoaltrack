@@ -5,7 +5,7 @@ import {
   Sprout, Zap, Flame, Gem, Crown, Trophy, Target, Footprints, Flag, Dumbbell,
   Cpu, Layers, Star, HeartPulse, Briefcase, GraduationCap, Wallet, Sparkles,
   Map, Moon, Waves, Palette, BookOpen, Rocket, Medal, TrendingUp,
-  CalendarDays, Apple, Mail,
+  CalendarDays, Apple, Mail, Brain, MessageCircle, Compass, Shield, Swords,
 } from 'lucide-react';
 import type { Category } from '@/lib/types';
 import { RANK_EMBLEMS, BADGE_ART } from '@/lib/art';
@@ -25,6 +25,9 @@ export const ICONS: Record<string, LucideIcon> = {
   // Categories
   heart: HeartPulse, briefcase: Briefcase, graduation: GraduationCap,
   wallet: Wallet, sparkles: Sparkles, book: BookOpen, palette: Palette,
+  // Skill domains
+  brain: Brain, speech: MessageCircle, compass: Compass, shield: Shield,
+  swords: Swords,
   // Misc
   map: Map, moon: Moon, waves: Waves, trending: TrendingUp,
   calendar: CalendarDays, apple: Apple, mail: Mail,
@@ -89,7 +92,7 @@ export function RankEmblem({ slug, size = 40, dim = false, className = '' }: {
       height={size}
       loading="lazy"
       decoding="async"
-      className={`object-contain ${dim ? 'grayscale opacity-35' : ''} ${className}`}
+      className={`object-contain ${dim ? 'art-locked' : ''} ${className}`}
       style={{ width: size, height: size }}
     />
   );
@@ -109,7 +112,7 @@ export function BadgeArt({ slug, size = 48, dim = false, className = '' }: {
       height={size}
       loading="lazy"
       decoding="async"
-      className={`object-contain ${dim ? 'grayscale opacity-30' : ''} ${className}`}
+      className={`object-contain ${dim ? 'art-locked' : ''} ${className}`}
       style={{ width: size, height: size }}
     />
   );

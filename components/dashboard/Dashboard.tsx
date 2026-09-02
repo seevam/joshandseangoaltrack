@@ -18,17 +18,19 @@ import {
 } from '@/components/ui/motion';
 import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
-import GoalDetail from './GoalDetail';
+import { useRouter } from 'next/navigation';
 
+/** Last level we played the celebration for, so a reload never replays it. */
+const LEVEL_KEY = 'gq_celebrated_level';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
+  const router = useRouter();
   const { goals, setGoals, updateGoal, removeGoal, selectedGoal, setSelectedGoal } = useGoalStore();
   const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [celebratingGoal, setCelebratingGoal] = useState<Goal | null>(null);
-  const [showGoalDetails, setShowGoalDetails] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
@@ -37,6 +39,7 @@ export default function Dashboard() {
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
   const prevLevel = useRef<number | null>(null);
+  const [goalsSettled, setGoalsSettled] = useState(false);
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -50,6 +53,7 @@ export default function Dashboard() {
         setGoals([]);
       } finally {
         setIsLoadingGoals(false);
+        setGoalsSettled(true);
       }
     };
     load();
@@ -79,7 +83,6 @@ export default function Dashboard() {
     try {
       await apiCall(`/api/goals/${id}`, 'DELETE');
       removeGoal(id);
-      setShowGoalDetails(false);
     } catch (err) { console.error('Failed to delete goal:', err); }
   };
 
@@ -104,7 +107,7 @@ export default function Dashboard() {
       const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { currentValue: newValue, progressHistory });
       updateGoal(saved);
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-      if (!wasComplete && getGoalProgress(saved) >= 100) { setShowGoalDetails(false); setCelebratingGoal(saved); }
+      if (!wasComplete && getGoalProgress(saved) >= 100) setCelebratingGoal(saved)
     } catch (err) { console.error('Failed to update progress:', err); }
   };
 
@@ -119,7 +122,7 @@ export default function Dashboard() {
       updateGoal(saved);
       if (!target.completed) fireXp(milestoneXp(target.difficulty));
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-      if (!wasComplete && getGoalProgress(saved) >= 100) { setShowGoalDetails(false); setCelebratingGoal(saved); }
+      if (!wasComplete && getGoalProgress(saved) >= 100) setCelebratingGoal(saved)
     } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
@@ -175,13 +178,29 @@ export default function Dashboard() {
   useEffect(() => { maybeNotifyTodaysTasks(goals); }, [goals]);
   const earnedCount = badges.filter(b => b.isEarned).length;
 
-  // Level is derived, so watching it here catches gains from any source.
+  /*
+   * Level is derived from goal data, so watching it catches gains from any
+   * source. Two things stop it from firing spuriously:
+   *
+   *  - We wait for the goals fetch to settle. Before it does, `goals` is empty
+   *    and the derived level is 1; when the real data arrived, that read as a
+   *    jump from 1 to the true level and replayed the celebration on every
+   *    page load.
+   *  - The last celebrated level is persisted, so a reload at the same level
+   *    is silent while a genuine level-up still plays exactly once.
+   */
   useEffect(() => {
-    if (prevLevel.current !== null && stats.level > prevLevel.current) {
+    if (!goalsSettled) return;
+
+    const stored = Number(localStorage.getItem(LEVEL_KEY) ?? 'NaN');
+    const last = Number.isFinite(stored) ? stored : prevLevel.current;
+
+    if (last !== null && stats.level > last) {
       setLevelUp({ level: stats.level, name: stats.rank.name, color: stats.rank.color });
     }
     prevLevel.current = stats.level;
-  }, [stats.level, stats.rank]);
+    localStorage.setItem(LEVEL_KEY, String(stats.level));
+  }, [goalsSettled, stats.level, stats.rank]);
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayDow = new Date().getDay();
@@ -227,13 +246,36 @@ export default function Dashboard() {
     return true;
   });
 
-  // Josh: no blank loading placeholder — render nothing until data is ready,
-  // then let the normal entrance animations play.
-  if (!isLoaded || isLoadingGoals) return <div className="min-h-screen bg-bg" />;
+  /*
+   * Two pieces of feedback pull against each other here: no shimmering
+   * skeleton placeholder, but also no long blank screen. So the static chrome
+   * — greeting and date, which need no data — paints immediately, and only the
+   * data-dependent body carries a short loading label.
+   */
+  if (!isLoaded || isLoadingGoals) {
+    return (
+      <div className="min-h-screen bg-bg pb-24 lg:pb-8">
+        <div className="w-full mx-auto px-4 py-5 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
+          <div className="animate-slide-up">
+            <h1 className="text-2xl font-bold text-fg">
+              {`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}`}
+            </h1>
+            <p className="text-sm text-muted mt-0.5">
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          </div>
+          <p className="text-sm text-muted flex items-center gap-2 animate-slide-up" role="status">
+            <span className="h-3.5 w-3.5 rounded-full border-2 border-line border-t-brand animate-spin" />
+            Preparing today&apos;s tasks…
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-bg pb-24 lg:pb-8">
-      <div className="max-w-7xl mx-auto px-4 py-5 sm:px-6 space-y-5">
+      <div className="w-full mx-auto px-4 py-5 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
 
         {/* ── Header + rank ─────────────────────────────────────────────── */}
         <div className="animate-slide-up">
@@ -277,7 +319,7 @@ export default function Dashboard() {
             {dueSoon.map(g => {
               const d = Math.ceil((new Date(g.endDate!).getTime() - Date.now()) / 86400000);
               return (
-                <div key={g.id} onClick={() => { setSelectedGoal(g); setShowGoalDetails(true); }}
+                <div key={g.id} onClick={() => router.push(`/goals/${g.id}`)}
                   className="flex justify-between items-center cursor-pointer hover:opacity-80 py-0.5">
                   <span className="text-sm text-amber-100 truncate">{g.title}</span>
                   <span className="text-xs text-amber-400 ml-2 flex-shrink-0">{d <= 0 ? 'Today' : `${d}d left`}</span>
@@ -367,8 +409,8 @@ export default function Dashboard() {
                   >
                     <Icon name={item.icon} className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: item.color }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-fg truncate">{item.title}</p>
-                      {item.description && <p className="text-[11px] text-muted truncate">{item.description}</p>}
+                      <p className="text-xs font-medium text-fg break-words">{item.title}</p>
+                      {item.description && <p className="text-[11px] text-muted break-words">{item.description}</p>}
                     </div>
                     {item.xpGained > 0 && (
                       <span className="text-[11px] font-semibold text-brand flex-shrink-0">+{item.xpGained}</span>
@@ -388,7 +430,7 @@ export default function Dashboard() {
             </h2>
             <span className="text-xs text-muted">{earnedCount} of {badges.length} unlocked</span>
           </div>
-          <div className="grid grid-cols-4 sm:grid-cols-6 lg:grid-cols-12 gap-2">
+          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(5.5rem,1fr))]">
             {badges.map(b => (
               <BadgeTile key={b.id} slug={b.slug} name={b.name} description={b.description} color={b.color} earned={b.isEarned} compact />
             ))}
@@ -418,14 +460,14 @@ export default function Dashboard() {
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
               {previewGoals.map((goal, i) => (
                 <GoalCard
                   key={goal.id}
                   goal={goal}
                   index={i}
                   preview
-                  onClick={() => { setSelectedGoal(goal); setShowGoalDetails(true); }}
+                  onClick={() => router.push(`/goals/${goal.id}`)}
                 />
               ))}
             </div>
@@ -442,19 +484,6 @@ export default function Dashboard() {
           rankName={levelUp.name}
           rankColor={levelUp.color}
           onDone={() => setLevelUp(null)}
-        />
-      )}
-      {showGoalDetails && selectedGoal && (
-        <GoalDetail
-          goal={goals.find(g => g.id === selectedGoal.id) || selectedGoal}
-          onClose={() => setShowGoalDetails(false)}
-          onDelete={deleteGoal}
-          onUpdateProgress={updateProgress}
-          onCheckIn={checkIn}
-          onToggleSubtask={toggleSubtask}
-          onLogTask={logTask}
-          onAddDailyTask={addDailyTask}
-          onRemoveDailyTask={removeDailyTask}
         />
       )}
 

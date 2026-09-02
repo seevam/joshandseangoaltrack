@@ -2,23 +2,20 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { Plus, Search, X, ChevronDown, Target } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { getGoalStatus, type Goal } from '@/lib/types';
+import { getGoalStatus } from '@/lib/types';
 import GoalCard from './GoalCard';
-import GoalDetail from '@/components/dashboard/GoalDetail';
-import { useGoalActions } from '@/lib/useGoalActions';
 
 const CATEGORIES = ['all', 'fitness', 'health', 'personal', 'career', 'finance', 'education'] as const;
 const STATUSES = ['active', 'completed', 'all'] as const;
 
 export default function GoalsPage() {
   const { user, isLoaded } = useUser();
-  const { goals, setGoals, selectedGoal, setSelectedGoal } = useGoalStore();
+  const router = useRouter();
+  const { goals, setGoals } = useGoalStore();
   const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
-  const actions = useGoalActions();
-
-  const [showDetail, setShowDetail] = useState(false);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<(typeof STATUSES)[number]>('active');
   const [category, setCategory] = useState<string>('all');
@@ -49,7 +46,7 @@ export default function GoalsPage() {
 
   return (
     <div className="min-h-screen bg-bg">
-      <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 space-y-5">
+      <div className="w-full mx-auto px-4 py-6 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
         <div className="animate-slide-up">
           <div>
             <h1 className="font-display text-3xl tracking-wide"><span className="text-brand-gradient">GO</span><span className="text-fg">ALS</span></h1>
@@ -97,26 +94,19 @@ export default function GoalsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
             {filtered.map((goal, i) => (
               <GoalCard
                 key={goal.id}
                 goal={goal}
                 index={i}
-                onClick={() => { setSelectedGoal(goal); setShowDetail(true); }}
+                onClick={() => router.push(`/goals/${goal.id}`)}
               />
             ))}
           </div>
         )}
       </div>
 
-      {showDetail && selectedGoal && (
-        <GoalDetail
-          goal={goals.find((g: Goal) => g.id === selectedGoal.id) || selectedGoal}
-          onClose={() => setShowDetail(false)}
-          {...actions}
-        />
-      )}
     </div>
   );
 }

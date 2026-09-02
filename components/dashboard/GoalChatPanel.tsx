@@ -108,7 +108,12 @@ Coach based on this real data. Be specific — reference actual numbers, streak,
   return { systemPrompt, openingMessage, quickPrompts };
 }
 
-export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: () => void }) {
+export default function GoalChatPanel({ goal, onClose, seed }: {
+  goal: Goal;
+  onClose: () => void;
+  /** Opening question to send on the user's behalf — used by Recovery Mode. */
+  seed?: string;
+}) {
   const { user } = useUser();
   const coachName = useGoalStore(s => s.coachName);
   const persona = useGoalStore(s => s.coachPersona);
@@ -170,6 +175,15 @@ export default function GoalChatPanel({ goal, onClose }: { goal: Goal; onClose: 
       setIsLoading(false);
     }
   };
+
+  // A seeded opening question (Recovery Mode) is asked on the user's behalf once.
+  const seeded = useRef(false);
+  useEffect(() => {
+    if (!seed || seeded.current) return;
+    seeded.current = true;
+    send(seed);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed]);
 
   return (
     // Full-screen modal on mobile, side sheet on larger screens

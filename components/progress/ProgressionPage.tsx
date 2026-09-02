@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
-import { Trophy, Lock, Award, Activity, Swords, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Trophy, Lock, Award, Activity, Swords, ChevronRight, Check } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { computeStats, earnedBadges, RANK_TIERS } from '@/lib/xp';
 import { buildActivityFeed } from '@/lib/activity';
@@ -14,10 +14,25 @@ export default function ProgressionPage() {
   const setGoals = useGoalStore(s => s.setGoals);
   const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
 
+  /*
+   * A failed fetch used to be swallowed, leaving every section on this page
+   * silently empty and indistinguishable from a new account — which reads as
+   * the page being broken. Loading and failure are now separate states.
+   */
+  const [load, setLoad] = useState<'idle' | 'loading' | 'error'>('idle');
+
+  const fetchGoals = useCallback(() => {
+    setLoad('loading');
+    fetch('/api/goals')
+      .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.json(); })
+      .then(g => { setGoals(g); setLoad('idle'); })
+      .catch(() => setLoad('error'));
+  }, [setGoals]);
+
   useEffect(() => {
-    if (goals.length) return;
-    fetch('/api/goals').then(r => (r.ok ? r.json() : [])).then(setGoals).catch(() => {});
-  }, [goals.length, setGoals]);
+    if (goals.length || load !== 'idle') return;
+    fetchGoals();
+  }, [goals.length, load, fetchGoals]);
 
   const stats = useMemo(() => computeStats(goals), [goals]);
   const badges = useMemo(() => earnedBadges(stats, goals), [stats, goals]);
@@ -119,7 +134,11 @@ export default function ProgressionPage() {
                   </div>
                   <div className="flex justify-between mt-1.5">
                     <span className="text-[10px] text-muted">
-                      {sk.goalCount > 0 ? `${sk.goalCount} goal${sk.goalCount === 1 ? '' : 's'}` : 'No goals yet'}
+                      {sk.derived
+                        ? 'Derived from consistency'
+                        : sk.goalCount > 0
+                          ? `${sk.goalCount} goal${sk.goalCount === 1 ? '' : 's'}`
+                          : 'No goals yet'}
                     </span>
                     <span className="text-[10px] text-muted">{sk.xp} XP</span>
                   </div>
@@ -171,8 +190,8 @@ export default function ProgressionPage() {
                     ['--i' as string]: i,
                     ...(current ? { borderColor: `${tier.color}80`, boxShadow: `0 0 20px ${tier.color}30` } : {}),
                   }}
-                  className={`relative rounded-xl border p-3 text-center stagger-fast ${
-                    current ? 'bg-elevated' : unlocked ? 'border-line bg-card' : 'border-line bg-card opacity-40'
+                  className={`relative rounded-xl border p-3 text-center stagger-fast glow-hover ${
+                    current ? 'bg-elevated' : 'border-line bg-card'
                   }`}
                 >
                   {current && (
@@ -208,15 +227,24 @@ export default function ProgressionPage() {
               <div
                 key={b.id}
                 style={{ ['--i' as string]: i, ...(b.isEarned ? { borderColor: `${b.color}59` } : {}) }}
-                className={`relative rounded-xl border p-3 text-center stagger-fast ${
-                  b.isEarned ? 'bg-elevated' : 'border-line bg-card opacity-40'
+                className={`relative rounded-xl border p-3 text-center stagger-fast glow-hover ${
+                  b.isEarned ? 'bg-elevated' : 'border-line bg-card'
                 }`}
               >
                 <BadgeArt slug={b.slug} size={60} dim={!b.isEarned} className="mx-auto mb-1.5" />
                 <p className={`text-xs font-semibold ${b.isEarned ? 'text-fg' : 'text-muted'}`}>{b.name}</p>
                 <p className="text-[10px] text-muted mt-0.5 leading-tight">{b.description}</p>
                 <p className={`text-[10px] font-semibold mt-1 ${b.isEarned ? 'text-brand' : 'text-muted-dim'}`}>+{b.xpReward} XP</p>
-                {!b.isEarned && <Lock className="h-3 w-3 absolute top-2 right-2 text-muted-dim" />}
+                {b.isEarned ? (
+                  <span
+                    title="Earned"
+                    className="absolute top-2 right-2 h-4 w-4 rounded-full bg-brand flex items-center justify-center"
+                  >
+                    <Check className="h-2.5 w-2.5 text-black" strokeWidth={3.5} />
+                  </span>
+                ) : (
+                  <Lock className="h-3 w-3 absolute top-2 right-2 text-muted-dim" />
+                )}
               </div>
             ))}
           </div>
@@ -229,7 +257,19 @@ export default function ProgressionPage() {
           <h2 className="flex items-center gap-2 font-semibold text-fg mb-4">
             <Activity className="h-4 w-4 text-brand" /> <span className="section-title">Activity History</span>
           </h2>
-          {feed.length === 0 ? (
+          {load === 'loading' ? (
+            <p className="text-sm text-muted text-center py-6" role="status">Loading your activity…</p>
+          ) : load === 'error' ? (
+            <div className="text-center py-6">
+              <p className="text-sm text-muted">Your activity could not be loaded.</p>
+              <button
+                onClick={fetchGoals}
+                className="mt-2 px-3 py-1.5 rounded-lg border border-line text-sm text-fg glow-hover"
+              >
+                Try again
+              </button>
+            </div>
+          ) : feed.length === 0 ? (
             <p className="text-sm text-muted text-center py-6">No activity yet. Complete your first task!</p>
           ) : (
             <div className="space-y-1">
@@ -241,8 +281,8 @@ export default function ProgressionPage() {
                 >
                   <Icon name={item.icon} className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: item.color }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-fg font-medium truncate">{item.title}</p>
-                    {item.description && <p className="text-xs text-muted truncate">{item.description}</p>}
+                    <p className="text-sm text-fg font-medium break-words">{item.title}</p>
+                    {item.description && <p className="text-xs text-muted break-words">{item.description}</p>}
                   </div>
                   <div className="text-right flex-shrink-0">
                     {item.xpGained > 0 && <p className="text-xs text-brand font-semibold">+{item.xpGained} XP</p>}

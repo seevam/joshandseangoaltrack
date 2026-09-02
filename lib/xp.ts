@@ -76,7 +76,7 @@ export interface UserStats {
   longestStreak: number;
 }
 
-function streaksFromCheckIns(all: string[]): { current: number; longest: number } {
+export function streaksFromCheckIns(all: string[]): { current: number; longest: number } {
   if (!all.length) return { current: 0, longest: 0 };
   const days = Array.from(new Set(all)).sort();
   let longest = 1, run = 1;

@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { computeStats } from '@/lib/xp';
-import { Icon } from '@/components/ui/icons';
+import { RankEmblem } from '@/components/ui/icons';
 
 const NAV = [
   { icon: LayoutDashboard, label: 'Dashboard',   href: '/home' },
@@ -98,21 +98,43 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
         </button>
       </nav>
 
-      {/* XP mini-display */}
-      {!collapsed && (
-        <div className="mx-2 mb-2 px-3 py-2 rounded-lg bg-brand/5 border border-brand/10 flex-shrink-0">
-          <div className="flex justify-between text-xs mb-1">
-            <span className="flex items-center gap-1.5 text-muted">
-              <Icon name={stats.rank.icon} className="h-3 w-3" style={{ color: stats.rank.color }} />
-              {stats.rank.name}
+      {/* Progression summary — rank emblem, name, level and XP progress.
+          Uses the real rank artwork rather than a stand-in glyph, and keeps the
+          emblem plus the bar visible when collapsed instead of disappearing. */}
+      <Link
+        href="/progress"
+        title={`${stats.rank.name} · Level ${stats.level} · ${stats.levelXp}/${stats.levelSpan} XP`}
+        className={`mx-2 mb-2 rounded-lg border border-line bg-card flex-shrink-0 glow-hover block ${
+          collapsed ? 'px-1.5 py-2' : 'px-3 py-2'
+        }`}
+      >
+        {collapsed ? (
+          <span className="flex flex-col items-center gap-1.5">
+            <RankEmblem slug={stats.rank.slug} size={28} />
+            <span className="w-full h-1 bg-elevated rounded-full overflow-hidden">
+              <span className="xp-bar-fill block h-full rounded-full" style={{ width: `${pct}%` }} />
             </span>
-            <span className="text-brand">Lv.{stats.level}</span>
-          </div>
-          <div className="h-1 bg-elevated rounded-full overflow-hidden">
-            <div className="xp-bar-fill h-full rounded-full" style={{ width: `${pct}%` }} />
-          </div>
-        </div>
-      )}
+          </span>
+        ) : (
+          <>
+            <span className="flex items-center gap-2 mb-1.5">
+              <RankEmblem slug={stats.rank.slug} size={28} className="flex-shrink-0" />
+              <span className="flex-1 min-w-0">
+                <span className="block text-xs font-semibold truncate" style={{ color: stats.rank.color }}>
+                  {stats.rank.name}
+                </span>
+                <span className="block text-[11px] text-muted truncate">Level {stats.level}</span>
+              </span>
+              <span className="text-[11px] text-brand font-semibold flex-shrink-0">
+                {stats.totalXp.toLocaleString()} XP
+              </span>
+            </span>
+            <span className="block h-1 bg-elevated rounded-full overflow-hidden">
+              <span className="xp-bar-fill block h-full rounded-full" style={{ width: `${pct}%` }} />
+            </span>
+          </>
+        )}
+      </Link>
 
       {/* User footer */}
       <div className="p-3 border-t border-line flex-shrink-0 relative">
@@ -123,9 +145,9 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
           }`}
         >
           {user?.imageUrl ? (
-            <img src={user.imageUrl} alt="" className="h-8 w-8 rounded-full object-cover border border-brand/20 flex-shrink-0" />
+            <img src={user.imageUrl} alt="" className="h-8 w-8 rounded-full object-cover bg-elevated border border-line flex-shrink-0" />
           ) : (
-            <span className="h-8 w-8 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-xs font-medium text-brand flex-shrink-0">
+            <span className="h-8 w-8 rounded-full bg-elevated border border-line flex items-center justify-center text-xs font-medium text-fg flex-shrink-0">
               {(user?.firstName?.[0] || user?.username?.[0] || '?').toUpperCase()}
             </span>
           )}
