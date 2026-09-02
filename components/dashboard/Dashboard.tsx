@@ -19,6 +19,7 @@ import {
 import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import PageHeader from '@/components/ui/PageHeader';
 
 /** Last level we played the celebration for, so a reload never replays it. */
 const LEVEL_KEY = 'gq_celebrated_level';
@@ -256,14 +257,13 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-bg pb-24 lg:pb-8">
         <div className="w-full mx-auto px-4 py-5 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
-          <div className="animate-slide-up">
-            <h1 className="text-2xl font-bold text-fg">
-              {`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}`}
-            </h1>
-            <p className="text-sm text-muted mt-0.5">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
+          <PageHeader
+            eyebrow={`Dashboard / ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
+            icon="target"
+            title="COMMAND CENTER"
+            accent="COMMAND"
+            subtitle={`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}. Everything due today, and the plan behind it.`}
+          />
           <p className="text-sm text-muted flex items-center gap-2 animate-slide-up" role="status">
             <span className="h-3.5 w-3.5 rounded-full border-2 border-line border-t-brand animate-spin" />
             Preparing today&apos;s tasks…
@@ -278,16 +278,21 @@ export default function Dashboard() {
       <div className="w-full mx-auto px-4 py-5 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
 
         {/* ── Header + rank ─────────────────────────────────────────────── */}
-        <div className="animate-slide-up">
-          <div>
-            <h1 className="text-2xl font-bold text-fg">
-              {`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}`}
-            </h1>
-            <p className="text-sm text-muted mt-0.5">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow={`Dashboard / ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
+          icon="target"
+          title="COMMAND CENTER"
+          accent="COMMAND"
+          subtitle={`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}. Everything due today, and the plan behind it.`}
+          right={
+            <button
+              onClick={() => setShowCreate(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black font-semibold text-sm transition-colors"
+            >
+              <Plus className="h-4 w-4" /> New Goal
+            </button>
+          }
+        />
 
         {/* ── XP + stat strip ───────────────────────────────────────────── */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

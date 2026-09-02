@@ -1,5 +1,5 @@
 import type { Goal } from './types';
-import { taskXp, milestoneXp, levelFromXp, xpForLevel, streaksFromCheckIns } from './xp';
+import { taskXp, milestoneXp, levelFromXp, xpForLevel, streaksFromCheckIns, rankFromXp } from './xp';
 
 /**
  * Skill domains, matching the reference app's set. Eight are goal-linked: a
@@ -77,6 +77,12 @@ export interface SkillStat {
   levelXp: number;
   levelSpan: number;
   goalCount: number;
+  /** Recurring task completions credited to this domain. */
+  tasks: number;
+  /** Milestones ("clears") credited to this domain. */
+  clears: number;
+  /** This domain's own rank on the shared ladder, from its own XP. */
+  rank: ReturnType<typeof rankFromXp>;
   /** True for the derived consistency domain, which no goal targets directly. */
   derived: boolean;
   /** Days since this domain last earned anything; null when it never has. */
@@ -95,6 +101,8 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
   const xp: Record<string, number> = {};
   const goalCount: Record<string, number> = {};
   const lastActive: Record<string, string> = {};
+  const taskHits: Record<string, number> = {};
+  const clearHits: Record<string, number> = {};
 
   // Discipline inputs, accumulated across every goal.
   let checkInCount = 0;
@@ -123,12 +131,15 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
       for (const [taskId, value] of Object.entries(day)) {
         if (value) {
           credit(taskXp(taskById.get(taskId)?.difficulty), date);
+          for (const d of domains) taskHits[d] = (taskHits[d] || 0) + 1;
           tasksDone++;
         }
       }
     }
     for (const s of goal.subtasks || []) {
-      if (s.completed) credit(milestoneXp(s.difficulty), goal.updatedAt?.split('T')[0]);
+      if (!s.completed) continue;
+      credit(milestoneXp(s.difficulty), goal.updatedAt?.split('T')[0]);
+      for (const d of domains) clearHits[d] = (clearHits[d] || 0) + 1;
     }
     for (const date of goal.checkIns || []) {
       credit(5, date);
@@ -167,6 +178,9 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
       id: d.id, name: d.name, icon: d.icon, color: d.color, blurb: d.blurb,
       xp: total, level, levelXp, levelSpan,
       goalCount: goalCount[d.id] || 0,
+      tasks: taskHits[d.id] || 0,
+      clears: clearHits[d.id] || 0,
+      rank: rankFromXp(total),
       derived: false,
       daysSinceActive: daysSince(lastActive[d.id]),
     };
@@ -178,6 +192,9 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
     color: DISCIPLINE.color, blurb: DISCIPLINE.blurb,
     xp: disciplineXp, level: dl.level, levelXp: dl.levelXp, levelSpan: dl.levelSpan,
     goalCount: goals.length,
+    tasks: tasksDone,
+    clears: 0,
+    rank: rankFromXp(disciplineXp),
     derived: true,
     daysSinceActive: daysSince(disciplineLast),
   });
