@@ -3,6 +3,7 @@
 import { ChevronRight } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, type Goal, type Category } from '@/lib/types';
 import { computeGoalHealth } from '@/lib/goalHealth';
+import { currentStage } from '@/lib/stages';
 import { AnimatedNumber } from '@/components/ui/motion';
 
 /**
@@ -14,6 +15,7 @@ export default function GoalCard({ goal, onClick, preview = false, index = 0 }: 
 }) {
   const progress = getGoalProgress(goal);
   const health = computeGoalHealth(goal);
+  const stage = currentStage(goal);
   const status = getGoalStatus(goal);
   const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
 
@@ -50,6 +52,15 @@ export default function GoalCard({ goal, onClick, preview = false, index = 0 }: 
           />
         </div>
       </div>
+
+      {stage && (
+        <p className="flex items-center gap-1.5 text-xs text-muted mt-2.5 min-w-0">
+          <span className="text-[10px] uppercase tracking-[0.12em] text-brand flex-shrink-0">
+            Phase {stage.index + 1}
+          </span>
+          <span className="truncate">{stage.stage.title}</span>
+        </p>
+      )}
 
       {/* Compact goal health — one honest signal per card, on both surfaces. */}
       <div className="flex items-center gap-2 mt-3">

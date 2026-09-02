@@ -13,6 +13,7 @@ import { useGoalActions } from '@/lib/useGoalActions';
 import { IconTile } from '@/components/ui/icons';
 import { AnimatedNumber, AnimatedCheck, Reveal } from '@/components/ui/motion';
 import { GoalHealthCard, RecoveryModeCard } from './AdaptiveTools';
+import { stageBreakdown } from '@/lib/stages';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
 
@@ -139,6 +140,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const todayCompletions = (goal.taskCompletions || {})[today] || {};
   const daysLeft = goal.endDate ? Math.ceil((new Date(goal.endDate).getTime() - Date.now()) / 86400000) : null;
 
+  const stages = useMemo(() => stageBreakdown(goal), [goal]);
   const milestones = goal.subtasks || [];
   const doneCount = milestones.filter(s => s.completed).length;
   const recurringTasks = goal.dailyTasks || [];
@@ -257,6 +259,84 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
           <RecoveryModeCard goal={goal} />
         </div>
       </Reveal>
+
+      {/* ── 3. Journey stages ───────────────────────────────────────────── */}
+      {stages.length > 0 && (
+        <Reveal>
+          <div className="card-glow rounded-2xl p-4 sm:p-5">
+            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-brand mb-1">Journey</p>
+                <h2 className="section-title text-lg text-fg">Stages</h2>
+              </div>
+              <p className="text-xs text-muted flex-shrink-0">
+                {stages.filter(st => st.status === 'complete').length}/{stages.length} phases complete
+              </p>
+            </div>
+
+            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
+              {stages.map(st => (
+                <div
+                  key={st.stage.id}
+                  style={{ ['--i' as string]: st.index }}
+                  className={`stagger-fast rounded-xl border p-3.5 ${
+                    st.status === 'current'
+                      ? 'border-brand/40 bg-[var(--brand-light)]'
+                      : 'border-line bg-card'
+                  } ${st.status === 'upcoming' ? 'opacity-70' : ''}`}
+                >
+                  <div className="flex items-start gap-2.5 mb-2">
+                    <span
+                      className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 ${
+                        st.status === 'complete'
+                          ? 'bg-brand/20 text-brand'
+                          : st.status === 'current'
+                            ? 'bg-brand text-black'
+                            : 'bg-elevated border border-line text-muted'
+                      }`}
+                    >
+                      {st.status === 'complete' ? <Check className="h-3 w-3" strokeWidth={3} /> : st.index + 1}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-fg break-words">{st.stage.title}</p>
+                      {st.stage.subtitle && (
+                        <p className="text-xs text-brand mt-0.5 break-words">{st.stage.subtitle}</p>
+                      )}
+                    </div>
+                    {/* Phase state never rests on colour alone. */}
+                    <span className="text-[10px] uppercase tracking-[0.12em] text-muted flex-shrink-0">
+                      {st.status === 'current' ? 'Now' : st.status === 'complete' ? 'Done' : `Phase ${st.index + 1}`}
+                    </span>
+                  </div>
+
+                  {st.stage.purpose && (
+                    <p className="text-xs text-muted leading-relaxed break-words mb-2.5">{st.stage.purpose}</p>
+                  )}
+
+                  <div className="h-1.5 bg-track rounded-full overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-brand transition-[width] duration-700 ease-out"
+                      style={{ width: `${st.percent}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted mt-1.5">
+                    {st.total > 0 ? `${st.done}/${st.total} milestones` : 'No milestones in this phase'}
+                  </p>
+
+                  {st.status === 'current' && st.stage.guidance && (
+                    <div className="mt-2.5 rounded-lg border border-line bg-card p-2.5">
+                      <p className="text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
+                        Approach
+                      </p>
+                      <p className="text-xs text-fg leading-relaxed break-words">{st.stage.guidance}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+      )}
 
       {/* ── 3. Next milestone — the checkpoint to aim at now ────────────── */}
       {nextMilestone && (

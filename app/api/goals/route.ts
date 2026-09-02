@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         startDate: body.startDate || null,
         endDate: body.endDate || null,
         color: body.color || '#58CC02',
+        stages: body.stages ?? [],
         subtasks: body.subtasks ?? [],
         dailyTasks: body.dailyTasks ?? [],
         taskCompletions: body.taskCompletions ?? {},

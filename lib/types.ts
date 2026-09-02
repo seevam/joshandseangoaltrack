@@ -1,8 +1,26 @@
 export type Category = 'personal' | 'health' | 'career' | 'finance' | 'education' | 'fitness';
 
+/**
+ * A phase of the journey. Stages stop a long plan reading as one flat list:
+ * every milestone and recurring task belongs to one, and the goal's current
+ * stage is derived from which milestones are still outstanding.
+ */
+export interface GoalStage {
+  id: string;
+  title: string;
+  /** Four to six words on what this phase achieves. */
+  subtitle: string;
+  /** Why this phase exists. */
+  purpose?: string;
+  /** Concrete approach for this phase. */
+  guidance?: string;
+}
+
 export interface Subtask {
   id: number;
   title: string;
+  /** Which stage this milestone belongs to. */
+  stageId?: string;
   description?: string;
   daysFromStart: number;
   completed: boolean;
@@ -13,6 +31,8 @@ export interface Subtask {
 export interface DailyTask {
   id: number;
   title: string;
+  /** Which stage this recurring task belongs to. */
+  stageId?: string;
   /** First concrete instruction, surfaced by Next Action. AI-populated. */
   description?: string;
   /** Planned minutes. Only rendered when present — never guessed. */
@@ -66,6 +86,7 @@ export interface Goal {
   color: string;
   createdAt: string;
   updatedAt: string;
+  stages: GoalStage[];
   subtasks: Subtask[];
   dailyTasks: DailyTask[];
   taskCompletions: Record<string, Record<string, TaskCompletionValue>>;

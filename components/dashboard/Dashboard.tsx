@@ -21,6 +21,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import MissionCard, { type Mission } from './MissionCard';
+import { currentStage } from '@/lib/stages';
 import FocusMode from './FocusMode';
 
 /** Last level we played the celebration for, so a reload never replays it. */
@@ -230,6 +231,12 @@ export default function Dashboard() {
   /** The single task to start next: the first one due today that isn't done. */
   const nextAction = useMemo(() => todaysTasks.find(t => !t.value) ?? null, [todaysTasks]);
 
+  /** Which phase of its goal that task sits in, so the work has context. */
+  const nextStage = useMemo(
+    () => (nextAction ? currentStage(nextAction.goal) : null),
+    [nextAction],
+  );
+
   const previewGoals = useMemo(
     () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 3),
     [goals],
@@ -374,6 +381,7 @@ export default function Dashboard() {
                 <h2 className="text-xl sm:text-2xl font-bold text-fg break-words">{nextAction.task.title}</h2>
                 <p className="text-[11px] uppercase tracking-[0.14em] text-brand mt-1.5">
                   Your first move for today
+                  {nextStage && <span className="text-muted"> · {nextStage.stage.title}</span>}
                 </p>
                 <p className="text-sm text-muted mt-2.5 leading-relaxed break-words">
                   {nextAction.task.description

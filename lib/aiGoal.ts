@@ -99,6 +99,9 @@ SCHEDULING:
 }
 
 const PLAN_RULES = `PLAN RULES (for create_goal):
+- 3-5 stages: the ordered phases of the journey. Every milestone and task carries
+  the stageId of the phase it belongs to, so a long plan reads as a journey rather
+  than one flat list. If you showed the user draft chapters, save those same ones.
 - 10-12 milestones spaced every 2-3 weeks — highly specific and measurable, never generic
 - Each milestone MUST include a 2-3 sentence description: a practical action guide for that phase
 - 3-5 recurring tasks with exact amounts in the title (e.g. "Run 5km at easy pace")
@@ -345,6 +348,24 @@ export function buildGoalTools() {
             unit:        { type: 'string', description: 'Unit (books, km, kg, $, etc.)' },
             deadline:    { type: 'string', description: `YYYY-MM-DD. Today is ${today}.` },
             why:         { type: 'string', description: 'Brief goal description (1-2 sentences).' },
+            stages: {
+              type: 'array',
+              description:
+                'The 3-5 ordered phases of this journey. When you have already shown '
+                + 'the user draft chapters during a consultation, these MUST be those '
+                + 'same chapters — the plan they agreed to build is the plan you save.',
+              items: {
+                type: 'object',
+                properties: {
+                  id:       { type: 'string', description: 'Short slug, e.g. "base-building". Referenced by milestones.' },
+                  title:    { type: 'string' },
+                  subtitle: { type: 'string', description: 'Four to six words on what this phase achieves' },
+                  purpose:  { type: 'string', description: 'One sentence: why this phase exists' },
+                  guidance: { type: 'string', description: 'One sentence of concrete approach' },
+                },
+                required: ['id', 'title', 'subtitle'],
+              },
+            },
             subtasks: {
               type: 'array',
               description: '10-12 milestones spaced every 2-3 weeks.',
@@ -352,6 +373,7 @@ export function buildGoalTools() {
                 type: 'object',
                 properties: {
                   title:         { type: 'string', description: 'Specific, measurable milestone title' },
+                  stageId:       { type: 'string', description: 'id of the stage this milestone belongs to' },
                   description:   { type: 'string', description: '2-3 sentence action guide for this phase' },
                   daysFromStart: { type: 'number', description: 'Day from today; must be ≤ days until deadline' },
                   difficulty:    { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
@@ -366,6 +388,7 @@ export function buildGoalTools() {
                 type: 'object',
                 properties: {
                   title:      { type: 'string', description: 'Full task with amount, e.g. "Run 5km"' },
+                  stageId:    { type: 'string', description: 'id of the stage this task belongs to' },
                   daysOfWeek: { type: 'array', items: { type: 'number' }, description: '0=Sun…6=Sat, e.g. [1,3,5]' },
                   type:       { type: 'string', enum: ['checkbox'] },
                   difficulty: { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
@@ -401,24 +424,47 @@ export function buildGoalTools() {
   ];
 }
 
-interface RawSubtask { title: string; description?: string; daysFromStart: number; difficulty?: string }
+interface RawSubtask {
+  title: string; stageId?: string; description?: string;
+  daysFromStart: number; difficulty?: string;
+}
+interface RawStage { id?: string; title?: string; subtitle?: string; purpose?: string; guidance?: string }
 interface RawTask {
-  title: string; daysOfWeek?: number[]; type: string; difficulty?: string;
+  title: string; stageId?: string; daysOfWeek?: number[]; type: string; difficulty?: string;
   description?: string; estimatedMinutes?: number; setup?: string;
   executionSteps?: string[]; successCriteria?: string; fallback?: string;
 }
 
 export interface CreateGoalArgs {
   title: string; category: string; targetValue: number; unit: string;
-  deadline: string; why: string; subtasks?: RawSubtask[]; dailyTasks?: RawTask[];
+  deadline: string; why: string;
+  stages?: RawStage[]; subtasks?: RawSubtask[]; dailyTasks?: RawTask[];
 }
 
 /** Turns raw tool-call arguments into a persisted Goal. Returns null on failure. */
 export async function materialiseGoal(args: CreateGoalArgs): Promise<Goal | null> {
   const now = Date.now();
+
+  /*
+   * Stage ids are normalised here rather than trusted from the model, and the
+   * map lets a milestone referencing a stage that was never defined fall back
+   * to no stage instead of pointing at nothing.
+   */
+  const stages = (args.stages || [])
+    .filter(st => st.title)
+    .map((st, i) => ({
+      id: (st.id || `stage-${i + 1}`).trim(),
+      title: st.title!,
+      subtitle: st.subtitle || '',
+      purpose: st.purpose,
+      guidance: st.guidance,
+    }));
+  const stageIds = new Set(stages.map(st => st.id));
+  const stageOf = (id?: string) => (id && stageIds.has(id) ? id : undefined);
   const subtasks = (args.subtasks || []).map((s, i) => ({
     id: now + i,
     title: s.title,
+    stageId: stageOf(s.stageId),
     description: s.description || s.title,
     daysFromStart: s.daysFromStart ?? (i + 1) * 14,
     completed: false,
@@ -427,6 +473,7 @@ export async function materialiseGoal(args: CreateGoalArgs): Promise<Goal | null
   const dailyTasks = (args.dailyTasks || []).map((t, i) => ({
     id: now + 1000 + i,
     title: t.title,
+    stageId: stageOf(t.stageId),
     targetValue: null,
     unit: '',
     type: 'checkbox' as const,
@@ -458,6 +505,7 @@ export async function materialiseGoal(args: CreateGoalArgs): Promise<Goal | null
       startDate: new Date().toISOString(),
       endDate: new Date(args.deadline).toISOString(),
       color: CATEGORY_HEX[args.category] || '#5DBC70',
+      stages,
       subtasks,
       dailyTasks,
       progressHistory: [{ date: new Date().toISOString(), value: 0 }],
