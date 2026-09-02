@@ -1,9 +1,9 @@
 import type { Goal } from './types';
-import { taskXp, milestoneXp } from './xp';
+import { milestoneXp, completionXp } from './xp';
 
 export interface ActivityItem {
   id: string;
-  type: 'task_completed' | 'milestone_completed' | 'goal_created' | 'check_in';
+  type: 'task_completed' | 'task_recovered' | 'milestone_completed' | 'goal_created' | 'check_in';
   title: string;
   description?: string;
   xpGained: number;
@@ -26,15 +26,20 @@ export function buildActivityFeed(goals: Goal[], limit = 25): ActivityItem[] {
       for (const [taskId, value] of Object.entries(day)) {
         if (!value) continue;
         const task = taskById.get(taskId);
+        // The recovery version reads as its own kind of event, not a lesser
+        // task completion — momentum preserved, not a failure.
+        const recovered = value === 'fallback';
         items.push({
           id: `task-${goal.id}-${taskId}-${date}`,
-          type: 'task_completed',
-          title: task?.title || 'Task completed',
+          type: recovered ? 'task_recovered' : 'task_completed',
+          title: recovered
+            ? `${task?.title || 'Task'} — 10-minute version`
+            : (task?.title || 'Task completed'),
           description: goal.title,
-          xpGained: taskXp(task?.difficulty),
+          xpGained: completionXp(value, task?.difficulty),
           date,
-          icon: 'footprints',
-          color: '#5DBC70',
+          icon: recovered ? 'waves' : 'footprints',
+          color: recovered ? '#38BDF8' : '#5DBC70',
         });
       }
     }

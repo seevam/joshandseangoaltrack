@@ -4,11 +4,11 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Target, Plus, CheckCircle, AlertTriangle, ChevronRight, Search, X,
-  Zap, Trophy, Flame, ListChecks, Activity, Clock, ArrowUpRight, CalendarClock,
+  Zap, Trophy, Flame, ListChecks, Activity, Clock, ArrowUpRight, CalendarClock, Crosshair,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
-import { computeStats, earnedBadges, taskXp, milestoneXp } from '@/lib/xp';
+import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category, type TaskCompletionValue } from '@/lib/types';
+import { computeStats, earnedBadges, taskXp, milestoneXp, completionXp } from '@/lib/xp';
 import { buildActivityFeed } from '@/lib/activity';
 import { maybeNotifyTodaysTasks } from '@/lib/notifications';
 import { XPBar, CategoryBadge, BadgeTile, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
@@ -20,6 +20,8 @@ import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
+import MissionCard, { type Mission } from './MissionCard';
+import FocusMode from './FocusMode';
 
 /** Last level we played the celebration for, so a reload never replays it. */
 const LEVEL_KEY = 'gq_celebrated_level';
@@ -41,6 +43,7 @@ export default function Dashboard() {
   const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
   const prevLevel = useRef<number | null>(null);
   const [goalsSettled, setGoalsSettled] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -127,7 +130,7 @@ export default function Dashboard() {
     } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
-  const logTask = async (goalId: string, taskId: number, value: number | boolean, origin?: { x: number; y: number }) => {
+  const logTask = async (goalId: string, taskId: number, value: TaskCompletionValue, origin?: { x: number; y: number }) => {
     const today = new Date().toISOString().split('T')[0];
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -140,7 +143,7 @@ export default function Dashboard() {
       updateGoal(saved);
       if (value) {
         const task = (goal.dailyTasks || []).find(t => t.id === taskId);
-        fireXp(taskXp(task?.difficulty), origin);
+        fireXp(completionXp(value, task?.difficulty), origin);
         setFlashTask(`${goalId}-${taskId}`);
         setTimeout(() => setFlashTask(null), 650);
       }
@@ -210,22 +213,22 @@ export default function Dashboard() {
 
   /** Every recurring task scheduled for today, flattened across goals. */
   const todaysTasks = useMemo(() => {
-    const out: { goal: Goal; task: Goal['dailyTasks'][0]; done: boolean }[] = [];
+    const out: Mission[] = [];
     for (const goal of goals) {
       if (getGoalStatus(goal) === 'completed') continue;
       const completions = (goal.taskCompletions || {})[todayStr] || {};
       for (const task of goal.dailyTasks || []) {
         const days = task.daysOfWeek;
         if (!days || days.length === 0 || days.includes(todayDow)) {
-          out.push({ goal, task, done: !!completions[task.id] });
+          out.push({ goal, task, value: completions[task.id] });
         }
       }
     }
-    return out.sort((a, b) => Number(a.done) - Number(b.done));
+    return out.sort((a, b) => Number(!!a.value) - Number(!!b.value));
   }, [goals, todayStr, todayDow]);
 
   /** The single task to start next: the first one due today that isn't done. */
-  const nextAction = useMemo(() => todaysTasks.find(t => !t.done) ?? null, [todaysTasks]);
+  const nextAction = useMemo(() => todaysTasks.find(t => !t.value) ?? null, [todaysTasks]);
 
   const previewGoals = useMemo(
     () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 3),
@@ -233,7 +236,7 @@ export default function Dashboard() {
   );
   const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
   const completedGoals = goals.filter(g => getGoalStatus(g) === 'completed').length;
-  const doneToday = todaysTasks.filter(t => t.done).length;
+  const doneToday = todaysTasks.filter(t => !!t.value).length;
 
   const dueSoon = goals.filter(g => {
     if (!g.endDate || getGoalStatus(g) !== 'in-progress') return false;
@@ -467,20 +470,20 @@ export default function Dashboard() {
                     key={`${item.goal.id}-${item.task.id}`}
                     style={{ ['--i' as string]: i }}
                     className={`stagger-fast glow-hover rounded-xl border p-3.5 ${
-                      item.done ? 'border-brand/30 bg-[var(--brand-light)]' : 'border-line bg-card'
+                      item.value ? 'border-brand/30 bg-[var(--brand-light)]' : 'border-line bg-card'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <span
                         className={`h-6 w-6 rounded-full border flex items-center justify-center text-[11px] font-semibold flex-shrink-0 ${
-                          item.done ? 'border-brand text-brand' : 'border-line-strong text-muted'
+                          item.value ? 'border-brand text-brand' : 'border-line-strong text-muted'
                         }`}
                         aria-hidden
                       >
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold break-words ${item.done ? 'line-through text-muted' : 'text-fg'}`}>
+                        <p className={`text-sm font-semibold break-words ${item.value ? 'line-through text-muted' : 'text-fg'}`}>
                           {item.task.title}
                         </p>
                         <p className="text-xs text-muted mt-1 break-words">
@@ -502,63 +505,63 @@ export default function Dashboard() {
           </Reveal>
         )}
 
-        {/* ── Today's tasks + upcoming milestones ───────────────────────── */}
+        {/* ── Missions beside activity ──────────────────────────────────── */}
         <Reveal><div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Today's missions */}
-          <div className="lg:col-span-2 card-glow rounded-2xl p-4 animate-slide-up">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-fg flex items-center gap-2">
-                <ListChecks className="h-4 w-4 text-brand" /> <span className="section-title">Today&apos;s Tasks</span>
-              </h2>
-              <span className="text-xs text-muted">{doneToday}/{todaysTasks.length} done</span>
+          <div className="lg:col-span-2 card-glow rounded-2xl p-4 sm:p-5 animate-slide-up">
+            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+              <div className="min-w-0">
+                <h2 className="font-semibold text-fg flex items-center gap-2">
+                  <Target className="h-4 w-4 text-brand" />
+                  <span className="section-title">Today&apos;s Missions</span>
+                </h2>
+                <p className="text-sm text-muted mt-1 hidden sm:block">Every task due today.</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted">
+                  {doneToday}/{todaysTasks.length} complete
+                </span>
+                {todaysTasks.some(m => !m.value) && (
+                  <button
+                    onClick={() => setFocusOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-fg text-xs font-semibold glow-hover"
+                  >
+                    <Crosshair className="h-3.5 w-3.5 text-brand" /> Focus Mode
+                  </button>
+                )}
+              </div>
             </div>
 
             {todaysTasks.length === 0 ? (
-              <div className="text-center py-8">
-                <Target className="h-8 w-8 mx-auto mb-2 text-muted/40" />
-                <p className="text-sm text-muted">
-                  Nothing scheduled today.{' '}
-                  <button onClick={() => setShowCreate(true)} className="text-brand hover:underline">Create a goal</button> to get started.
+              <div className="text-center py-10">
+                <Target className="h-8 w-8 mx-auto mb-3 text-muted-dim" />
+                <p className="text-sm font-medium text-fg">No missions due today</p>
+                <p className="text-sm text-muted mt-1 max-w-sm mx-auto leading-relaxed">
+                  {goals.length === 0
+                    ? 'Create a goal and your coach will break it into daily missions.'
+                    : 'None of your goals have recurring work scheduled for today.'}
                 </p>
+                <button
+                  onClick={() => (goals.length === 0 ? setShowCreate(true) : router.push('/goals'))}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-black text-sm font-semibold"
+                >
+                  {goals.length === 0 ? 'Create a goal' : 'Open goals'}
+                </button>
               </div>
             ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto thin-scroll">
-                {todaysTasks.map(({ goal, task, done }, i) => {
-                  const key = `${goal.id}-${task.id}`;
-                  const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
-                  return (
-                    <div
-                      key={key}
-                      id={`task-${key}`}
-                      className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 stagger-fast ${flashTask === key ? 'task-flash task-complete-anim' : ''} ${
-                        done ? 'border-brand/30 bg-brand/10' : 'border-line bg-elevated hover:border-brand/40 hover:translate-x-0.5'
-                      }`}
-                      style={{ ['--i' as string]: i }}
-                    >
-                      <AnimatedCheck
-                        checked={done}
-                        size={24}
-                        color={cat.hex}
-                        onClick={() => {
-                          const el = document.getElementById(`task-${key}`);
-                          const r = el?.getBoundingClientRect();
-                          logTask(goal.id, task.id, !done,
-                            r ? { x: r.left + 12, y: r.top + r.height / 2 } : undefined);
-                        }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${done ? 'line-through text-muted' : 'text-fg'}`}>
-                          {task.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted truncate">{goal.title}</span>
-                          <CategoryBadge category={goal.category} />
-                        </div>
-                      </div>
-                      <XpPill xp={taskXp(task.difficulty)} />
-                    </div>
-                  );
-                })}
+              <div className="space-y-2 max-h-[30rem] overflow-y-auto thin-scroll pr-1">
+                {todaysTasks.map((m, i) => (
+                  <MissionCard
+                    key={`${m.goal.id}-${m.task.id}`}
+                    mission={m}
+                    index={i}
+                    flashing={flashTask === `${m.goal.id}-${m.task.id}`}
+                    onComplete={() => logTask(m.goal.id, m.task.id, true)}
+                    onUndo={() => logTask(m.goal.id, m.task.id, false)}
+                    onRecover={() => logTask(m.goal.id, m.task.id, 'fallback')}
+                    onOpenGoal={() => router.push(`/goals/${m.goal.id}`)}
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -649,6 +652,14 @@ export default function Dashboard() {
       </div>
 
       {/* ── Overlays ────────────────────────────────────────────────────── */}
+      {focusOpen && (
+        <FocusMode
+          missions={todaysTasks}
+          onComplete={m => { logTask(m.goal.id, m.task.id, true); }}
+          onClose={() => setFocusOpen(false)}
+        />
+      )}
+
       {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
       {sparks && <Sparks key={sparks.id} x={sparks.x} y={sparks.y} />}
       {levelUp && (

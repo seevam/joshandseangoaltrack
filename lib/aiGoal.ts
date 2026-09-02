@@ -102,6 +102,12 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
 - 10-12 milestones spaced every 2-3 weeks — highly specific and measurable, never generic
 - Each milestone MUST include a 2-3 sentence description: a practical action guide for that phase
 - 3-5 recurring tasks with exact amounts in the title (e.g. "Run 5km at easy pace")
+- Every task needs protocol detail so the user never has to invent the missing steps:
+  a one-sentence first instruction, realistic estimatedMinutes, 2-5 ordered
+  executionSteps, and successCriteria. Add setup when anything must be prepared.
+- Add a "fallback" — a real ~10-minute version — ONLY where an honest reduction
+  exists. Omit it when the task cannot be shrunk; a fabricated fallback is worse
+  than none, because the user is offered a recovery that does not help.
 - ALL tasks type="checkbox". Schedule logically (physical goals 3-5x/week, not daily)
 - daysFromStart MUST be ≤ total days from today to the deadline. Space them evenly.
 - DIFFICULTY: assign every milestone and task a difficulty ("easy" | "medium" | "hard" | "epic")
@@ -363,8 +369,28 @@ export function buildGoalTools() {
                   daysOfWeek: { type: 'array', items: { type: 'number' }, description: '0=Sun…6=Sat, e.g. [1,3,5]' },
                   type:       { type: 'string', enum: ['checkbox'] },
                   difficulty: { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
+                  description: { type: 'string', description: 'The first concrete instruction, one sentence.' },
+                  estimatedMinutes: { type: 'number', description: 'Realistic minutes for this task.' },
+                  setup: { type: 'string', description: 'What to have ready before starting.' },
+                  executionSteps: {
+                    type: 'array',
+                    description: '2-5 ordered actions that make up the task.',
+                    items: { type: 'string' },
+                  },
+                  successCriteria: { type: 'string', description: 'How they know it is done.' },
+                  fallback: {
+                    type: 'string',
+                    description:
+                      'A genuinely smaller ~10-minute version of this task, when an honest '
+                      + 'one exists (e.g. "Run 10 minutes easy" for a 45-minute run). OMIT '
+                      + 'entirely when the task cannot be meaningfully reduced — never '
+                      + 'invent one, the UI hides the recovery action when it is absent.',
+                  },
                 },
-                required: ['title', 'daysOfWeek', 'type', 'difficulty'],
+                required: [
+                  'title', 'daysOfWeek', 'type', 'difficulty',
+                  'description', 'estimatedMinutes', 'executionSteps', 'successCriteria',
+                ],
               },
             },
           },
@@ -376,7 +402,11 @@ export function buildGoalTools() {
 }
 
 interface RawSubtask { title: string; description?: string; daysFromStart: number; difficulty?: string }
-interface RawTask { title: string; daysOfWeek?: number[]; type: string; difficulty?: string }
+interface RawTask {
+  title: string; daysOfWeek?: number[]; type: string; difficulty?: string;
+  description?: string; estimatedMinutes?: number; setup?: string;
+  executionSteps?: string[]; successCriteria?: string; fallback?: string;
+}
 
 export interface CreateGoalArgs {
   title: string; category: string; targetValue: number; unit: string;
@@ -402,6 +432,17 @@ export async function materialiseGoal(args: CreateGoalArgs): Promise<Goal | null
     type: 'checkbox' as const,
     daysOfWeek: t.daysOfWeek || [],
     difficulty: (t.difficulty as 'easy' | 'medium' | 'hard' | 'epic') || 'medium',
+    // Protocol detail. Each is optional in the UI and rendered only when the
+    // model actually supplied it, so a sparse response degrades rather than
+    // showing empty headings.
+    description: t.description,
+    estimatedMinutes: typeof t.estimatedMinutes === 'number'
+      ? Math.min(Math.max(Math.round(t.estimatedMinutes), 5), 240)
+      : undefined,
+    setup: t.setup,
+    executionSteps: Array.isArray(t.executionSteps) ? t.executionSteps.filter(Boolean) : undefined,
+    successCriteria: t.successCriteria,
+    fallback: t.fallback,
   }));
 
   const res = await fetch('/api/goals', {

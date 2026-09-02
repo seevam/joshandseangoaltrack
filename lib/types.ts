@@ -17,6 +17,18 @@ export interface DailyTask {
   description?: string;
   /** Planned minutes. Only rendered when present — never guessed. */
   estimatedMinutes?: number;
+  /** What to have ready before starting. */
+  setup?: string;
+  /** Ordered actions that make up the task. */
+  executionSteps?: string[];
+  /** How the user knows the task is done. */
+  successCriteria?: string;
+  /**
+   * A genuinely smaller version of this task, roughly ten minutes. Absent when
+   * no honest reduction exists — the recovery action is then not offered
+   * rather than inventing one.
+   */
+  fallback?: string;
   targetValue: number | null;
   unit: string;
   type: 'number' | 'checkbox';
@@ -24,6 +36,16 @@ export interface DailyTask {
   /** Assigned by the AI from task difficulty — drives XP. Never user-editable. */
   difficulty?: 'easy' | 'medium' | 'hard' | 'epic';
 }
+
+/**
+ * How a recurring task was completed on a given day.
+ *
+ * 'fallback' marks the ten-minute recovery version. It is a *string* on
+ * purpose: every existing "is this done?" check in the app is a truthiness
+ * test, and a truthy string keeps all of them correct without modification,
+ * while XP and the activity feed can still tell the two apart.
+ */
+export type TaskCompletionValue = boolean | number | 'fallback';
 
 export interface ProgressEntry {
   date: string;
@@ -46,7 +68,7 @@ export interface Goal {
   updatedAt: string;
   subtasks: Subtask[];
   dailyTasks: DailyTask[];
-  taskCompletions: Record<string, Record<string, number | boolean>>;
+  taskCompletions: Record<string, Record<string, TaskCompletionValue>>;
   checkIns: string[];
   progressHistory: ProgressEntry[];
   milestones: unknown[];
