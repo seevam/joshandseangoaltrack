@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Download, CalendarDays, AlertTriangle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download, CalendarDays, AlertTriangle, CheckCircle2, Flag } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, type Goal } from '@/lib/types';
 import { Icon } from '@/components/ui/icons';
@@ -55,6 +55,20 @@ export default function CalendarView() {
       });
     });
     return out;
+  }, [goals]);
+
+  /** Milestones whose target date lands on this day, across all goals. */
+  const milestonesForDate = useCallback((date: Date): number => {
+    const key = iso(date);
+    let count = 0;
+    for (const goal of goals) {
+      if (!goal.startDate) continue;
+      const start = new Date(goal.startDate).getTime();
+      for (const m of goal.subtasks || []) {
+        if (iso(new Date(start + m.daysFromStart * 86400000)) === key) count++;
+      }
+    }
+    return count;
   }, [goals]);
 
   const logTask = async (goalId: string, taskId: number, dateStr: string, done: boolean) => {
@@ -206,20 +220,29 @@ export default function CalendarView() {
             </button>
           </div>
 
-          <div className="grid grid-cols-7 mb-1">
+          <div className="grid grid-cols-7 border border-line rounded-t-xl overflow-hidden bg-elevated">
             {WEEKDAYS.map((d, i) => (
-              <span key={i} className="text-[11px] font-medium text-muted text-center py-1.5">{d}</span>
+              <span
+                key={i}
+                className="text-[10px] sm:text-[11px] font-semibold tracking-[0.14em] text-brand text-center py-2 uppercase"
+              >
+                {d}
+              </span>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-1">
+          {/* Real month-grid cells: date in a circle, work summarised as chips
+              inside the cell, today lit. Cells share borders so the grid reads
+              as one board rather than detached tiles. */}
+          <div className="grid grid-cols-7 border-l border-b border-line rounded-b-xl overflow-hidden">
             {cells.map((d, i) => {
-              if (!d) return <span key={i} />;
+              if (!d) return <span key={i} className="border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem]" />;
               const tasks = getTasksForDate(d);
               const done = tasks.filter(t => t.done).length;
               const isToday = d.getTime() === today.getTime();
               const isSel = d.getTime() === selected.getTime();
               const allDone = tasks.length > 0 && done === tasks.length;
+              const milestones = milestonesForDate(d);
               return (
                 <button
                   key={i}
@@ -227,18 +250,38 @@ export default function CalendarView() {
                   aria-label={d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                   aria-current={isToday ? 'date' : undefined}
                   aria-pressed={isSel}
-                  className={`aspect-square rounded-lg flex flex-col items-center justify-center gap-1 text-sm transition-colors border ${
-                    isToday ? 'day-today' : ''
-                  } ${
-                    isSel ? 'border-brand text-fg font-bold' : 'border-transparent hover:border-line-strong'
-                  } ${isToday && !isSel ? 'text-brand font-bold' : isSel ? '' : 'text-muted'}`}
+                  className={`relative border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem] p-1.5 flex flex-col gap-1 text-left transition-colors ${
+                    isToday ? 'day-today' : isSel ? 'bg-elevated' : 'hover:bg-elevated'
+                  } ${isSel && !isToday ? 'ring-1 ring-inset ring-brand/50' : ''}`}
                 >
-                  {d.getDate()}
+                  <span
+                    className={`h-6 w-6 flex-shrink-0 rounded-full flex items-center justify-center text-[11px] transition-colors ${
+                      isToday
+                        ? 'bg-brand text-black font-bold'
+                        : `border border-line ${isSel ? 'text-fg font-semibold' : 'text-muted'}`
+                    }`}
+                  >
+                    {d.getDate()}
+                  </span>
+
                   {tasks.length > 0 && (
                     <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ backgroundColor: allDone ? 'var(--brand)' : 'var(--muted-dim)' }}
-                    />
+                      className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
+                        allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
+                      }`}
+                    >
+                      <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">{done}/{tasks.length}</span>
+                    </span>
+                  )}
+
+                  {milestones > 0 && (
+                    <span className="flex items-center gap-1 rounded-md border border-brand/40 bg-[var(--brand-light)] px-1.5 py-0.5 text-[10px] sm:text-[11px] text-brand">
+                      <Flag className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">
+                        {milestones} milestone{milestones === 1 ? '' : 's'}
+                      </span>
+                    </span>
                   )}
                 </button>
               );

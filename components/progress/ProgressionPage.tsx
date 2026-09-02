@@ -112,7 +112,7 @@ export default function ProgressionPage() {
                 {stats.nextRank ? `${toNext.toLocaleString()} XP remaining` : `${stats.totalXp.toLocaleString()} XP`}
               </span>
             </div>
-            <div className="h-2 bg-elevated border border-line rounded-full overflow-hidden">
+            <div className="h-2 bg-track rounded-full overflow-hidden">
               <div className="xp-bar-fill h-full rounded-full" style={{ width: `${rankPct}%` }} />
             </div>
             <p className="text-[11px] text-muted mt-2">
@@ -208,7 +208,7 @@ export default function ProgressionPage() {
                     </span>
                     <span className="text-muted flex-shrink-0">{Math.round(pct)}%</span>
                   </div>
-                  <div className="h-1.5 bg-elevated border border-line rounded-full overflow-hidden">
+                  <div className="h-1.5 bg-track rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-[width] duration-1000 ease-out"
                       style={{ width: `${pct}%`, backgroundColor: sk.color }}
@@ -372,7 +372,7 @@ function DomainDialog({ skill, onClose }: { skill: SkillStat; onClose: () => voi
             <p className="text-xs text-muted">Level {skill.level} · {skill.levelXp} / {skill.levelSpan} XP</p>
           </div>
         </div>
-        <div className="h-1.5 bg-elevated border border-line rounded-full overflow-hidden mb-4">
+        <div className="h-1.5 bg-track rounded-full overflow-hidden mb-4">
           <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: skill.color }} />
         </div>
 

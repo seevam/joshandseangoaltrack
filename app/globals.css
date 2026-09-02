@@ -10,10 +10,12 @@
   --bg: #010101;
   --card: #020204;
   --elevated: #08090D;
-  /* Deliberately dark. Bright borders were the single loudest thing on the
-     page; the reference sits far lower and reads much cleaner. */
-  --line: #101116;
-  --line-strong: #1E2028;
+  /* Deliberately dark, with the warm red tint the reference carries on every
+     border, grid line and empty progress track. */
+  --line: #24141A;
+  --line-strong: #3A2028;
+  /* Unfilled progress track. Reads as "not yet earned" without going neutral. */
+  --track: #2A0F16;
 
   /* Text hierarchy: near-white = action/title, grey = description, green = XP only. */
   --fg: #F2EEE7;
@@ -362,6 +364,9 @@ input, textarea { color-scheme: dark; }
   font-size: 1.05rem;
   line-height: 1.2;
 }
+
+/* Unfilled progress tracks across the app. */
+.track { background-color: var(--track); }
 
 /* Locked rank/badge artwork. Deliberately *not* greyscale: the piece keeps its
    colour and is simply darkened, so a locked badge still reads as itself and

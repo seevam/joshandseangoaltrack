@@ -121,7 +121,7 @@ export default function ProfilePage() {
               {stats.nextRank && <> · {(stats.nextRank.minXp - stats.totalXp).toLocaleString()} to {stats.nextRank.name}</>}
             </span>
           </div>
-          <div className="h-2 bg-elevated rounded-full overflow-hidden">
+          <div className="h-2 bg-track rounded-full overflow-hidden">
             <div className="xp-bar-fill h-full rounded-full" style={{ width: `${levelPct}%` }} />
           </div>
         </div>

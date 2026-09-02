@@ -15,6 +15,8 @@ const config: Config = {
         card: 'var(--card)',
         elevated: 'var(--elevated)',
         line: 'var(--line)',
+        track: 'var(--track)',
+        'line-strong': 'var(--line-strong)',
         fg: 'var(--fg)',
         muted: 'var(--muted)',
         brand: 'var(--brand)',

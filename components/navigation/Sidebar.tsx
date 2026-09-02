@@ -108,31 +108,31 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
         href="/progress"
         title={`${stats.rank.name} · Level ${stats.level} · ${stats.levelXp}/${stats.levelSpan} XP`}
         className={`mx-2 mb-2 rounded-lg border border-line bg-card flex-shrink-0 glow-hover block ${
-          collapsed ? 'px-1.5 py-2' : 'px-3 py-2'
+          collapsed ? 'px-1.5 py-2' : 'px-3 py-2.5'
         }`}
       >
         {collapsed ? (
           <span className="flex flex-col items-center gap-1.5">
             <RankEmblem slug={stats.rank.slug} size={28} />
-            <span className="w-full h-1 bg-elevated rounded-full overflow-hidden">
+            <span className="w-full h-1 bg-track rounded-full overflow-hidden">
               <span className="xp-bar-fill block h-full rounded-full" style={{ width: `${pct}%` }} />
             </span>
           </span>
         ) : (
           <>
-            <span className="flex items-center gap-2 mb-1.5">
-              <RankEmblem slug={stats.rank.slug} size={28} className="flex-shrink-0" />
-              <span className="flex-1 min-w-0">
-                <span className="block text-xs font-semibold truncate" style={{ color: stats.rank.color }}>
-                  {stats.rank.name}
-                </span>
-                <span className="block text-[11px] text-muted truncate">Level {stats.level}</span>
+            <span className="flex items-center gap-2.5 mb-2">
+              <RankEmblem slug={stats.rank.slug} size={30} className="flex-shrink-0" />
+              <span className="flex-1 min-w-0 text-sm text-fg font-medium truncate">
+                {stats.rank.name}
               </span>
-              <span className="text-[11px] text-brand font-semibold flex-shrink-0">
-                {stats.totalXp.toLocaleString()} XP
+              <span className="text-sm text-brand font-semibold flex-shrink-0">
+                Lv.{stats.level}
               </span>
             </span>
-            <span className="block h-1 bg-elevated rounded-full overflow-hidden">
+            <span className="block text-[10px] tracking-[0.16em] uppercase text-muted mb-1.5">
+              Balanced overall progression
+            </span>
+            <span className="block h-1.5 bg-track rounded-full overflow-hidden">
               <span className="xp-bar-fill block h-full rounded-full" style={{ width: `${pct}%` }} />
             </span>
           </>
@@ -148,9 +148,9 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
           }`}
         >
           {user?.imageUrl ? (
-            <img src={user.imageUrl} alt="" className="h-8 w-8 rounded-full object-cover bg-elevated border border-line flex-shrink-0" />
+            <img src={user.imageUrl} alt="" className="h-9 w-9 rounded-full object-cover bg-elevated border border-line flex-shrink-0" />
           ) : (
-            <span className="h-8 w-8 rounded-full bg-elevated border border-line flex items-center justify-center text-xs font-medium text-fg flex-shrink-0">
+            <span className="h-9 w-9 rounded-full bg-brand/10 border border-brand/25 flex items-center justify-center text-sm font-semibold text-brand flex-shrink-0">
               {(user?.firstName?.[0] || user?.username?.[0] || '?').toUpperCase()}
             </span>
           )}
