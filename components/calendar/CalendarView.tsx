@@ -7,6 +7,7 @@ import { CATEGORY_COLORS, type Goal } from '@/lib/types';
 import { Icon } from '@/components/ui/icons';
 import { AnimatedCheck } from '@/components/ui/motion';
 import Modal from '@/components/ui/Modal';
+import PageHeader from '@/components/ui/PageHeader';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -163,20 +164,22 @@ export default function CalendarView() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 sm:px-6 space-y-5">
-      <div className="flex items-center justify-between flex-wrap gap-3 animate-slide-up">
-        <h1 className="font-display text-3xl tracking-wide">
-          <span className="text-brand-gradient">CALEN</span><span className="text-fg">DAR</span>
-        </h1>
-        {goals.some(g => g.endDate) && (
+    <div className="w-full mx-auto px-4 py-6 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
+      <PageHeader
+        eyebrow="Calendar / Operations Board"
+        icon="calendar"
+        title="SCHEDULE"
+        accent="SCHE"
+        subtitle="What is planned on each date, what is still outstanding, and what has already been cleared."
+        right={goals.some(g => g.endDate) ? (
           <button
             onClick={() => setShowExportModal(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-muted hover:text-fg text-xs font-medium glow-hover"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-muted hover:text-fg text-xs font-medium glow-hover"
           >
             <Download className="h-3.5 w-3.5" /> Export
           </button>
-        )}
-      </div>
+        ) : undefined}
+      />
 
       {/* Roughly two thirds calendar to one third day panel — the calendar was
           the cramped half before, which is backwards for a calendar page. */}

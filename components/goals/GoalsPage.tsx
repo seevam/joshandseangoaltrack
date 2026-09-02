@@ -7,6 +7,7 @@ import { Plus, Search, X, ChevronDown, Target } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { getGoalStatus } from '@/lib/types';
 import GoalCard from './GoalCard';
+import PageHeader from '@/components/ui/PageHeader';
 
 const CATEGORIES = ['all', 'fitness', 'health', 'personal', 'career', 'finance', 'education'] as const;
 const STATUSES = ['active', 'completed', 'all'] as const;
@@ -47,12 +48,21 @@ export default function GoalsPage() {
   return (
     <div className="min-h-screen bg-bg">
       <div className="w-full mx-auto px-4 py-6 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
-        <div className="animate-slide-up">
-          <div>
-            <h1 className="font-display text-3xl tracking-wide"><span className="text-brand-gradient">GO</span><span className="text-fg">ALS</span></h1>
-            <p className="text-sm text-muted mt-0.5">{goals.length} goal{goals.length === 1 ? '' : 's'}</p>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Goals / Ambition Archive"
+          icon="target"
+          title="OBJECTIVES"
+          accent="OBJEC"
+          subtitle="Every ambition you are running, with its stage, progress, and what comes next."
+          right={
+            <button
+              onClick={() => setShowCreate(true)}
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black font-semibold text-sm transition-colors"
+            >
+              <Plus className="h-4 w-4" /> New Goal
+            </button>
+          }
+        />
 
         <div className="flex flex-col sm:flex-row gap-3 animate-slide-up" style={{ ['--i' as string]: 1 }}>
           <div className="relative flex-1">

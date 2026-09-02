@@ -49,10 +49,13 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
           <PanelLeft className="h-4 w-4" />
         </button>
         {!collapsed && (
-          <span className="sidebar-label font-display text-lg tracking-wide truncate">
-            <span className="text-brand-gradient">GOAL</span>
-            <span className="text-fg">QUEST</span>
-          </span>
+          <Link href="/home" className="sidebar-label flex items-center gap-2 min-w-0">
+            <Target className="h-4 w-4 text-brand flex-shrink-0" />
+            <span className="font-display text-lg tracking-wide truncate">
+              <span className="text-brand-gradient">GOAL</span>
+              <span className="text-fg">QUEST</span>
+            </span>
+          </Link>
         )}
       </div>
 
