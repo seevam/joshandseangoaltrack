@@ -74,6 +74,23 @@ export interface Availability {
   deadlineType: 'hard' | 'soft';
   weeklyHours: number;
   freeDays: number[]; // 0=Sun … 6=Sat
+  /**
+   * Percentage of the timeline held back as slack. The plan is built to finish
+   * that much *early*, so 25% on a 12-month goal targets completion at ~9
+   * months and leaves three months of room for life going wrong.
+   */
+  bufferPercent?: number;
+}
+
+/**
+ * The date the plan should actually aim at, pulled earlier than the real
+ * deadline by the buffer. Returns null when there is no deadline to buffer.
+ */
+export function bufferedDeadline(start: Date, deadline: Date, bufferPercent = 0): Date | null {
+  const span = deadline.getTime() - start.getTime();
+  if (!Number.isFinite(span) || span <= 0) return null;
+  const pct = Math.min(Math.max(bufferPercent, 0), 60) / 100;
+  return new Date(start.getTime() + span * (1 - pct));
 }
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -81,7 +98,13 @@ const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 /** Turns the user's stated availability into scheduling instructions. */
 export function availabilityRules(a: Availability, otherGoalTaskCount: number): string {
   const free = a.freeDays.length ? a.freeDays.map(d => DAY_NAMES[d]).join(', ') : 'no particular day';
-  return `USER AVAILABILITY — schedule around this, it is not optional:
+  const buffer = a.bufferPercent
+    ? `\n- PLANNING BUFFER ${a.bufferPercent}%: build the plan to FINISH EARLY by that`
+      + ` much. Space milestones so the final one lands at ~${100 - a.bufferPercent}% of the`
+      + ` way to the deadline, leaving the remainder as genuine slack. Do not stretch`
+      + ` the work to fill the whole timeline.`
+    : '';
+  return `USER AVAILABILITY — schedule around this, it is not optional:${buffer}
 - Deadline is ${a.deadlineType.toUpperCase()}. ${a.deadlineType === 'hard'
     ? 'The date is fixed: fit the work into it, even if that means denser weeks.'
     : 'The date is flexible: prefer a sustainable pace over hitting the date exactly.'}
@@ -93,6 +116,9 @@ SCHEDULING:
   a token one on a busy day (e.g. "Read 30 pages" Sunday vs "Read 10 pages" Wednesday).
   Emit these as SEPARATE tasks with different daysOfWeek, not one averaged task.
 - Total weekly load across all tasks must fit inside ${a.weeklyHours} hours.
+- Vary the load across the week. Never give every day the same task count —
+  heavy on free days, light on busy ones, and at least one rest day for
+  physical goals.
 - They already have ${otherGoalTaskCount} recurring task(s) from other goals, so leave
   room — do not fill every day.
 `;
@@ -103,7 +129,16 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
   the stageId of the phase it belongs to, so a long plan reads as a journey rather
   than one flat list. If you showed the user draft chapters, save those same ones.
 - 10-12 milestones spaced every 2-3 weeks — highly specific and measurable, never generic
-- Each milestone MUST include a 2-3 sentence description: a practical action guide for that phase
+- Each milestone MUST include a 2-3 sentence description that says what actually
+  happens in this phase. Specific and explanatory, never a vague gesture:
+    ✗ "Explore advanced topics"
+    ✓ "With the fundamentals behind you, you move to the backend: how a server
+       handles a request, how data is stored, and how the two connect. By the end
+       you'll have a small API of your own running locally."
+- NEVER distribute work uniformly. One task every single day is what a spreadsheet
+  produces, not what a coach prescribes. Real plans have heavy days, light days and
+  rest days: a long session on a free day, something short on a busy one, and at
+  least one genuine rest day a week for physical goals. Vary the load deliberately.
 - 3-5 recurring tasks with exact amounts in the title (e.g. "Run 5km at easy pace")
 - Every task needs protocol detail so the user never has to invent the missing steps:
   a one-sentence first instruction, realistic estimatedMinutes, 2-5 ordered
@@ -165,8 +200,9 @@ You must know WHAT the user is actually trying to achieve before anything else.
 
 STEP 1 — DIAGNOSE LIKE THE EXPERT YOU ARE.
 Once the goal is concrete, ask the questions the expert role above would actually
-ask for THIS goal. One question per message, four to six questions total, each with
-2-4 concrete options drawn from the domain.
+ask for THIS goal. STRICTLY ONE QUESTION PER MESSAGE — never bundle two, never
+send a numbered list of questions. Ask five to eight of them, each with 2-4
+concrete options drawn from the domain.
 
 Your questions must be answerable only by someone with this specific goal. Before
 sending one, check it against this test: could this exact question be asked, word
@@ -191,6 +227,29 @@ Ask the concrete version instead:
   ✓ "What are your current working weights on squat and bench?"
   ✓ "What's the monthly surplus you can actually move to savings?"
 
+OPTIONS MUST DESCRIBE, NOT LABEL.
+"Beginner / Intermediate / Advanced" is meaningless — two people pick the same
+word for wildly different situations. Every option is a description of where
+someone actually is, in the terms of this domain:
+  ✗ **A)** Beginner  **B)** Intermediate  **C)** Advanced
+  ✓ coding:  **A)** I've never written code  **B)** I can follow a tutorial but
+             get stuck on my own  **C)** I've built my own programs end to end
+             **D)** I've worked with this professionally for years
+  ✓ guitar:  **A)** I've never held one  **B)** I know a few open chords
+             **C)** I can play songs but struggle with changes  **D)** I gig
+  ✓ running: **A)** I get winded on stairs  **B)** I can jog 10 minutes
+             **C)** I run a few times a week  **D)** I've raced before
+
+DEADLINES ARE OPTIONAL. Plenty of goals have no natural end date — learning a
+language, getting fitter, reading more. When there is no fixed external event,
+always offer an open-ended choice alongside the dated ones, and treat it as a
+first-class answer rather than a refusal to commit:
+  "Is there a date you're working towards?"
+  **A)** Yes, a fixed event  **B)** I'd like it done roughly by [timeframe]
+  **C)** No strict deadline — I just want steady progress
+If they pick the open-ended option, build a plan paced for sustainable progress
+and set the deadline far enough out that it never reads as overdue.
+
 Timing is one input among several, not the opener. Ask about dates only when the
 goal implies a fixed event (a race, an exam, a wedding) or after you understand
 where they are starting from — and phrase it in the goal's own terms
@@ -205,6 +264,10 @@ WHO DECIDES WHEN TO BUILD: the user does, not you. Never state or imply that the
 consultation is finished, that you have everything you need, or that you are now
 building the plan. Keep asking useful questions until they press the build button.
 Only call create_goal when explicitly told to build.
+
+BUILD THE PLAN WHERE THEY CAN SEE IT. Each answer should visibly change the
+draft: refine chapter titles, sharpen subtitles, add a signal. The user should
+feel the plan being assembled as they talk, not delivered at the end.
 
 THE LIVE DRAFT — this is not optional. From the moment the user names a concrete
 goal, EVERY respond call must include the "draft" object, and every draft must

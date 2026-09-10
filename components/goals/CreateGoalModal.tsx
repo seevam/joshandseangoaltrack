@@ -125,6 +125,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: 
   const [months, setMonths] = useState(6);
   const [deadlineType, setDeadlineType] = useState<'hard' | 'soft'>('soft');
   const [weeklyHours, setWeeklyHours] = useState(5);
+  const [bufferPercent, setBufferPercent] = useState(20);
   const [freeDays, setFreeDays] = useState<number[]>([0, 6]);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -166,7 +167,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: 
     }
 
     if (!ambition.trim()) { setError('Describe your ambition.'); return; }
-    const availability: Availability = { deadlineType, weeklyHours, freeDays };
+    const availability: Availability = { deadlineType, weeklyHours, freeDays, bufferPercent };
     setIsLoading(true);
     try {
       const deadline = new Date();
@@ -285,6 +286,27 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: 
                 onChange={e => setWeeklyHours(Number(e.target.value))}
                 className="w-full accent-[color:var(--brand)]"
               />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-fg mb-1.5">
+                Planning buffer <span className="text-muted font-normal">— finish {bufferPercent}% early</span>
+              </label>
+              <input
+                type="range"
+                min={0}
+                max={40}
+                step={5}
+                value={bufferPercent}
+                onChange={e => setBufferPercent(Number(e.target.value))}
+                className="w-full accent-[color:var(--brand)]"
+                aria-label={`Planning buffer ${bufferPercent} percent`}
+              />
+              <p className="text-[11px] text-muted mt-1 leading-relaxed">
+                {bufferPercent === 0
+                  ? 'The plan runs right up to the deadline, with no slack.'
+                  : `Built to finish ${bufferPercent}% ahead of your deadline, so a bad week doesn't sink it.`}
+              </p>
             </div>
 
             <div>

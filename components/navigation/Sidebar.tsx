@@ -89,10 +89,13 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
             </Link>
           );
         })}
+        {/* The coach sits apart from navigation — bordered and lit so it reads
+            as a thing you can talk to rather than another page link. */}
         <button
           onClick={onToggleChat}
           title={collapsed ? 'AI Coach' : undefined}
-          className={`w-full h-10 flex items-center gap-3 rounded-lg text-sm text-muted hover:text-fg hover:bg-elevated transition-colors ${
+          className={`w-full h-10 mt-2 flex items-center gap-3 rounded-lg text-sm font-medium text-brand
+            border border-brand/30 bg-brand/5 card-glow glow-focus transition-colors hover:bg-brand/10 ${
             collapsed ? 'justify-center px-0' : 'px-3'
           }`}
         >
