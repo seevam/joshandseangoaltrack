@@ -68,6 +68,39 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .thin-scroll::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
 .thin-scroll:hover::-webkit-scrollbar-thumb { background: var(--line-strong); }
 
+/* ── Glow system ──────────────────────────────────────────────────────────── */
+/*
+ * Edges genuinely emit light, each panel type in its own colour, and the whole
+ * effect scales from one variable so Settings can dial it down or off.
+ *
+ * The animation lives on the ::after pseudo-element, never on the panel itself.
+ * That distinction is the whole point: an `animation` on the panel replaces the
+ * entrance animation it already carries, which is what made cards vanish on
+ * hover before. A pseudo-element has no entrance animation to clobber.
+ */
+:root {
+  --glow: var(--brand);          /* per-panel accent, overridden by .glow-* */
+  --glow-strength: 1;            /* 0 = off, 1 = default, up to 2 */
+  --glow-anim: glow-breathe;     /* set to `none` to freeze the pulse */
+  --glow-dur: 4.5s;
+}
+
+@keyframes glow-breathe {
+  0%, 100% { opacity: calc(0.55 * var(--glow-strength)); }
+  50%      { opacity: calc(1 * var(--glow-strength)); }
+}
+
+/* Panel accents. One class per kind of box, so the dashboard reads as a set. */
+.glow-brand   { --glow: #5DBC70; }
+.glow-rank    { --glow: #FBBF24; }
+.glow-xp      { --glow: #8FE3A3; }
+.glow-streak  { --glow: #FB923C; }
+.glow-focus   { --glow: #5DBC70; }
+.glow-plan    { --glow: #38BDF8; }
+.glow-missions{ --glow: #A78BFA; }
+.glow-activity{ --glow: #EC4899; }
+.glow-goals   { --glow: #14B8A6; }
+
 /* ── Surfaces ─────────────────────────────────────────────────────────────── */
 /*
  * Hover glow is expressed purely through *transitioned properties*, never the
@@ -85,24 +118,42 @@ button:active:not(:disabled) { transform: scale(0.97); }
               box-shadow 200ms var(--ease-out),
               background-color 200ms var(--ease-out);
 }
-/* Soft corner light, faded in on hover rather than painted on permanently. */
+/*
+ * The emitted light. It sits *outside* the panel edge and breathes, so the
+ * border reads as a light source rather than a painted line.
+ */
 .card-glow::after {
   content: '';
   position: absolute;
-  inset: 0;
+  inset: -1px;
   z-index: -1;
   pointer-events: none;
   border-radius: inherit;
-  background: radial-gradient(circle at 12% 0%, rgba(93, 188, 112, 0.06), transparent 30%);
-  opacity: 0;
-  transition: opacity 200ms var(--ease-out);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--glow) calc(22% * var(--glow-strength)), transparent),
+    0 0 18px -2px color-mix(in srgb, var(--glow) calc(30% * var(--glow-strength)), transparent),
+    0 0 42px -8px color-mix(in srgb, var(--glow) calc(38% * var(--glow-strength)), transparent);
+  opacity: calc(0.55 * var(--glow-strength));
+  animation: var(--glow-anim) var(--glow-dur) ease-in-out infinite;
+  transition: opacity 260ms var(--ease-out), box-shadow 260ms var(--ease-out);
 }
 .card-glow:hover {
-  border-color: rgba(93, 188, 112, 0.25);
+  border-color: color-mix(in srgb, var(--glow) 55%, transparent);
   background-color: #04050A;
-  box-shadow: 0 0 15px rgba(93, 188, 112, 0.05);
 }
-.card-glow:hover::after { opacity: 1; }
+/* Hover pushes the light brighter and holds it steady rather than pulsing. */
+.card-glow:hover::after {
+  animation-play-state: paused;
+  opacity: calc(1.25 * var(--glow-strength));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--glow) calc(45% * var(--glow-strength)), transparent),
+    0 0 26px -2px color-mix(in srgb, var(--glow) calc(55% * var(--glow-strength)), transparent),
+    0 0 64px -10px color-mix(in srgb, var(--glow) calc(60% * var(--glow-strength)), transparent);
+}
+
+/* The single most important panel on the page is lit permanently, not on hover. */
+.card-primary { --glow-strength: 1.5; }
+.card-primary { border-color: color-mix(in srgb, var(--glow) 45%, transparent); }
 
 /* Shared hover treatment for any bordered box that isn't a .card-glow */
 .glow-hover {
@@ -314,6 +365,7 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .group:hover .icon-shift { transform: translateX(3px); }
 
 @media (prefers-reduced-motion: reduce) {
+  :root { --glow-anim: none; }
   *, *::before, *::after {
     animation-duration: 0.001ms !important;
     animation-iteration-count: 1 !important;
@@ -403,3 +455,11 @@ input, textarea { color-scheme: dark; }
   background: radial-gradient(circle, color-mix(in srgb, var(--halo, #5DBC70) 22%, transparent) 0%, transparent 68%);
   pointer-events: none;
 }
+
+/* ── Calendar month transition ─────────────────────────────────────────────── */
+/* Direction-aware, so moving forward and back feel like moving through time
+   rather than the grid blinking to new numbers. */
+@keyframes month-in-next  { from { opacity: 0; transform: translateX(3%); } to { opacity: 1; transform: none; } }
+@keyframes month-in-prev  { from { opacity: 0; transform: translateX(-3%); } to { opacity: 1; transform: none; } }
+.month-next { animation: month-in-next 0.32s var(--ease-out) backwards; }
+.month-prev { animation: month-in-prev 0.32s var(--ease-out) backwards; }

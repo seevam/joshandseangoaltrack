@@ -2,6 +2,8 @@
 
 import { ChevronRight } from 'lucide-react';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, type Goal, type Category } from '@/lib/types';
+import { computeGoalHealth } from '@/lib/goalHealth';
+import { currentStage } from '@/lib/stages';
 import { AnimatedNumber } from '@/components/ui/motion';
 
 /**
@@ -12,6 +14,8 @@ export default function GoalCard({ goal, onClick, preview = false, index = 0 }: 
   goal: Goal; onClick: () => void; preview?: boolean; index?: number;
 }) {
   const progress = getGoalProgress(goal);
+  const health = computeGoalHealth(goal);
+  const stage = currentStage(goal);
   const status = getGoalStatus(goal);
   const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
 
@@ -47,6 +51,29 @@ export default function GoalCard({ goal, onClick, preview = false, index = 0 }: 
             style={{ width: `${progress}%`, backgroundColor: cat.hex }}
           />
         </div>
+      </div>
+
+      {stage && (
+        <p className="flex items-center gap-1.5 text-xs text-muted mt-2.5 min-w-0">
+          <span className="text-[10px] uppercase tracking-[0.12em] text-brand flex-shrink-0">
+            Phase {stage.index + 1}
+          </span>
+          <span className="truncate">{stage.stage.title}</span>
+        </p>
+      )}
+
+      {/* Compact goal health — one honest signal per card, on both surfaces. */}
+      <div className="flex items-center gap-2 mt-3">
+        <span className="text-[10px] uppercase tracking-[0.14em] text-muted flex-shrink-0">Health</span>
+        <span className="h-1 flex-1 rounded-full bg-track overflow-hidden">
+          <span
+            className="block h-full rounded-full transition-[width] duration-700 ease-out"
+            style={{ width: `${health.score}%`, backgroundColor: health.color }}
+          />
+        </span>
+        <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: health.color }}>
+          {health.status}
+        </span>
       </div>
 
       {!preview && (

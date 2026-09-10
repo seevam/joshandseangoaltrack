@@ -4,14 +4,14 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Target, Plus, CheckCircle, AlertTriangle, ChevronRight, Search, X,
-  Zap, Trophy, Flame, ListChecks, Activity, Clock, ArrowUpRight, CalendarClock,
+  Zap, Trophy, Flame, ListChecks, Activity, Clock, ArrowUpRight, CalendarClock, Crosshair,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
-import { computeStats, earnedBadges, taskXp, milestoneXp } from '@/lib/xp';
+import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category, type TaskCompletionValue } from '@/lib/types';
+import { computeStats, taskXp, milestoneXp, completionXp } from '@/lib/xp';
 import { buildActivityFeed } from '@/lib/activity';
 import { maybeNotifyTodaysTasks } from '@/lib/notifications';
-import { XPBar, CategoryBadge, BadgeTile, XpPill, XpToast, Confetti } from '@/components/ui/GameUI';
+import { XpToast, Confetti } from '@/components/ui/GameUI';
 import { IconTile, Icon } from '@/components/ui/icons';
 import {
   AnimatedNumber, AnimatedCheck, Sparks, LevelUpOverlay, Reveal,
@@ -20,6 +20,9 @@ import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
+import MissionCard, { type Mission } from './MissionCard';
+import { currentStage } from '@/lib/stages';
+import FocusMode from './FocusMode';
 
 /** Last level we played the celebration for, so a reload never replays it. */
 const LEVEL_KEY = 'gq_celebrated_level';
@@ -41,6 +44,7 @@ export default function Dashboard() {
   const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
   const prevLevel = useRef<number | null>(null);
   const [goalsSettled, setGoalsSettled] = useState(false);
+  const [focusOpen, setFocusOpen] = useState(false);
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -127,7 +131,7 @@ export default function Dashboard() {
     } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
-  const logTask = async (goalId: string, taskId: number, value: number | boolean, origin?: { x: number; y: number }) => {
+  const logTask = async (goalId: string, taskId: number, value: TaskCompletionValue, origin?: { x: number; y: number }) => {
     const today = new Date().toISOString().split('T')[0];
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -140,12 +144,36 @@ export default function Dashboard() {
       updateGoal(saved);
       if (value) {
         const task = (goal.dailyTasks || []).find(t => t.id === taskId);
-        fireXp(taskXp(task?.difficulty), origin);
+        fireXp(completionXp(value, task?.difficulty), origin);
         setFlashTask(`${goalId}-${taskId}`);
         setTimeout(() => setFlashTask(null), 650);
       }
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
     } catch (err) { console.error('Failed to log task:', err); }
+  };
+
+  const correctEstimate = async (goalId: string, taskId: number, actual: number) => {
+    const goal = goals.find(g => g.id === goalId);
+    const target = (goal?.dailyTasks || []).find(t => t.id === taskId);
+    if (!goal || !target || !Number.isFinite(actual) || actual <= 0) return;
+    const minutes = Math.min(Math.max(Math.round(actual), 1), 600);
+    const actuals = [...(target.actualMinutes || []), minutes];
+    const mean = Math.round(actuals.reduce((a, b) => a + b, 0) / actuals.length);
+    const before = target.estimatedMinutes;
+    const ratio = before && before > 0 ? mean / before : 1;
+
+    const dailyTasks = (goal.dailyTasks || []).map(t => {
+      if (t.id === taskId) return { ...t, actualMinutes: actuals, estimatedMinutes: mean };
+      const comparable = t.difficulty === target.difficulty
+        && !(t.actualMinutes || []).length
+        && typeof t.estimatedMinutes === 'number';
+      if (!comparable || ratio === 1) return t;
+      return { ...t, estimatedMinutes: Math.min(Math.max(Math.round(t.estimatedMinutes! * ratio), 5), 240) };
+    });
+
+    try {
+      updateGoal(await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks }));
+    } catch (err) { console.error('Failed to correct estimate:', err); }
   };
 
   const addDailyTask = async (goalId: string, task: { title: string; targetValue: number | null; unit: string; type: 'number' | 'checkbox' }) => {
@@ -172,12 +200,10 @@ export default function Dashboard() {
 
   // ── Derived data ──────────────────────────────────────────────────────────
   const stats = useMemo(() => computeStats(goals), [goals]);
-  const badges = useMemo(() => earnedBadges(stats, goals), [stats, goals]);
   const feed = useMemo(() => buildActivityFeed(goals, 8), [goals]);
 
   // Daily reminder, throttled to once per day inside the helper.
   useEffect(() => { maybeNotifyTodaysTasks(goals); }, [goals]);
-  const earnedCount = badges.filter(b => b.isEarned).length;
 
   const levelPct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
 
@@ -210,22 +236,28 @@ export default function Dashboard() {
 
   /** Every recurring task scheduled for today, flattened across goals. */
   const todaysTasks = useMemo(() => {
-    const out: { goal: Goal; task: Goal['dailyTasks'][0]; done: boolean }[] = [];
+    const out: Mission[] = [];
     for (const goal of goals) {
       if (getGoalStatus(goal) === 'completed') continue;
       const completions = (goal.taskCompletions || {})[todayStr] || {};
       for (const task of goal.dailyTasks || []) {
         const days = task.daysOfWeek;
         if (!days || days.length === 0 || days.includes(todayDow)) {
-          out.push({ goal, task, done: !!completions[task.id] });
+          out.push({ goal, task, value: completions[task.id] });
         }
       }
     }
-    return out.sort((a, b) => Number(a.done) - Number(b.done));
+    return out.sort((a, b) => Number(!!a.value) - Number(!!b.value));
   }, [goals, todayStr, todayDow]);
 
   /** The single task to start next: the first one due today that isn't done. */
-  const nextAction = useMemo(() => todaysTasks.find(t => !t.done) ?? null, [todaysTasks]);
+  const nextAction = useMemo(() => todaysTasks.find(t => !t.value) ?? null, [todaysTasks]);
+
+  /** Which phase of its goal that task sits in, so the work has context. */
+  const nextStage = useMemo(
+    () => (nextAction ? currentStage(nextAction.goal) : null),
+    [nextAction],
+  );
 
   const previewGoals = useMemo(
     () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 3),
@@ -233,7 +265,7 @@ export default function Dashboard() {
   );
   const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
   const completedGoals = goals.filter(g => getGoalStatus(g) === 'completed').length;
-  const doneToday = todaysTasks.filter(t => t.done).length;
+  const doneToday = todaysTasks.filter(t => !!t.value).length;
 
   const dueSoon = goals.filter(g => {
     if (!g.endDate || getGoalStatus(g) !== 'in-progress') return false;
@@ -303,22 +335,22 @@ export default function Dashboard() {
         <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))]">
           {[
             {
-              label: 'Overall Rank', icon: Trophy, iconColor: stats.rank.color,
+              label: 'Overall Rank', glow: 'glow-rank', icon: Trophy, iconColor: stats.rank.color,
               value: stats.rank.name, valueColor: stats.rank.color,
               context: `Level ${stats.level}`,
             },
             {
-              label: 'Overall XP', icon: Zap, iconColor: '#5DBC70',
+              label: 'Overall XP', glow: 'glow-xp', icon: Zap, iconColor: '#5DBC70',
               value: <AnimatedNumber value={stats.totalXp} />, valueColor: '#5DBC70',
               context: 'Balanced composite',
             },
             {
-              label: 'Streak', icon: Flame, iconColor: '#FB923C',
+              label: 'Streak', glow: 'glow-streak', icon: Flame, iconColor: '#FB923C',
               value: <><AnimatedNumber value={stats.currentStreak} />d</>, valueColor: '#FB923C',
               context: `Best: ${stats.longestStreak}d`, flicker: stats.currentStreak > 0,
             },
             {
-              label: 'Today', icon: CheckCircle, iconColor: '#5DBC70',
+              label: 'Today', glow: 'glow-brand', icon: CheckCircle, iconColor: '#5DBC70',
               value: <>{doneToday}/{todaysTasks.length}</>, valueColor: '#5DBC70',
               context: 'tasks done',
             },
@@ -340,7 +372,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Level progress ────────────────────────────────────────────── */}
-        <div className="card-glow rounded-2xl px-4 py-3.5 animate-slide-up" style={{ ['--i' as string]: 2 }}>
+        <div className="card-glow glow-xp rounded-2xl px-4 py-3.5 animate-slide-up" style={{ ['--i' as string]: 2 }}>
           <div className="flex items-center justify-between gap-3 mb-2">
             <span className="text-sm text-muted">Level {stats.level} Progress</span>
             <span className="text-sm text-muted flex-shrink-0">
@@ -353,7 +385,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Next action — the one thing to start now ──────────────────── */}
-        <div className="card-glow rounded-2xl p-5 animate-slide-up" style={{ ['--i' as string]: 3 }}>
+        <div className="card-glow card-primary glow-focus rounded-2xl p-5 animate-slide-up" style={{ ['--i' as string]: 3 }}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-brand">
               <ListChecks className="h-3.5 w-3.5" /> Next Action
@@ -371,6 +403,7 @@ export default function Dashboard() {
                 <h2 className="text-xl sm:text-2xl font-bold text-fg break-words">{nextAction.task.title}</h2>
                 <p className="text-[11px] uppercase tracking-[0.14em] text-brand mt-1.5">
                   Your first move for today
+                  {nextStage && <span className="text-muted"> · {nextStage.stage.title}</span>}
                 </p>
                 <p className="text-sm text-muted mt-2.5 leading-relaxed break-words">
                   {nextAction.task.description
@@ -392,10 +425,10 @@ export default function Dashboard() {
                 </h2>
                 <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                   {goals.length === 0
-                    ? 'No goals yet, so there is no plan to execute. Create one and the coach will break it into tasks.'
+                    ? 'No campaign running yet. Name an ambition and your coach will forge the first plan.'
                     : todaysTasks.length === 0
-                      ? 'None of your goals have recurring work scheduled for today. Open a goal to add some, or leave the time protected.'
-                      : 'Every task due today is done. The remaining time is yours.'}
+                      ? 'Nothing due today. Open a goal to add work, or leave the time protected — rest is part of the plan.'
+                      : 'Board cleared. Every mission due today is down — the rest of the day is yours.'}
                 </p>
               </div>
               <button
@@ -410,28 +443,34 @@ export default function Dashboard() {
 
         {/* ── Due soon ──────────────────────────────────────────────────── */}
         {dueSoon.length > 0 && (
-          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 animate-slide-up">
-            <div className="flex items-center gap-2 mb-2">
-              <AlertTriangle className="h-4 w-4 text-amber-400" />
-              <span className="text-sm font-semibold text-amber-300">Due within 7 days</span>
+          <div className="card-glow glow-rank rounded-2xl p-4 animate-slide-up">
+            <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-brand mb-2.5">
+              <Clock className="h-3.5 w-3.5" /> Closing in
+            </p>
+            <div className="space-y-1.5">
+              {dueSoon.map(g => {
+                const d = Math.ceil((new Date(g.endDate!).getTime() - Date.now()) / 86400000);
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => router.push(`/goals/${g.id}`)}
+                    className="w-full flex justify-between items-center gap-3 text-left glow-hover rounded-lg px-2 py-1.5 border border-transparent"
+                  >
+                    <span className="text-sm text-fg truncate">{g.title}</span>
+                    <span className="text-xs text-muted flex-shrink-0">
+                      {d <= 0 ? 'Due today' : `${d} day${d === 1 ? '' : 's'} left`}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-            {dueSoon.map(g => {
-              const d = Math.ceil((new Date(g.endDate!).getTime() - Date.now()) / 86400000);
-              return (
-                <div key={g.id} onClick={() => router.push(`/goals/${g.id}`)}
-                  className="flex justify-between items-center cursor-pointer hover:opacity-80 py-0.5">
-                  <span className="text-sm text-amber-100 truncate">{g.title}</span>
-                  <span className="text-xs text-amber-400 ml-2 flex-shrink-0">{d <= 0 ? 'Today' : `${d}d left`}</span>
-                </div>
-              );
-            })}
           </div>
         )}
 
         {/* ── Today's schedule ──────────────────────────────────────────── */}
         {todaysTasks.length > 0 && (
           <Reveal>
-            <div className="card-glow rounded-2xl p-5">
+            <div className="card-glow glow-plan rounded-2xl p-5">
               <div className="mb-4">
                 <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-brand mb-1.5">
                   <CalendarClock className="h-3.5 w-3.5" /> Today&apos;s Schedule
@@ -467,20 +506,20 @@ export default function Dashboard() {
                     key={`${item.goal.id}-${item.task.id}`}
                     style={{ ['--i' as string]: i }}
                     className={`stagger-fast glow-hover rounded-xl border p-3.5 ${
-                      item.done ? 'border-brand/30 bg-[var(--brand-light)]' : 'border-line bg-card'
+                      item.value ? 'border-brand/30 bg-[var(--brand-light)]' : 'border-line bg-card'
                     }`}
                   >
                     <div className="flex items-start gap-3">
                       <span
                         className={`h-6 w-6 rounded-full border flex items-center justify-center text-[11px] font-semibold flex-shrink-0 ${
-                          item.done ? 'border-brand text-brand' : 'border-line-strong text-muted'
+                          item.value ? 'border-brand text-brand' : 'border-line-strong text-muted'
                         }`}
                         aria-hidden
                       >
                         {i + 1}
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-semibold break-words ${item.done ? 'line-through text-muted' : 'text-fg'}`}>
+                        <p className={`text-sm font-semibold break-words ${item.value ? 'line-through text-muted' : 'text-fg'}`}>
                           {item.task.title}
                         </p>
                         <p className="text-xs text-muted mt-1 break-words">
@@ -502,69 +541,70 @@ export default function Dashboard() {
           </Reveal>
         )}
 
-        {/* ── Today's tasks + upcoming milestones ───────────────────────── */}
+        {/* ── Missions beside activity ──────────────────────────────────── */}
         <Reveal><div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Today's missions */}
-          <div className="lg:col-span-2 card-glow rounded-2xl p-4 animate-slide-up">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="font-semibold text-fg flex items-center gap-2">
-                <ListChecks className="h-4 w-4 text-brand" /> <span className="section-title">Today&apos;s Tasks</span>
-              </h2>
-              <span className="text-xs text-muted">{doneToday}/{todaysTasks.length} done</span>
+          <div className="lg:col-span-2 card-glow glow-missions rounded-2xl p-4 sm:p-5 animate-slide-up">
+            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+              <div className="min-w-0">
+                <h2 className="font-semibold text-fg flex items-center gap-2">
+                  <Target className="h-4 w-4 text-brand" />
+                  <span className="section-title">Today&apos;s Missions</span>
+                </h2>
+                <p className="text-sm text-muted mt-1 hidden sm:block">Every task due today.</p>
+              </div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted">
+                  {doneToday}/{todaysTasks.length} complete
+                </span>
+                {todaysTasks.some(m => !m.value) && (
+                  <button
+                    onClick={() => setFocusOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-fg text-xs font-semibold glow-hover"
+                  >
+                    <Crosshair className="h-3.5 w-3.5 text-brand" /> Focus Mode
+                  </button>
+                )}
+              </div>
             </div>
 
             {todaysTasks.length === 0 ? (
-              <div className="text-center py-8">
-                <Target className="h-8 w-8 mx-auto mb-2 text-muted/40" />
-                <p className="text-sm text-muted">
-                  Nothing scheduled today.{' '}
-                  <button onClick={() => setShowCreate(true)} className="text-brand hover:underline">Create a goal</button> to get started.
+              <div className="text-center py-10">
+                <Target className="h-8 w-8 mx-auto mb-3 text-muted-dim" />
+                <p className="text-sm font-medium text-fg">Board clear</p>
+                <p className="text-sm text-muted mt-1 max-w-sm mx-auto leading-relaxed">
+                  {goals.length === 0
+                    ? 'No missions on the board. Set an ambition and your coach will forge it into daily work.'
+                    : 'Nothing due today. The board is clear — take it, or pull work forward from a goal.'}
                 </p>
+                <button
+                  onClick={() => (goals.length === 0 ? setShowCreate(true) : router.push('/goals'))}
+                  className="mt-4 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-black text-sm font-semibold"
+                >
+                  {goals.length === 0 ? 'Create a goal' : 'Open goals'}
+                </button>
               </div>
             ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto thin-scroll">
-                {todaysTasks.map(({ goal, task, done }, i) => {
-                  const key = `${goal.id}-${task.id}`;
-                  const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
-                  return (
-                    <div
-                      key={key}
-                      id={`task-${key}`}
-                      className={`group flex items-center gap-3 p-3 rounded-xl border transition-all duration-300 stagger-fast ${flashTask === key ? 'task-flash task-complete-anim' : ''} ${
-                        done ? 'border-brand/30 bg-brand/10' : 'border-line bg-elevated hover:border-brand/40 hover:translate-x-0.5'
-                      }`}
-                      style={{ ['--i' as string]: i }}
-                    >
-                      <AnimatedCheck
-                        checked={done}
-                        size={24}
-                        color={cat.hex}
-                        onClick={() => {
-                          const el = document.getElementById(`task-${key}`);
-                          const r = el?.getBoundingClientRect();
-                          logTask(goal.id, task.id, !done,
-                            r ? { x: r.left + 12, y: r.top + r.height / 2 } : undefined);
-                        }}
-                      />
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium truncate ${done ? 'line-through text-muted' : 'text-fg'}`}>
-                          {task.title}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted truncate">{goal.title}</span>
-                          <CategoryBadge category={goal.category} />
-                        </div>
-                      </div>
-                      <XpPill xp={taskXp(task.difficulty)} />
-                    </div>
-                  );
-                })}
+              <div className="space-y-2 max-h-[30rem] overflow-y-auto thin-scroll pr-1">
+                {todaysTasks.map((m, i) => (
+                  <MissionCard
+                    key={`${m.goal.id}-${m.task.id}`}
+                    mission={m}
+                    index={i}
+                    flashing={flashTask === `${m.goal.id}-${m.task.id}`}
+                    onComplete={() => logTask(m.goal.id, m.task.id, true)}
+                    onUndo={() => logTask(m.goal.id, m.task.id, false)}
+                    onRecover={() => logTask(m.goal.id, m.task.id, 'fallback')}
+                    onOpenGoal={() => router.push(`/goals/${m.goal.id}`)}
+                    onCorrectEstimate={mins => correctEstimate(m.goal.id, m.task.id, mins)}
+                  />
+                ))}
               </div>
             )}
           </div>
 
           {/* Activity feed */}
-          <div className="card-glow rounded-2xl p-4 animate-slide-up">
+          <div className="card-glow glow-activity rounded-2xl p-4 animate-slide-up">
             <h2 className="font-semibold text-fg flex items-center gap-2 mb-3">
               <Activity className="h-4 w-4 text-brand" /> <span className="section-title">Activity</span>
             </h2>
@@ -595,21 +635,6 @@ export default function Dashboard() {
           </div>
         </div></Reveal>
 
-        {/* ── Badges ────────────────────────────────────────────────────── */}
-        <Reveal><div className="card-glow rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-semibold text-fg flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-brand" /> <span className="section-title">Achievements</span>
-            </h2>
-            <span className="text-xs text-muted">{earnedCount} of {badges.length} unlocked</span>
-          </div>
-          <div className="grid gap-2 [grid-template-columns:repeat(auto-fill,minmax(5.5rem,1fr))]">
-            {badges.map(b => (
-              <BadgeTile key={b.id} slug={b.slug} name={b.name} description={b.description} color={b.color} earned={b.isEarned} compact />
-            ))}
-          </div>
-        </div></Reveal>
-
         {/* ── Active goals — preview only (name, category, progress) ───── */}
         <Reveal>
           <div className="flex items-center justify-between mb-3">
@@ -623,8 +648,8 @@ export default function Dashboard() {
           {previewGoals.length === 0 ? (
             <div className="card-glow rounded-2xl p-10 text-center">
               <Target className="h-10 w-10 text-muted-dim mx-auto mb-3" />
-              <h3 className="text-base font-medium text-fg mb-1">No goals yet</h3>
-              <p className="text-sm text-muted mb-4">Create your first goal to start earning XP.</p>
+              <h3 className="text-base font-medium text-fg mb-1">No campaign running</h3>
+              <p className="text-sm text-muted mb-4">Name your first ambition and start earning XP.</p>
               <button
                 onClick={() => setShowCreate(true)}
                 className="inline-flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl text-sm font-semibold press"
@@ -649,6 +674,14 @@ export default function Dashboard() {
       </div>
 
       {/* ── Overlays ────────────────────────────────────────────────────── */}
+      {focusOpen && (
+        <FocusMode
+          missions={todaysTasks}
+          onComplete={m => { logTask(m.goal.id, m.task.id, true); }}
+          onClose={() => setFocusOpen(false)}
+        />
+      )}
+
       {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
       {sparks && <Sparks key={sparks.id} x={sparks.x} y={sparks.y} />}
       {levelUp && (

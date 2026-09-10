@@ -1,5 +1,5 @@
 import type { Goal } from './types';
-import { taskXp, milestoneXp, levelFromXp, xpForLevel, streaksFromCheckIns, rankFromXp } from './xp';
+import { taskXp, milestoneXp, completionXp, levelFromXp, xpForLevel, streaksFromCheckIns, rankFromXp } from './xp';
 
 /**
  * Skill domains, matching the reference app's set. Eight are goal-linked: a
@@ -130,7 +130,7 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
     for (const [date, day] of Object.entries(goal.taskCompletions || {})) {
       for (const [taskId, value] of Object.entries(day)) {
         if (value) {
-          credit(taskXp(taskById.get(taskId)?.difficulty), date);
+          credit(completionXp(value, taskById.get(taskId)?.difficulty), date);
           for (const d of domains) taskHits[d] = (taskHits[d] || 0) + 1;
           tasksDone++;
         }

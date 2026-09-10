@@ -1,8 +1,26 @@
 export type Category = 'personal' | 'health' | 'career' | 'finance' | 'education' | 'fitness';
 
+/**
+ * A phase of the journey. Stages stop a long plan reading as one flat list:
+ * every milestone and recurring task belongs to one, and the goal's current
+ * stage is derived from which milestones are still outstanding.
+ */
+export interface GoalStage {
+  id: string;
+  title: string;
+  /** Four to six words on what this phase achieves. */
+  subtitle: string;
+  /** Why this phase exists. */
+  purpose?: string;
+  /** Concrete approach for this phase. */
+  guidance?: string;
+}
+
 export interface Subtask {
   id: number;
   title: string;
+  /** Which stage this milestone belongs to. */
+  stageId?: string;
   description?: string;
   daysFromStart: number;
   completed: boolean;
@@ -13,10 +31,26 @@ export interface Subtask {
 export interface DailyTask {
   id: number;
   title: string;
+  /** Which stage this recurring task belongs to. */
+  stageId?: string;
   /** First concrete instruction, surfaced by Next Action. AI-populated. */
   description?: string;
   /** Planned minutes. Only rendered when present — never guessed. */
   estimatedMinutes?: number;
+  /** Actual durations the user has logged, newest last. Drives recalibration. */
+  actualMinutes?: number[];
+  /** What to have ready before starting. */
+  setup?: string;
+  /** Ordered actions that make up the task. */
+  executionSteps?: string[];
+  /** How the user knows the task is done. */
+  successCriteria?: string;
+  /**
+   * A genuinely smaller version of this task, roughly ten minutes. Absent when
+   * no honest reduction exists — the recovery action is then not offered
+   * rather than inventing one.
+   */
+  fallback?: string;
   targetValue: number | null;
   unit: string;
   type: 'number' | 'checkbox';
@@ -24,6 +58,16 @@ export interface DailyTask {
   /** Assigned by the AI from task difficulty — drives XP. Never user-editable. */
   difficulty?: 'easy' | 'medium' | 'hard' | 'epic';
 }
+
+/**
+ * How a recurring task was completed on a given day.
+ *
+ * 'fallback' marks the ten-minute recovery version. It is a *string* on
+ * purpose: every existing "is this done?" check in the app is a truthiness
+ * test, and a truthy string keeps all of them correct without modification,
+ * while XP and the activity feed can still tell the two apart.
+ */
+export type TaskCompletionValue = boolean | number | 'fallback';
 
 export interface ProgressEntry {
   date: string;
@@ -44,9 +88,10 @@ export interface Goal {
   color: string;
   createdAt: string;
   updatedAt: string;
+  stages: GoalStage[];
   subtasks: Subtask[];
   dailyTasks: DailyTask[];
-  taskCompletions: Record<string, Record<string, number | boolean>>;
+  taskCompletions: Record<string, Record<string, TaskCompletionValue>>;
   checkIns: string[];
   progressHistory: ProgressEntry[];
   milestones: unknown[];

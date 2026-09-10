@@ -27,6 +27,9 @@ model Goal {
   taskCompletions Json     @default("{}")
   checkIns        Json     @default("[]")
   progressHistory Json     @default("[]")
+  /// Ordered phases of the journey. Additive with a default, so existing rows
+  /// read as an empty list until their next generation.
+  stages          Json     @default("[]")
   milestones      Json     @default("[]")
   sharedWith      Json     @default("[]")
 

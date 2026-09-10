@@ -27,6 +27,20 @@ export function taskXp(difficulty?: string): number {
   return DIFFICULTY_XP[(difficulty as Difficulty)] ?? DIFFICULTY_XP.medium;
 }
 
+/**
+ * The ten-minute recovery version earns real but reduced credit. Recovery is
+ * progress, so it is never zero, and never so close to full that skipping the
+ * real session is free.
+ */
+export function fallbackXp(difficulty?: string): number {
+  return Math.max(5, Math.round(taskXp(difficulty) * 0.35));
+}
+
+/** XP for a completion, honouring the recovery mode when one was used. */
+export function completionXp(value: unknown, difficulty?: string): number {
+  return value === 'fallback' ? fallbackXp(difficulty) : taskXp(difficulty);
+}
+
 /** Milestones are worth ~5x a task — they represent weeks of work. */
 export function milestoneXp(difficulty?: string): number {
   return taskXp(difficulty) * 5;
@@ -137,7 +151,7 @@ export function computeStats(goals: Goal[]): UserStats {
       for (const [taskId, value] of Object.entries(day)) {
         if (!value) continue;
         tasksCompleted++;
-        totalXp += taskXp(taskById.get(taskId)?.difficulty);
+        totalXp += completionXp(value, taskById.get(taskId)?.difficulty);
       }
     }
 

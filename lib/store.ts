@@ -28,12 +28,32 @@ interface GoalStore {
   // AI coach settings — kept in the store so changes propagate instantly
   coachName: string;
   coachPersona: CoachPersona;
+
+  /** How brightly panels emit light. 0 turns the glow off entirely. */
+  glowStrength: number;
+  /** Whether the glow breathes. Independent of intensity. */
+  glowAnimated: boolean;
+  setGlowStrength: (v: number) => void;
+  setGlowAnimated: (v: boolean) => void;
+  hydrateAppearance: () => void;
   setCoachName: (name: string) => void;
   setCoachPersona: (p: CoachPersona) => void;
   hydrateCoachSettings: () => void;
 }
 
 export type CoachPersona = 'energetic' | 'calm' | 'direct';
+
+/**
+ * Appearance is written straight onto the document root, because the glow is
+ * pure CSS driven by these two variables — no component needs to re-render for
+ * the whole app to change.
+ */
+function applyAppearance(strength?: number, animated?: boolean) {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  if (strength !== undefined) root.style.setProperty('--glow-strength', String(strength));
+  if (animated !== undefined) root.style.setProperty('--glow-anim', animated ? 'glow-breathe' : 'none');
+}
 
 export const useGoalStore = create<GoalStore>((set) => ({
   goals: [],
@@ -63,6 +83,29 @@ export const useGoalStore = create<GoalStore>((set) => ({
 
   selectedGoal: null,
   setSelectedGoal: (goal) => set({ selectedGoal: goal }),
+
+  glowStrength: 1,
+  glowAnimated: true,
+  setGlowStrength: (v) => {
+    const n = Math.min(Math.max(v, 0), 2);
+    applyAppearance(n, undefined);
+    if (typeof window !== 'undefined') localStorage.setItem('gq_glow_strength', String(n));
+    set({ glowStrength: n });
+  },
+  setGlowAnimated: (v) => {
+    applyAppearance(undefined, v);
+    if (typeof window !== 'undefined') localStorage.setItem('gq_glow_animated', v ? '1' : '0');
+    set({ glowAnimated: v });
+  },
+  hydrateAppearance: () => {
+    if (typeof window === 'undefined') return;
+    const rawStrength = localStorage.getItem('gq_glow_strength');
+    const rawAnimated = localStorage.getItem('gq_glow_animated');
+    const strength = rawStrength === null ? 1 : Math.min(Math.max(Number(rawStrength) || 0, 0), 2);
+    const animated = rawAnimated === null ? true : rawAnimated === '1';
+    applyAppearance(strength, animated);
+    set({ glowStrength: strength, glowAnimated: animated });
+  },
 
   coachName: 'Forge',
   coachPersona: 'calm',
