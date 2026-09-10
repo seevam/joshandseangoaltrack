@@ -14,6 +14,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const hydrateSidebar = useGoalStore(s => s.hydrateSidebar);
   useEffect(() => { hydrateSidebar(); }, [hydrateSidebar]);
 
+  // Appearance is applied to the document root before first paint of the shell.
+  const hydrateAppearance = useGoalStore(s => s.hydrateAppearance);
+  useEffect(() => { hydrateAppearance(); }, [hydrateAppearance]);
+
   const isChatOpen = useGoalStore(s => s.isChatOpen);
   const setIsChatOpen = useGoalStore(s => s.setIsChatOpen);
   const showCreateGoal = useGoalStore(s => s.showCreateGoal);

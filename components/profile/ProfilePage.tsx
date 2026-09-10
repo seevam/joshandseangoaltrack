@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
-import { LogOut, Settings, Bot, Save, Download, Bell } from 'lucide-react';
+import { LogOut, Settings, Bot, Save, Download, Bell, Sparkles } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { Icon } from '@/components/ui/icons';
 import { AnimatedNumber, Reveal } from '@/components/ui/motion';
@@ -25,6 +25,10 @@ export default function ProfilePage() {
   const goals = useGoalStore(s => s.goals);
   const setGoals = useGoalStore(s => s.setGoals);
 
+  const glowStrength = useGoalStore(s => s.glowStrength);
+  const glowAnimated = useGoalStore(s => s.glowAnimated);
+  const setGlowStrength = useGoalStore(s => s.setGlowStrength);
+  const setGlowAnimated = useGoalStore(s => s.setGlowAnimated);
   const coachName = useGoalStore(s => s.coachName);
   const persona = useGoalStore(s => s.coachPersona);
   const setCoachName = useGoalStore(s => s.setCoachName);
@@ -194,6 +198,67 @@ export default function ProfilePage() {
                 );
               })}
             </div>
+          </div>
+
+          {/* Appearance & motion */}
+          <div className="space-y-2 pt-1">
+            <label className="flex items-center gap-2 text-xs font-semibold text-muted uppercase tracking-wider">
+              <Sparkles className="h-3.5 w-3.5" /> Appearance
+            </label>
+
+            <div className="rounded-xl border border-line bg-elevated p-3">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <span className="text-sm font-medium text-fg">Glow intensity</span>
+                <span className="text-xs text-muted flex-shrink-0">
+                  {glowStrength === 0 ? 'Off' : `${Math.round(glowStrength * 100)}%`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={2}
+                step={0.25}
+                value={glowStrength}
+                onChange={e => setGlowStrength(Number(e.target.value))}
+                aria-label="Glow intensity"
+                className="w-full accent-[color:var(--brand)]"
+              />
+              <p className="text-[11px] text-muted mt-1.5 leading-relaxed">
+                {glowStrength === 0
+                  ? 'Panels use a plain border with no emitted light.'
+                  : 'How brightly panel edges emit light. Takes effect immediately.'}
+              </p>
+            </div>
+
+            <button
+              onClick={() => setGlowAnimated(!glowAnimated)}
+              role="switch"
+              aria-checked={glowAnimated}
+              className="w-full flex items-center justify-between gap-3 p-3 rounded-xl border border-line bg-elevated glow-hover text-left"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-fg">Animations</span>
+                <span className="block text-xs text-muted mt-0.5">
+                  {glowAnimated
+                    ? 'Panel glow breathes gently.'
+                    : 'Glow holds steady — no looping motion.'}
+                </span>
+              </span>
+              <span
+                className={`h-6 w-11 rounded-full flex-shrink-0 transition-colors relative ${
+                  glowAnimated ? 'bg-brand' : 'bg-line'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition-transform ${
+                    glowAnimated ? 'translate-x-[1.375rem]' : 'translate-x-0.5'
+                  }`}
+                />
+              </span>
+            </button>
+            <p className="text-[11px] text-muted leading-relaxed">
+              Your system&apos;s reduced-motion setting is always respected, whatever this is set to.
+            </p>
           </div>
 
           {/* Task reminders */}
