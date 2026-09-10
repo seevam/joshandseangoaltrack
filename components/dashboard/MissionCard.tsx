@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Check, Undo2, Clock, ArrowUpRight, LifeBuoy } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Undo2, Clock, ArrowUpRight, LifeBuoy, Timer } from 'lucide-react';
 import { CATEGORY_COLORS, type Goal, type Category, type TaskCompletionValue } from '@/lib/types';
 import { taskXp, fallbackXp } from '@/lib/xp';
 import { AnimatedCheck } from '@/components/ui/motion';
@@ -17,7 +17,7 @@ export interface Mission {
  * the whole protocol, so the user never has to invent the missing steps.
  */
 export default function MissionCard({
-  mission, index, flashing, onComplete, onUndo, onRecover, onOpenGoal,
+  mission, index, flashing, onComplete, onUndo, onRecover, onOpenGoal, onCorrectEstimate,
 }: {
   mission: Mission;
   index?: number;
@@ -26,8 +26,12 @@ export default function MissionCard({
   onUndo: () => void;
   onRecover: () => void;
   onOpenGoal: () => void;
+  /** Log how long this actually took, so future estimates recalibrate. */
+  onCorrectEstimate?: (actualMinutes: number) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [correcting, setCorrecting] = useState(false);
+  const [actual, setActual] = useState('');
   const { goal, task, value } = mission;
 
   const done = !!value;
@@ -147,7 +151,64 @@ export default function MissionCard({
             >
               Open goal <ArrowUpRight className="h-3.5 w-3.5" />
             </button>
+
+            {onCorrectEstimate && (
+              <button
+                onClick={() => { setCorrecting(c => !c); setActual(String(task.estimatedMinutes ?? '')); }}
+                aria-expanded={correcting}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-muted hover:text-fg text-xs font-semibold glow-hover"
+              >
+                <Timer className="h-3.5 w-3.5" /> Correct the estimate
+              </button>
+            )}
           </div>
+
+          {correcting && onCorrectEstimate && (
+            <div className="rounded-lg border border-line bg-elevated p-3">
+              <label className="block text-xs text-muted mb-2">
+                How long did this actually take?
+                {task.estimatedMinutes && (
+                  <span className="text-muted-dim"> Planned for {task.estimatedMinutes} min.</span>
+                )}
+              </label>
+              <div className="flex items-center gap-2 flex-wrap">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={600}
+                  value={actual}
+                  /* Blank stays blank while editing — never coerced to 0. */
+                  onChange={e => setActual(e.target.value)}
+                  aria-label="Actual minutes"
+                  className="w-24 bg-card border border-line rounded-lg px-2.5 py-1.5 text-sm text-fg focus:outline-none focus:border-brand"
+                />
+                <span className="text-xs text-muted">min</span>
+                <button
+                  onClick={() => {
+                    const n = Number(actual);
+                    if (!Number.isFinite(n) || n <= 0) return;
+                    onCorrectEstimate(n);
+                    setCorrecting(false);
+                  }}
+                  disabled={!actual.trim() || Number(actual) <= 0}
+                  className="px-3 py-1.5 rounded-lg bg-brand text-black text-xs font-semibold disabled:bg-line disabled:text-muted"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => setCorrecting(false)}
+                  className="px-3 py-1.5 rounded-lg border border-line text-fg text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-[11px] text-muted mt-2 leading-relaxed">
+                Comparable tasks you haven&apos;t timed yet are adjusted by the same amount, so one
+                honest correction improves the whole plan.
+              </p>
+            </div>
+          )}
 
           {canRecover && (
             <div className="rounded-lg border border-sky-400/30 bg-sky-400/5 p-3">

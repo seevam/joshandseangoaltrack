@@ -37,6 +37,8 @@ export interface DailyTask {
   description?: string;
   /** Planned minutes. Only rendered when present — never guessed. */
   estimatedMinutes?: number;
+  /** Actual durations the user has logged, newest last. Drives recalibration. */
+  actualMinutes?: number[];
   /** What to have ready before starting. */
   setup?: string;
   /** Ordered actions that make up the task. */

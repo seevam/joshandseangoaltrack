@@ -455,3 +455,11 @@ input, textarea { color-scheme: dark; }
   background: radial-gradient(circle, color-mix(in srgb, var(--halo, #5DBC70) 22%, transparent) 0%, transparent 68%);
   pointer-events: none;
 }
+
+/* ── Calendar month transition ─────────────────────────────────────────────── */
+/* Direction-aware, so moving forward and back feel like moving through time
+   rather than the grid blinking to new numbers. */
+@keyframes month-in-next  { from { opacity: 0; transform: translateX(3%); } to { opacity: 1; transform: none; } }
+@keyframes month-in-prev  { from { opacity: 0; transform: translateX(-3%); } to { opacity: 1; transform: none; } }
+.month-next { animation: month-in-next 0.32s var(--ease-out) backwards; }
+.month-prev { animation: month-in-prev 0.32s var(--ease-out) backwards; }

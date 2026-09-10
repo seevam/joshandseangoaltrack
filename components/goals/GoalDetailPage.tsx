@@ -14,6 +14,7 @@ import { IconTile } from '@/components/ui/icons';
 import { AnimatedNumber, AnimatedCheck, Reveal } from '@/components/ui/motion';
 import { GoalHealthCard, RecoveryModeCard } from './AdaptiveTools';
 import { stageBreakdown } from '@/lib/stages';
+import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
 
@@ -89,6 +90,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const [showShare, setShowShare] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(null);
+  const [confirmMilestone, setConfirmMilestone] = useState<number | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState('');
@@ -295,7 +297,9 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             : 'bg-elevated border border-line text-muted'
                       }`}
                     >
-                      {st.status === 'complete' ? <Check className="h-3 w-3" strokeWidth={3} /> : st.index + 1}
+                      {st.status === 'complete'
+                        ? <Check className="h-3 w-3" strokeWidth={3} />
+                        : st.locked ? <Lock className="h-3 w-3" /> : st.index + 1}
                     </span>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-fg break-words">{st.stage.title}</p>
@@ -305,13 +309,18 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                     </div>
                     {/* Phase state never rests on colour alone. */}
                     <span className="text-[10px] uppercase tracking-[0.12em] text-muted flex-shrink-0">
-                      {st.status === 'current' ? 'Now' : st.status === 'complete' ? 'Done' : `Phase ${st.index + 1}`}
+                      {st.status === 'current' ? 'Now' : st.status === 'complete' ? 'Done' : 'Locked'}
                     </span>
                   </div>
 
-                  {st.stage.purpose && (
+                  {st.locked ? (
+                    <p className="flex items-start gap-1.5 text-xs text-muted leading-relaxed mb-2.5">
+                      <Lock className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                      <span>Unlocks when you finish the phase you&apos;re in.</span>
+                    </p>
+                  ) : st.stage.purpose ? (
                     <p className="text-xs text-muted leading-relaxed break-words mb-2.5">{st.stage.purpose}</p>
-                  )}
+                  ) : null}
 
                   <div className="h-1.5 bg-track rounded-full overflow-hidden">
                     <div
@@ -469,7 +478,45 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             ? <ChevronUp className="h-4 w-4 text-muted flex-shrink-0" />
                             : <ChevronDown className="h-4 w-4 text-muted flex-shrink-0" />}
                         </button>
+
+                        {/* Destructive control is separated from the expand
+                            toggle by a divider, so the two can't be hit by
+                            mistake or read as one target. */}
+                        <span className="flex items-center gap-1 flex-shrink-0 pl-2 ml-1 border-l border-line">
+                          <button
+                            onClick={() => setConfirmMilestone(confirmMilestone === i ? null : i)}
+                            aria-label={`Delete milestone ${s.title}`}
+                            title="Delete milestone"
+                            className="p-1.5 rounded-lg text-muted hover:text-red-400 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
                       </div>
+
+                      {confirmMilestone === i && (
+                        <div className="px-3 pb-3 -mt-1">
+                          <div className="rounded-lg border border-red-500/30 bg-card p-2.5 flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-xs text-muted min-w-0 break-words">
+                              Delete &ldquo;{s.title}&rdquo;?
+                            </span>
+                            <span className="flex gap-2 flex-shrink-0">
+                              <button
+                                onClick={() => { actions.onRemoveMilestone(goal.id, i); setConfirmMilestone(null); }}
+                                className="px-2.5 py-1 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold"
+                              >
+                                Delete
+                              </button>
+                              <button
+                                onClick={() => setConfirmMilestone(null)}
+                                className="px-2.5 py-1 rounded-lg border border-line text-fg text-xs font-semibold"
+                              >
+                                Keep
+                              </button>
+                            </span>
+                          </div>
+                        </div>
+                      )}
 
                       {isExpanded && (
                         <div className="px-4 pb-3 space-y-2">

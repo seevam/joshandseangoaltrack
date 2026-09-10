@@ -95,6 +95,53 @@ export function useGoalActions(hooks?: {
     } catch (err) { console.error('Failed to add task:', err); }
   };
 
+  const onRemoveMilestone = async (goalId: string, idx: number) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal) return;
+    const subtasks = (goal.subtasks || []).filter((_, i) => i !== idx);
+    try {
+      sync(await apiCall(`/api/goals/${goalId}`, 'PUT', { subtasks }));
+    } catch (err) { console.error('Failed to remove milestone:', err); }
+  };
+
+  /**
+   * Records how long a task actually took and recalibrates from it.
+   *
+   * The corrected task takes the mean of its own logged actuals. Comparable
+   * tasks — same goal, same difficulty, never yet timed — are scaled by the
+   * same ratio, which is the point of the feature: one honest correction
+   * improves every estimate like it. Tasks the user has already timed are left
+   * alone, since their own measurements beat an inference.
+   */
+  const onCorrectEstimate = async (goalId: string, taskId: number, actual: number) => {
+    const goal = goals.find(g => g.id === goalId);
+    if (!goal || !Number.isFinite(actual) || actual <= 0) return;
+    const minutes = Math.min(Math.max(Math.round(actual), 1), 600);
+
+    const target = (goal.dailyTasks || []).find(t => t.id === taskId);
+    if (!target) return;
+    const before = target.estimatedMinutes;
+    const actuals = [...(target.actualMinutes || []), minutes];
+    const mean = Math.round(actuals.reduce((a, b) => a + b, 0) / actuals.length);
+    const ratio = before && before > 0 ? mean / before : 1;
+
+    const dailyTasks = (goal.dailyTasks || []).map(t => {
+      if (t.id === taskId) return { ...t, actualMinutes: actuals, estimatedMinutes: mean };
+      const comparable = t.difficulty === target.difficulty
+        && !(t.actualMinutes || []).length
+        && typeof t.estimatedMinutes === 'number';
+      if (!comparable || ratio === 1) return t;
+      return {
+        ...t,
+        estimatedMinutes: Math.min(Math.max(Math.round(t.estimatedMinutes! * ratio), 5), 240),
+      };
+    });
+
+    try {
+      sync(await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks }));
+    } catch (err) { console.error('Failed to correct estimate:', err); }
+  };
+
   const onRemoveDailyTask = async (goalId: string, taskId: number) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -104,5 +151,8 @@ export function useGoalActions(hooks?: {
     } catch (err) { console.error('Failed to remove task:', err); }
   };
 
-  return { onDelete, onCheckIn, onUpdateProgress, onToggleSubtask, onLogTask, onAddDailyTask, onRemoveDailyTask };
+  return {
+    onDelete, onCheckIn, onUpdateProgress, onToggleSubtask, onLogTask,
+    onAddDailyTask, onRemoveDailyTask, onRemoveMilestone, onCorrectEstimate,
+  };
 }

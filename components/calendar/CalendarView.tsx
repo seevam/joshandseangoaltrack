@@ -33,6 +33,12 @@ export default function CalendarView() {
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  /** Which way the last month change went, so the grid slides that way. */
+  const [dir, setDir] = useState<'next' | 'prev'>('next');
+  const shiftMonth = useCallback((delta: number) => {
+    setDir(delta > 0 ? 'next' : 'prev');
+    setMonth(m => new Date(m.getFullYear(), m.getMonth() + delta, 1));
+  }, []);
   const [selected, setSelected] = useState(today);
   const [showExportModal, setShowExportModal] = useState(false);
   const [flashTask, setFlashTask] = useState<string | null>(null);
@@ -202,7 +208,7 @@ export default function CalendarView() {
         <div className="lg:col-span-2 card-glow rounded-2xl p-4 sm:p-5 animate-slide-up">
           <div className="flex items-center justify-between mb-3">
             <button
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() - 1, 1))}
+              onClick={() => shiftMonth(-1)}
               aria-label="Previous month"
               className="p-1.5 rounded-lg text-muted hover:text-fg transition-colors"
             >
@@ -212,7 +218,7 @@ export default function CalendarView() {
               {MONTHS[month.getMonth()]} {month.getFullYear()}
             </span>
             <button
-              onClick={() => setMonth(new Date(month.getFullYear(), month.getMonth() + 1, 1))}
+              onClick={() => shiftMonth(1)}
               aria-label="Next month"
               className="p-1.5 rounded-lg text-muted hover:text-fg transition-colors"
             >
@@ -234,7 +240,10 @@ export default function CalendarView() {
           {/* Real month-grid cells: date in a circle, work summarised as chips
               inside the cell, today lit. Cells share borders so the grid reads
               as one board rather than detached tiles. */}
-          <div className="grid grid-cols-7 border-l border-b border-line rounded-b-xl overflow-hidden">
+          <div
+            key={`${month.getFullYear()}-${month.getMonth()}`}
+            className={`grid grid-cols-7 border-l border-b border-line rounded-b-xl overflow-hidden month-${dir}`}
+          >
             {cells.map((d, i) => {
               if (!d) return <span key={i} className="border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem]" />;
               const tasks = getTasksForDate(d);
@@ -265,14 +274,40 @@ export default function CalendarView() {
                   </span>
 
                   {tasks.length > 0 && (
-                    <span
-                      className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
-                        allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
-                      }`}
-                    >
-                      <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">{done}/{tasks.length}</span>
-                    </span>
+                    <>
+                      <span
+                        className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
+                          allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
+                        }`}
+                      >
+                        <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+                        <span className="truncate">{done}/{tasks.length}</span>
+                      </span>
+                      {/*
+                       * Load bars. The plan is deliberately uneven — heavy days
+                       * on free days, light ones elsewhere — so the month should
+                       * show that shape at a glance rather than making every day
+                       * look identical. One bar per task, capped at four.
+                       */}
+                      <span
+                        className="flex gap-0.5 mt-auto pt-1"
+                        aria-label={`${tasks.length} task${tasks.length === 1 ? '' : 's'} scheduled`}
+                      >
+                        {Array.from({ length: Math.min(tasks.length, 4) }, (_, k) => (
+                          <span
+                            key={k}
+                            className="h-1 flex-1 rounded-full"
+                            style={{
+                              backgroundColor: k < done ? 'var(--brand)' : 'var(--line-strong)',
+                              opacity: k < done ? 1 : 0.9,
+                            }}
+                          />
+                        ))}
+                        {tasks.length > 4 && (
+                          <span className="text-[9px] text-muted leading-none ml-0.5">+{tasks.length - 4}</span>
+                        )}
+                      </span>
+                    </>
                   )}
 
                   {milestones > 0 && (
@@ -289,7 +324,11 @@ export default function CalendarView() {
           </div>
 
           <button
-            onClick={() => { setSelected(today); setMonth(new Date(today.getFullYear(), today.getMonth(), 1)); }}
+            onClick={() => {
+              setDir(month > today ? 'prev' : 'next');
+              setSelected(today);
+              setMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+            }}
             className="w-full mt-3 py-2 rounded-lg border border-line text-xs font-medium text-muted hover:text-fg glow-hover"
           >
             Today

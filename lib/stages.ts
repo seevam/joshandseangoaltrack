@@ -9,6 +9,12 @@ export interface StageProgress {
   /** 0-100. A stage with no milestones reports 0 rather than dividing by zero. */
   percent: number;
   status: 'complete' | 'current' | 'upcoming';
+  /**
+   * Upcoming stages are locked: their milestones stay hidden until every
+   * milestone in the current stage is done. A goal shows one phase of work at
+   * a time rather than ten milestones at once.
+   */
+  locked: boolean;
 }
 
 /**
@@ -41,12 +47,12 @@ export function stageBreakdown(goal: Goal): StageProgress[] {
   });
 
   const currentIdx = rows.findIndex(r => r.total === 0 || r.done < r.total);
-  return rows.map((r, i) => ({
-    ...r,
-    status: currentIdx === -1
+  return rows.map((r, i) => {
+    const status: StageProgress['status'] = currentIdx === -1
       ? 'complete'
-      : i < currentIdx ? 'complete' : i === currentIdx ? 'current' : 'upcoming',
-  }));
+      : i < currentIdx ? 'complete' : i === currentIdx ? 'current' : 'upcoming';
+    return { ...r, status, locked: status === 'upcoming' };
+  });
 }
 
 /** The phase the user is actually in, or null when the goal has no stages. */

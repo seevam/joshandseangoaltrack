@@ -152,6 +152,30 @@ export default function Dashboard() {
     } catch (err) { console.error('Failed to log task:', err); }
   };
 
+  const correctEstimate = async (goalId: string, taskId: number, actual: number) => {
+    const goal = goals.find(g => g.id === goalId);
+    const target = (goal?.dailyTasks || []).find(t => t.id === taskId);
+    if (!goal || !target || !Number.isFinite(actual) || actual <= 0) return;
+    const minutes = Math.min(Math.max(Math.round(actual), 1), 600);
+    const actuals = [...(target.actualMinutes || []), minutes];
+    const mean = Math.round(actuals.reduce((a, b) => a + b, 0) / actuals.length);
+    const before = target.estimatedMinutes;
+    const ratio = before && before > 0 ? mean / before : 1;
+
+    const dailyTasks = (goal.dailyTasks || []).map(t => {
+      if (t.id === taskId) return { ...t, actualMinutes: actuals, estimatedMinutes: mean };
+      const comparable = t.difficulty === target.difficulty
+        && !(t.actualMinutes || []).length
+        && typeof t.estimatedMinutes === 'number';
+      if (!comparable || ratio === 1) return t;
+      return { ...t, estimatedMinutes: Math.min(Math.max(Math.round(t.estimatedMinutes! * ratio), 5), 240) };
+    });
+
+    try {
+      updateGoal(await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks }));
+    } catch (err) { console.error('Failed to correct estimate:', err); }
+  };
+
   const addDailyTask = async (goalId: string, task: { title: string; targetValue: number | null; unit: string; type: 'number' | 'checkbox' }) => {
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
@@ -572,6 +596,7 @@ export default function Dashboard() {
                     onUndo={() => logTask(m.goal.id, m.task.id, false)}
                     onRecover={() => logTask(m.goal.id, m.task.id, 'fallback')}
                     onOpenGoal={() => router.push(`/goals/${m.goal.id}`)}
+                    onCorrectEstimate={mins => correctEstimate(m.goal.id, m.task.id, mins)}
                   />
                 ))}
               </div>
