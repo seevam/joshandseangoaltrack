@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
-  Target, Plus, CheckCircle, AlertTriangle, ChevronRight, Search, X,
-  Zap, Trophy, Flame, ListChecks, Activity, Clock, ArrowUpRight, CalendarClock, Crosshair,
+  Target, Plus, CheckCircle, Zap, Trophy, Flame, ListChecks, Activity,
+  Clock, ArrowUpRight, CalendarClock, Crosshair,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category, type TaskCompletionValue } from '@/lib/types';

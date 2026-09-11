@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Check, Undo2, Clock, ArrowUpRight, LifeBuoy, Timer } from 'lucide-react';
+import { ChevronDown, ChevronUp, Check, Undo2, Clock, ArrowUpRight, LifeBuoy, Timer, X } from 'lucide-react';
 import { CATEGORY_COLORS, type Goal, type Category, type TaskCompletionValue } from '@/lib/types';
 import { taskXp, fallbackXp } from '@/lib/xp';
 import { AnimatedCheck } from '@/components/ui/motion';
@@ -18,6 +18,7 @@ export interface Mission {
  */
 export default function MissionCard({
   mission, index, flashing, onComplete, onUndo, onRecover, onOpenGoal, onCorrectEstimate,
+  contextLabel, inactive, onRemove,
 }: {
   mission: Mission;
   index?: number;
@@ -25,9 +26,15 @@ export default function MissionCard({
   onComplete: (origin?: { x: number; y: number }) => void;
   onUndo: () => void;
   onRecover: () => void;
-  onOpenGoal: () => void;
+  onOpenGoal?: () => void;
   /** Log how long this actually took, so future estimates recalibrate. */
   onCorrectEstimate?: (actualMinutes: number) => void;
+  /** Replaces the goal name — used where the goal is already the context. */
+  contextLabel?: string;
+  /** Not scheduled for today: visible for reference, but not completable. */
+  inactive?: boolean;
+  /** Removes the task entirely. Rendered apart from every other control. */
+  onRemove?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [correcting, setCorrecting] = useState(false);
@@ -42,7 +49,7 @@ export default function MissionCard({
   const hasProtocol = !!(task.setup || steps.length || task.successCriteria || task.description);
   // Recovery is only offered when the plan actually carries an honest smaller
   // version. No fallback text means no button, rather than a fake one.
-  const canRecover = !!task.fallback && !done;
+  const canRecover = !!task.fallback && !done && !inactive;
 
   return (
     <div
@@ -53,12 +60,21 @@ export default function MissionCard({
     >
       <div className="flex items-start gap-3 p-3.5">
         <div className="mt-0.5">
-          <AnimatedCheck
-            checked={done}
-            size={22}
-            label={done ? `Mark ${task.title} incomplete` : `Mark ${task.title} complete`}
-            onClick={() => (done ? onUndo() : onComplete())}
-          />
+          {inactive ? (
+            <span
+              className="h-[22px] w-[22px] flex items-center justify-center"
+              title="Not scheduled today"
+            >
+              <Clock className="h-3.5 w-3.5 text-muted-dim" />
+            </span>
+          ) : (
+            <AnimatedCheck
+              checked={done}
+              size={22}
+              label={done ? `Mark ${task.title} incomplete` : `Mark ${task.title} complete`}
+              onClick={() => (done ? onUndo() : onComplete())}
+            />
+          )}
         </div>
 
         <div className="flex-1 min-w-0">
@@ -73,7 +89,8 @@ export default function MissionCard({
             >
               {goal.category}
             </span>
-            <span className="text-xs text-muted truncate max-w-[14rem]">{goal.title}</span>
+            <span className="text-xs text-muted truncate max-w-[16rem]">{contextLabel ?? goal.title}</span>
+            {inactive && <span className="text-[11px] text-muted-dim">Not today</span>}
             {task.estimatedMinutes && (
               <span className="inline-flex items-center gap-1 text-xs text-muted">
                 <Clock className="h-3 w-3" />{task.estimatedMinutes} min
@@ -88,6 +105,19 @@ export default function MissionCard({
             )}
           </div>
         </div>
+
+        {onRemove && (
+          <span className="flex items-center flex-shrink-0 order-last pl-2 ml-1 border-l border-line">
+            <button
+              onClick={onRemove}
+              aria-label={`Remove ${task.title}`}
+              title="Remove task"
+              className="p-1.5 rounded-lg text-muted hover:text-red-400 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </span>
+        )}
 
         {hasProtocol && (
           <button
@@ -129,7 +159,11 @@ export default function MissionCard({
           )}
 
           <div className="flex flex-wrap gap-2 pt-1">
-            {!done ? (
+            {inactive ? (
+              <span className="text-xs text-muted">
+                Scheduled for other days — nothing to log today.
+              </span>
+            ) : !done ? (
               <button
                 onClick={() => onComplete()}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-brand hover:bg-[var(--brand-dark)] text-black text-xs font-semibold transition-colors"
@@ -145,12 +179,14 @@ export default function MissionCard({
               </button>
             )}
 
-            <button
-              onClick={onOpenGoal}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-fg text-xs font-semibold glow-hover"
-            >
-              Open goal <ArrowUpRight className="h-3.5 w-3.5" />
-            </button>
+            {onOpenGoal && (
+              <button
+                onClick={onOpenGoal}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-fg text-xs font-semibold glow-hover"
+              >
+                Open goal <ArrowUpRight className="h-3.5 w-3.5" />
+              </button>
+            )}
 
             {onCorrectEstimate && (
               <button

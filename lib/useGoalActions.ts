@@ -1,7 +1,7 @@
 'use client';
 
 import { useGoalStore } from './store';
-import { getGoalProgress } from './types';
+import { getGoalProgress, type TaskCompletionValue } from './types';
 
 async function apiCall(url: string, method: string, body?: unknown) {
   const opts: RequestInit = { method, headers: {} };
@@ -70,7 +70,7 @@ export function useGoalActions(hooks?: {
     } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
-  const onLogTask = async (goalId: string, taskId: number, value: number | boolean) => {
+  const onLogTask = async (goalId: string, taskId: number, value: TaskCompletionValue) => {
     const today = new Date().toISOString().split('T')[0];
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;

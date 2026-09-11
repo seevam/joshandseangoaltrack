@@ -82,16 +82,6 @@ export interface Availability {
   bufferPercent?: number;
 }
 
-/**
- * The date the plan should actually aim at, pulled earlier than the real
- * deadline by the buffer. Returns null when there is no deadline to buffer.
- */
-export function bufferedDeadline(start: Date, deadline: Date, bufferPercent = 0): Date | null {
-  const span = deadline.getTime() - start.getTime();
-  if (!Number.isFinite(span) || span <= 0) return null;
-  const pct = Math.min(Math.max(bufferPercent, 0), 60) / 100;
-  return new Date(start.getTime() + span * (1 - pct));
-}
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 

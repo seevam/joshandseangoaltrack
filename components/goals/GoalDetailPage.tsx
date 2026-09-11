@@ -17,6 +17,7 @@ import { stageBreakdown } from '@/lib/stages';
 import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
+import MissionCard from '@/components/dashboard/MissionCard';
 
 const MILESTONE_BADGES = [
   { pct: 25,  label: 'First Quarter', icon: 'sprout', color: '#5DBC70' },
@@ -153,14 +154,23 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
   // The first unfinished milestone is the checkpoint worth aiming at right now.
   const nextMilestone = useMemo(() => {
-    const idx = milestones.findIndex(s => !s.completed);
+    /*
+     * Scoped to the current stage when the goal has stages. Picking the first
+     * incomplete milestone in array order could otherwise point at a locked
+     * phase, telling the user to aim at work they cannot start.
+     */
+    const current = stages.find(st => st.status === 'current');
+    const pool = current?.milestones.length ? current.milestones : milestones;
+    const target = pool.find(s => !s.completed);
+    if (!target) return null;
+    const idx = milestones.indexOf(target);
     if (idx === -1) return null;
     const m = milestones[idx];
     const date = goal.startDate
       ? new Date(new Date(goal.startDate).getTime() + m.daysFromStart * 86400000)
       : null;
     return { index: idx, milestone: m, date };
-  }, [milestones, goal.startDate]);
+  }, [milestones, stages, goal.startDate]);
 
   const statusLabel = status === 'completed' ? 'Completed' : status === 'overdue' ? 'Overdue' : 'Active';
   const statusColor = status === 'completed' ? '#5DBC70' : status === 'overdue' ? '#F87171' : '#A1A1A1';
@@ -440,6 +450,14 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
             ) : (
               <ul className="space-y-2">
                 {milestones.map((s, i) => {
+                  /*
+                   * Locking has to bite here, not only in the Stages panel. A
+                   * milestone belonging to a phase the user hasn't reached is
+                   * shown but not actionable — otherwise "locked" is decoration
+                   * and the whole point of staging a plan is lost.
+                   */
+                  const owningStage = stages.find(st => st.stage.id === s.stageId);
+                  const stageLocked = !!owningStage?.locked;
                   const isExpanded = expandedMilestone === i;
                   const targetDate = goal.startDate
                     ? new Date(new Date(goal.startDate).getTime() + s.daysFromStart * 86400000)
@@ -449,18 +467,31 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                     <li
                       key={i}
                       className={`rounded-xl border overflow-hidden ${
-                        s.completed ? 'bg-[var(--brand-light)] border-[var(--brand)]/30' : 'bg-elevated border-line glow-hover'
+                        s.completed
+                          ? 'bg-[var(--brand-light)] border-[var(--brand)]/30'
+                          : stageLocked
+                            ? 'bg-card border-line opacity-60'
+                            : 'bg-elevated border-line glow-hover'
                       }`}
                     >
                       <div className="flex items-center gap-3 p-3">
-                        <div onClick={e => e.stopPropagation()}>
-                          <AnimatedCheck
-                            checked={s.completed}
-                            size={22}
-                            label={`Mark ${s.title} ${s.completed ? 'incomplete' : 'complete'}`}
-                            onClick={() => actions.onToggleSubtask(goal.id, i)}
-                          />
-                        </div>
+                        {stageLocked ? (
+                          <span
+                            className="h-[22px] w-[22px] flex items-center justify-center flex-shrink-0"
+                            title={`Unlocks in ${owningStage?.stage.title}`}
+                          >
+                            <Lock className="h-3.5 w-3.5 text-muted-dim" />
+                          </span>
+                        ) : (
+                          <div onClick={e => e.stopPropagation()}>
+                            <AnimatedCheck
+                              checked={s.completed}
+                              size={22}
+                              label={`Mark ${s.title} ${s.completed ? 'incomplete' : 'complete'}`}
+                              onClick={() => actions.onToggleSubtask(goal.id, i)}
+                            />
+                          </div>
+                        )}
                         <button
                           onClick={() => setExpandedMilestone(isExpanded ? null : i)}
                           aria-expanded={isExpanded}
@@ -533,14 +564,21 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                           )}
                           <button
                             onClick={() => actions.onToggleSubtask(goal.id, i)}
+                            disabled={stageLocked}
                             className={`w-full py-2 rounded-lg text-xs font-semibold transition-colors ${
-                              s.completed ? 'bg-card text-muted hover:text-red-400' : 'bg-brand text-black hover:bg-[var(--brand-dark)]'
+                              stageLocked
+                                ? 'bg-card text-muted-dim cursor-not-allowed'
+                                : s.completed
+                                  ? 'bg-card text-muted hover:text-red-400'
+                                  : 'bg-brand text-black hover:bg-[var(--brand-dark)]'
                             }`}
                           >
                             <span className="flex items-center justify-center gap-1.5">
-                              {s.completed
-                                ? <><Undo2 className="h-3.5 w-3.5" />Mark Incomplete</>
-                                : <><Check className="h-3.5 w-3.5" strokeWidth={3} />Mark Complete</>}
+                              {stageLocked
+                                ? <><Lock className="h-3.5 w-3.5" />Locked until {owningStage?.stage.title}</>
+                                : s.completed
+                                  ? <><Undo2 className="h-3.5 w-3.5" />Mark Incomplete</>
+                                  : <><Check className="h-3.5 w-3.5" strokeWidth={3} />Mark Complete</>}
                             </span>
                           </button>
                         </div>
@@ -577,49 +615,21 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
               </p>
             ) : showTasks && (
               <div className="space-y-2">
-                {recurringTasks.map(task => {
+                {recurringTasks.map((task, i) => {
                   const scheduledToday = !task.daysOfWeek || task.daysOfWeek.length === 0 || task.daysOfWeek.includes(todayDow);
-                  const done = !!todayCompletions[task.id];
                   return (
-                    <div
+                    <MissionCard
                       key={task.id}
-                      className={`flex items-center gap-3 p-3 rounded-xl border ${
-                        done ? 'bg-[var(--brand-light)] border-[var(--brand)]/30'
-                          : scheduledToday ? 'bg-elevated border-line glow-hover'
-                          : 'bg-elevated/50 border-line opacity-60'
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium break-words ${done ? 'line-through text-muted' : 'text-fg'}`}>
-                          {task.title}
-                        </p>
-                        <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
-                          <RepeatIcon className="h-3 w-3" />{formatSchedule(task.daysOfWeek)}
-                        </p>
-                      </div>
-                      {scheduledToday ? (
-                        <button
-                          onClick={() => actions.onLogTask(goal.id, task.id, !done)}
-                          aria-label={`Mark ${task.title} ${done ? 'incomplete' : 'complete'}`}
-                          className={`flex-shrink-0 h-9 px-3 rounded-lg text-xs font-semibold transition-colors ${
-                            done ? 'bg-brand/20 text-brand' : 'bg-brand text-black hover:bg-[var(--brand-dark)]'
-                          }`}
-                        >
-                          {done
-                            ? <span className="flex items-center gap-1"><Check className="h-3 w-3" strokeWidth={3} />Done</span>
-                            : 'Complete'}
-                        </button>
-                      ) : (
-                        <span className="text-xs text-muted flex-shrink-0">Not today</span>
-                      )}
-                      <button
-                        onClick={() => actions.onRemoveDailyTask(goal.id, task.id)}
-                        aria-label={`Remove ${task.title}`}
-                        className="flex-shrink-0 text-muted hover:text-red-400 transition-colors"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+                      index={i}
+                      mission={{ goal, task, value: todayCompletions[task.id] }}
+                      contextLabel={formatSchedule(task.daysOfWeek)}
+                      inactive={!scheduledToday}
+                      onComplete={() => actions.onLogTask(goal.id, task.id, true)}
+                      onUndo={() => actions.onLogTask(goal.id, task.id, false)}
+                      onRecover={() => actions.onLogTask(goal.id, task.id, 'fallback')}
+                      onCorrectEstimate={mins => actions.onCorrectEstimate(goal.id, task.id, mins)}
+                      onRemove={() => actions.onRemoveDailyTask(goal.id, task.id)}
+                    />
                   );
                 })}
               </div>
