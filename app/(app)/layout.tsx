@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/navigation/Sidebar';
 import BottomNav from '@/components/navigation/BottomNav';
+import CoachFab from '@/components/navigation/CoachFab';
 import AIChatPanel from '@/components/ai/AIChatPanel';
 import CreateGoalModal from '@/components/goals/CreateGoalModal';
 import { useGoalStore } from '@/lib/store';
@@ -38,7 +39,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {children}
       </main>
 
-      <BottomNav onToggleChat={() => setIsChatOpen(!isChatOpen)} />
+      <BottomNav />
+
+      {/* Hidden while the chat is open — it would sit on top of the panel it
+          opened, offering to open it again. */}
+      <CoachFab onClick={() => setIsChatOpen(true)} hidden={isChatOpen || showCreateGoal} />
 
       <AIChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 

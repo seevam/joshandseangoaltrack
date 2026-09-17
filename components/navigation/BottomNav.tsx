@@ -5,30 +5,28 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useUser, useClerk } from '@clerk/nextjs';
 import {
-  LayoutDashboard, Target, Calendar, Trophy, Settings, MessageCircle,
-  Plus, MoreHorizontal, LogOut, X,
+  LayoutDashboard, Target, Calendar, Trophy, Settings,
+  Plus, Menu, LogOut, X,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { computeStats } from '@/lib/xp';
-import { RankEmblem } from '@/components/ui/icons';
+import { isNavActive } from '@/lib/nav';
 
-/** The routes that fit in the bar. Everything else lives in the More sheet. */
+/** The three destinations that earn a permanent slot, plus the More menu. */
 const BAR = [
-  { icon: LayoutDashboard, label: 'Home',     href: '/home' },
-  { icon: Target,          label: 'Goals',    href: '/goals' },
-  { icon: Calendar,        label: 'Calendar', href: '/calendar' },
+  { icon: LayoutDashboard, label: 'Home',        href: '/home' },
+  { icon: Calendar,        label: 'Calendar',    href: '/calendar' },
+  { icon: Trophy,          label: 'Progression', href: '/progress' },
 ];
 
-/** Routes reachable only through the sheet — but reachable, which is the point. */
+/** Secondary destinations — one tap away, never unreachable. */
 const SHEET = [
-  { icon: Trophy,   label: 'Progression', href: '/progress', hint: 'Ranks, skills and badges' },
-  { icon: Settings, label: 'Settings',    href: '/profile',  hint: 'Profile, appearance, account' },
+  { icon: Target,   label: 'Goals',    href: '/goals',   hint: 'Every goal, active and finished' },
+  { icon: Settings, label: 'Settings', href: '/profile', hint: 'Profile, appearance, account' },
 ];
 
-export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }) {
+export default function BottomNav() {
   const pathname = usePathname();
   const setShowCreateGoal = useGoalStore(s => s.setShowCreateGoal);
-  const goals = useGoalStore(s => s.goals);
   const { user } = useUser();
   const { signOut } = useClerk();
   const [more, setMore] = useState(false);
@@ -50,10 +48,8 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
     };
   }, [more]);
 
-  const stats = computeStats(goals);
-  const pct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
-  // The More tab reads as active whenever the page you are on lives inside it.
-  const moreActive = SHEET.some(i => pathname === i.href);
+  // The More tab lights up whenever the page you are on lives inside it.
+  const moreActive = SHEET.some(i => isNavActive(pathname, i.href));
 
   return (
     <>
@@ -63,7 +59,7 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
       >
         <div className="flex items-stretch justify-around px-1 pt-1 pb-1">
           {BAR.slice(0, 2).map(item => (
-            <Tab key={item.href} {...item} active={pathname === item.href} />
+            <Tab key={item.href} {...item} active={isNavActive(pathname, item.href)} />
           ))}
 
           <button
@@ -75,11 +71,11 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
           </button>
 
           {BAR.slice(2).map(item => (
-            <Tab key={item.href} {...item} active={pathname === item.href} />
+            <Tab key={item.href} {...item} active={isNavActive(pathname, item.href)} />
           ))}
 
           <Tab
-            icon={MoreHorizontal}
+            icon={Menu}
             label="More"
             active={moreActive || more}
             onClick={() => setMore(o => !o)}
@@ -103,8 +99,8 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
             className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto thin-scroll rounded-t-2xl border-t border-line-strong bg-card animate-slide-up"
             style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}
           >
-            <div className="flex items-center justify-between px-4 pt-3 pb-1">
-              <span className="h-1 w-10 rounded-full bg-line-strong mx-auto" />
+            <div className="px-4 pt-3 pb-1">
+              <span className="block h-1 w-10 rounded-full bg-line-strong mx-auto" />
               <button
                 onClick={() => setMore(false)}
                 aria-label="Close menu"
@@ -114,61 +110,26 @@ export default function BottomNav({ onToggleChat }: { onToggleChat: () => void }
               </button>
             </div>
 
-            <div className="px-4 pt-3 space-y-3">
-              {/* The coach first, and styled apart from navigation, exactly as
-                  it is on the sidebar — it is a thing you talk to, not a page. */}
-              <button
-                onClick={() => { setMore(false); onToggleChat(); }}
-                className="w-full h-12 flex items-center gap-3 px-3 rounded-xl text-sm font-medium text-brand border border-brand/30 bg-brand/5 card-glow glow-focus"
-              >
-                <MessageCircle className="h-4 w-4 flex-shrink-0" />
-                AI Coach
-              </button>
-
-              {/* Progression summary, same content the sidebar carries. */}
-              <Link
-                href="/progress"
-                onClick={() => setMore(false)}
-                className="block rounded-xl border border-line bg-elevated px-3 py-3"
-              >
-                <span className="flex items-center gap-2.5 mb-2">
-                  <RankEmblem slug={stats.rank.slug} size={30} className="flex-shrink-0" />
-                  <span className="flex-1 min-w-0 text-sm text-fg font-medium truncate">
-                    {stats.rank.name}
-                  </span>
-                  <span className="text-sm text-brand font-semibold flex-shrink-0">
-                    Lv.{stats.level}
-                  </span>
-                </span>
-                <span className="block text-[10px] tracking-[0.16em] uppercase text-muted mb-1.5">
-                  {stats.levelXp}/{stats.levelSpan} XP to next level
-                </span>
-                <span className="block h-1.5 bg-track rounded-full overflow-hidden">
-                  <span className="xp-bar-fill block h-full rounded-full" style={{ width: `${pct}%` }} />
-                </span>
-              </Link>
-
-              <div className="space-y-1">
-                {SHEET.map(item => {
-                  const active = pathname === item.href;
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      onClick={() => setMore(false)}
-                      className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
-                        active ? 'bg-brand/10 text-brand' : 'text-fg active:bg-elevated'
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4 flex-shrink-0" />
-                      <span className="min-w-0">
-                        <span className="block text-sm font-medium leading-none">{item.label}</span>
-                        <span className="block text-xs text-muted mt-1 truncate">{item.hint}</span>
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+            <div className="px-4 pt-3 space-y-1">
+              {SHEET.map(item => {
+                const active = isNavActive(pathname, item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMore(false)}
+                    className={`flex items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
+                      active ? 'bg-brand/10 text-brand' : 'text-fg active:bg-elevated'
+                    }`}
+                  >
+                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium leading-none">{item.label}</span>
+                      <span className="block text-xs text-muted mt-1 truncate">{item.hint}</span>
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
 
             <div className="mt-3 pt-3 px-4 border-t border-line flex items-center gap-3">
@@ -215,13 +176,20 @@ function Tab({
 }) {
   const content = (
     <span className="flex flex-col items-center gap-0.5 py-1 px-1 relative w-full">
-      {active && (
-        <span className="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--brand)]" />
-      )}
-      <Icon className={`h-5 w-5 transition-colors ${active ? 'text-[var(--brand)]' : 'text-muted'}`} />
+      <Icon
+        className={`h-5 w-5 transition-colors ${active ? 'text-[var(--brand)] nav-icon-lit' : 'text-muted'}`}
+      />
       <span className={`text-[11px] font-medium transition-colors ${active ? 'text-[var(--brand)]' : 'text-muted'}`}>
         {label}
       </span>
+      {/* A lit bar rather than a dot — the dot read as a stray pixel against
+          the rest of the interface, which is built out of glowing edges. */}
+      <span
+        aria-hidden
+        className={`nav-indicator absolute -bottom-1 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-200 ${
+          active ? 'w-6 opacity-100' : 'w-0 opacity-0'
+        }`}
+      />
     </span>
   );
 

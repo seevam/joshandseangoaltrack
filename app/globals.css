@@ -80,7 +80,10 @@ button:active:not(:disabled) { transform: scale(0.97); }
  */
 :root {
   --glow: var(--brand);          /* per-panel accent, overridden by .glow-* */
-  --glow-strength: 1;            /* 0 = off, 1 = default, up to 2 */
+  /* The user's setting. Kept separate from --glow-strength so a panel can
+     scale itself relative to it instead of ignoring it outright. */
+  --glow-user: 0.75;             /* 0 = off, 1 = full, up to 2 */
+  --glow-strength: var(--glow-user);
   --glow-anim: glow-breathe;     /* set to `none` to freeze the pulse */
   --glow-dur: 4.5s;
 }
@@ -90,16 +93,23 @@ button:active:not(:disabled) { transform: scale(0.97); }
   50%      { opacity: calc(1 * var(--glow-strength)); }
 }
 
-/* Panel accents. One class per kind of box, so the dashboard reads as a set. */
-.glow-brand   { --glow: #5DBC70; }
-.glow-rank    { --glow: #FBBF24; }
-.glow-xp      { --glow: #8FE3A3; }
-.glow-streak  { --glow: #FB923C; }
-.glow-focus   { --glow: #5DBC70; }
-.glow-plan    { --glow: #38BDF8; }
-.glow-missions{ --glow: #A78BFA; }
-.glow-activity{ --glow: #EC4899; }
-.glow-goals   { --glow: #14B8A6; }
+/*
+ * Panel accents. One green, deliberately: a dashboard where every box glowed a
+ * different colour read as a set of unrelated widgets rather than one surface.
+ * Exactly one panel is allowed to differ — Next Action — and it uses blue so
+ * that the single most important box on the page is the one that stands out.
+ */
+.glow-brand,
+.glow-rank,
+.glow-xp,
+.glow-streak,
+.glow-focus,
+.glow-plan,
+.glow-missions,
+.glow-activity,
+.glow-goals   { --glow: var(--brand); }
+
+.glow-next    { --glow: #38BDF8; }
 
 /* ── Surfaces ─────────────────────────────────────────────────────────────── */
 /*
@@ -151,9 +161,16 @@ button:active:not(:disabled) { transform: scale(0.97); }
     0 0 64px -10px color-mix(in srgb, var(--glow) calc(60% * var(--glow-strength)), transparent);
 }
 
-/* The single most important panel on the page is lit permanently, not on hover. */
-.card-primary { --glow-strength: 1.5; }
-.card-primary { border-color: color-mix(in srgb, var(--glow) 45%, transparent); }
+/*
+ * The single most important panel on the page is lit permanently and brighter
+ * than everything else, so it is the thing you see first without hovering it.
+ * It keeps its own floor: turning the global glow down dims the page but never
+ * lets Next Action fall back into the crowd.
+ */
+.card-primary {
+  --glow-strength: calc(1.8 * var(--glow-user));
+  border-color: color-mix(in srgb, var(--glow) 55%, transparent);
+}
 
 /* Shared hover treatment for any bordered box that isn't a .card-glow */
 .glow-hover {
@@ -463,3 +480,23 @@ input, textarea { color-scheme: dark; }
 @keyframes month-in-prev  { from { opacity: 0; transform: translateX(-3%); } to { opacity: 1; transform: none; } }
 .month-next { animation: month-in-next 0.32s var(--ease-out) backwards; }
 .month-prev { animation: month-in-prev 0.32s var(--ease-out) backwards; }
+
+/* ── Bottom navigation ─────────────────────────────────────────────────────── */
+/* The active tab is marked by a lit bar, not a dot. The dot was a flat pixel in
+   an interface otherwise built out of glowing edges. */
+.nav-indicator {
+  background: var(--brand);
+  box-shadow: 0 0 6px 0 var(--brand), 0 0 14px -2px var(--brand);
+}
+.nav-icon-lit {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--brand) 55%, transparent));
+}
+
+/* ── Floating coach ────────────────────────────────────────────────────────── */
+/* The coach follows the page on mobile instead of living in a menu, because it
+   is the one control you want while looking at something else. */
+.coach-fab {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--brand) 35%, transparent),
+              0 0 18px -2px color-mix(in srgb, var(--brand) 55%, transparent),
+              0 6px 18px -6px rgba(0, 0, 0, 0.8);
+}
