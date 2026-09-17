@@ -10,6 +10,8 @@ import {
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
 import { useGoalActions } from '@/lib/useGoalActions';
+import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
+import DurationPrompt from '@/components/dashboard/DurationPrompt';
 import { IconTile } from '@/components/ui/icons';
 import { AnimatedNumber, AnimatedCheck, Reveal } from '@/components/ui/motion';
 import { GoalHealthCard, RecoveryModeCard } from './AdaptiveTools';
@@ -83,6 +85,22 @@ export default function GoalDetailPage({ goalId }: { goalId: string }) {
 function GoalDetailContent({ goal }: { goal: Goal }) {
   const router = useRouter();
   const actions = useGoalActions();
+  /** The completion currently being asked about, if any. */
+  const [askDuration, setAskDuration] = useState<
+    { taskId: number; title: string; planned?: number } | null
+  >(null);
+
+  /*
+   * Completing here behaves exactly as it does on the dashboard: log it, then
+   * ask how long it took if this is the task's first completion or the sample
+   * lands. Two code paths that log the same thing must ask the same question.
+   */
+  const completeTask = async (task: Goal['dailyTasks'][number]) => {
+    await actions.onLogTask(goal.id, task.id, true);
+    if (noteCompletionAndMaybeAsk(task)) {
+      setAskDuration({ taskId: task.id, title: task.title, planned: task.estimatedMinutes });
+    }
+  };
 
   const [showTasks, setShowTasks] = useState(true);
   const [showChat, setShowChat] = useState(false);
@@ -624,10 +642,9 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                       mission={{ goal, task, value: todayCompletions[task.id] }}
                       contextLabel={formatSchedule(task.daysOfWeek)}
                       inactive={!scheduledToday}
-                      onComplete={() => actions.onLogTask(goal.id, task.id, true)}
+                      onComplete={() => completeTask(task)}
                       onUndo={() => actions.onLogTask(goal.id, task.id, false)}
                       onRecover={() => actions.onLogTask(goal.id, task.id, 'fallback')}
-                      onCorrectEstimate={mins => actions.onCorrectEstimate(goal.id, task.id, mins)}
                       onRemove={() => actions.onRemoveDailyTask(goal.id, task.id)}
                     />
                   );
@@ -791,6 +808,18 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
       {showEdit && <GoalForm editGoal={goal} onClose={() => setShowEdit(false)} />}
       {showChat && <GoalChatPanel goal={goal} onClose={() => setShowChat(false)} />}
+
+      {askDuration && (
+        <DurationPrompt
+          taskTitle={askDuration.title}
+          planned={askDuration.planned}
+          onSkip={() => setAskDuration(null)}
+          onSubmit={mins => {
+            actions.onCorrectEstimate(goal.id, askDuration.taskId, mins);
+            setAskDuration(null);
+          }}
+        />
+      )}
     </div>
   );
 }

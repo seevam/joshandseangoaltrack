@@ -22,6 +22,8 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import MissionCard, { type Mission } from './MissionCard';
 import Panel from '@/components/ui/Panel';
+import DurationPrompt from './DurationPrompt';
+import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
 import { currentStage } from '@/lib/stages';
 import FocusMode from './FocusMode';
 
@@ -41,6 +43,10 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
   const [xpToast, setXpToast] = useState<{ id: number; amount: number } | null>(null);
   const [flashTask, setFlashTask] = useState<string | null>(null);
+  /** The completion currently being asked about, if any. */
+  const [askDuration, setAskDuration] = useState<
+    { goalId: string; taskId: number; title: string; planned?: number } | null
+  >(null);
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
   const prevLevel = useRef<number | null>(null);
@@ -148,6 +154,15 @@ export default function Dashboard() {
         fireXp(completionXp(value, task?.difficulty), origin);
         setFlashTask(`${goalId}-${taskId}`);
         setTimeout(() => setFlashTask(null), 650);
+        /*
+         * Ask how long it took at the only moment the user knows: just after
+         * finishing. Never after the ten-minute recovery version — its duration
+         * says nothing about the real task, and calibrating on it would shrink
+         * every future estimate.
+         */
+        if (task && value !== 'fallback' && noteCompletionAndMaybeAsk(task)) {
+          setAskDuration({ goalId, taskId, title: task.title, planned: task.estimatedMinutes });
+        }
       }
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
     } catch (err) { console.error('Failed to log task:', err); }
@@ -624,7 +639,6 @@ export default function Dashboard() {
                     onUndo={() => logTask(m.goal.id, m.task.id, false)}
                     onRecover={() => logTask(m.goal.id, m.task.id, 'fallback')}
                     onOpenGoal={() => router.push(`/goals/${m.goal.id}`)}
-                    onCorrectEstimate={mins => correctEstimate(m.goal.id, m.task.id, mins)}
                   />
                 ))}
               </div>
@@ -709,6 +723,18 @@ export default function Dashboard() {
           missions={todaysTasks}
           onComplete={m => { logTask(m.goal.id, m.task.id, true); }}
           onClose={() => setFocusOpen(false)}
+        />
+      )}
+
+      {askDuration && (
+        <DurationPrompt
+          taskTitle={askDuration.title}
+          planned={askDuration.planned}
+          onSkip={() => setAskDuration(null)}
+          onSubmit={mins => {
+            correctEstimate(askDuration.goalId, askDuration.taskId, mins);
+            setAskDuration(null);
+          }}
         />
       )}
 

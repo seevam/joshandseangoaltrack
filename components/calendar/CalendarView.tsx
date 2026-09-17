@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Download, CalendarDays, AlertTriangle, CheckCircle2, Flag } from 'lucide-react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { ChevronLeft, ChevronRight, ChevronDown, Download, CalendarDays, AlertTriangle, CheckCircle2, Flag } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, type Goal } from '@/lib/types';
 import { Icon } from '@/components/ui/icons';
@@ -12,6 +12,7 @@ import PageHeader from '@/components/ui/PageHeader';
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+const OVERDUE_KEY = 'gq_calendar_overdue_open';
 
 interface DayTask {
   goal: Goal;
@@ -41,6 +42,14 @@ export default function CalendarView() {
   }, []);
   const [selected, setSelected] = useState(today);
   const [showExportModal, setShowExportModal] = useState(false);
+  /** Open by default — a backlog you cannot see is a backlog you forget. */
+  const [showOverdue, setShowOverdue] = useState(true);
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(OVERDUE_KEY);
+      if (saved !== null) setShowOverdue(saved === '1');
+    } catch { /* private mode — the default stands */ }
+  }, []);
   const [flashTask, setFlashTask] = useState<string | null>(null);
 
   const getTasksForDate = useCallback((date: Date): DayTask[] => {
@@ -260,14 +269,19 @@ export default function CalendarView() {
                   aria-current={isToday ? 'date' : undefined}
                   aria-pressed={isSel}
                   className={`relative border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem] p-1 sm:p-1.5 flex flex-col gap-1 text-left transition-colors ${
-                    isToday ? 'day-today' : isSel ? 'bg-elevated' : 'hover:bg-elevated'
-                  } ${isSel && !isToday ? 'ring-1 ring-inset ring-brand/50' : ''}`}
+                    isToday ? 'day-today' : isSel ? 'day-selected' : 'hover:bg-elevated'
+                  }`}
                 >
                   <span
+                    /* Selection is carried by the date itself rather than an
+                       outline around the whole cell — the ring read as a stray
+                       coloured border cutting across the grid. */
                     className={`h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] transition-colors ${
                       isToday
                         ? 'bg-brand text-black font-bold'
-                        : `border border-line ${isSel ? 'text-fg font-semibold' : 'text-muted'}`
+                        : isSel
+                          ? 'border border-brand text-fg font-semibold'
+                          : 'border border-line text-muted'
                     }`}
                   >
                     {d.getDate()}
@@ -345,17 +359,31 @@ export default function CalendarView() {
         <div className="space-y-5">
           {overdue.length > 0 && (
             <section className="animate-slide-up">
-              <div className="flex items-baseline justify-between mb-2.5">
-                <h2 className="flex items-center gap-1.5 text-red-400">
-                  <AlertTriangle className="h-4 w-4" /> <span className="section-title">Overdue</span>
+              {/* A long backlog pushed today off the screen, which is the one
+                  thing this page exists to show. The count stays visible when
+                  it is folded away, so hiding it is not the same as forgetting
+                  it. */}
+              <button
+                onClick={() => setShowOverdue(o => { try { localStorage.setItem(OVERDUE_KEY, o ? '0' : '1'); } catch { /* ignore */ } return !o; })}
+                aria-expanded={showOverdue}
+                className="w-full flex items-baseline justify-between gap-3 mb-2.5 text-left"
+              >
+                <h2 className="flex items-center gap-1.5 text-red-400 min-w-0">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span className="section-title truncate">Overdue</span>
                 </h2>
-                <span className="text-xs text-muted">{overdue.length} task{overdue.length === 1 ? '' : 's'}</span>
-              </div>
-              <div className="space-y-2">
-                {overdue.map((item, i) => (
-                  <TaskRow key={`${item.goal.id}-${item.task.id}-${item.dateStr}`} item={item} overdueRow index={i} />
-                ))}
-              </div>
+                <span className="flex items-center gap-1.5 text-xs text-muted flex-shrink-0">
+                  {overdue.length} task{overdue.length === 1 ? '' : 's'}
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showOverdue ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              {showOverdue && (
+                <div className="space-y-2">
+                  {overdue.map((item, i) => (
+                    <TaskRow key={`${item.goal.id}-${item.task.id}-${item.dateStr}`} item={item} overdueRow index={i} />
+                  ))}
+                </div>
+              )}
             </section>
           )}
 

@@ -500,3 +500,11 @@ input, textarea { color-scheme: dark; }
               0 0 18px -2px color-mix(in srgb, var(--brand) 55%, transparent),
               0 6px 18px -6px rgba(0, 0, 0, 0.8);
 }
+
+/* The selected day. A coloured ring around the cell cut across the grid lines
+   and read as a misplaced border, so selection is carried by the date itself
+   plus a lift in the surface. */
+.day-selected {
+  background: var(--elevated);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
