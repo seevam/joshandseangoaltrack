@@ -175,7 +175,7 @@ function Tab({
   expanded?: boolean;
 }) {
   const content = (
-    <span className="flex flex-col items-center gap-0.5 py-1 px-1 relative w-full">
+    <span className="flex flex-col items-center gap-0.5 pt-1 pb-1.5 px-1 relative w-full">
       <Icon
         className={`h-5 w-5 transition-colors ${active ? 'text-[var(--brand)] nav-icon-lit' : 'text-muted'}`}
       />
@@ -186,7 +186,7 @@ function Tab({
           the rest of the interface, which is built out of glowing edges. */}
       <span
         aria-hidden
-        className={`nav-indicator absolute -bottom-1 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-200 ${
+        className={`nav-indicator absolute bottom-0 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-200 ${
           active ? 'w-6 opacity-100' : 'w-0 opacity-0'
         }`}
       />

@@ -443,7 +443,7 @@ export default function Dashboard() {
           </div>
 
           {nextAction ? (
-            <div className="mt-3 flex items-start justify-between gap-4 flex-wrap">
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <h2 className="text-xl sm:text-2xl font-bold text-fg break-words">{nextAction.task.title}</h2>
                 <p className="text-[11px] uppercase tracking-[0.14em] text-brand mt-1.5">
@@ -457,13 +457,13 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => router.push(`/goals/${nextAction.goal.id}`)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0 w-full sm:w-auto"
               >
                 Open full protocol <ArrowUpRight className="h-4 w-4" />
               </button>
             </div>
           ) : (
-            <div className="mt-3 flex items-start justify-between gap-4 flex-wrap">
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-fg">
                   {todaysTasks.length === 0 ? 'Nothing scheduled today' : 'Today is clear'}
@@ -478,7 +478,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => (goals.length === 0 ? setShowCreate(true) : router.push('/goals'))}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0 w-full sm:w-auto"
               >
                 {goals.length === 0 ? 'Create a goal' : 'Open goals'} <ArrowUpRight className="h-4 w-4" />
               </button>
