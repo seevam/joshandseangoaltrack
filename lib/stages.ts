@@ -65,3 +65,45 @@ export function unstagedMilestones(goal: Goal): Subtask[] {
   const ids = new Set((goal.stages || []).map(s => s.id));
   return (goal.subtasks || []).filter(m => !m.stageId || !ids.has(m.stageId));
 }
+
+/**
+ * The recurring tasks that are live right now: the ones belonging to the stage
+ * the user is actually in, plus any task with no stage at all.
+ *
+ * A plan's stages carry different work — base building is not race week — so a
+ * finished stage's tasks have no business still appearing on today's board.
+ * They stayed in the list before, which meant the day's work only ever grew and
+ * finishing a phase changed nothing about what you were asked to do.
+ *
+ * Unstaged tasks are always live: they belong to the goal rather than to a
+ * phase of it, and silently hiding them would lose work the user can see in the
+ * plan.
+ */
+export function activeTasks(goal: Goal): Goal['dailyTasks'] {
+  const tasks = goal.dailyTasks || [];
+  const stages = goal.stages || [];
+  if (!stages.length) return tasks;
+
+  const stageIds = new Set(stages.map(s => s.id));
+  const current = currentStage(goal);
+
+  const live = tasks.filter(t => {
+    // No stage, or a stage that no longer exists: belongs to the goal itself.
+    if (!t.stageId || !stageIds.has(t.stageId)) return true;
+    return current ? t.stageId === current.stage.id : false;
+  });
+
+  /*
+   * A phase with no work of its own leaves the user with an empty board, which
+   * is worse than showing them a task from the wrong phase. Plans written
+   * before stages existed, and plans where the model hung every task off the
+   * first stage, both land here — so fall back to the whole set rather than
+   * showing nothing.
+   */
+  return live.length ? live : tasks;
+}
+
+/** Recurring tasks belonging to one stage, for showing a phase's own plan. */
+export function tasksForStage(goal: Goal, stageId: string): Goal['dailyTasks'] {
+  return (goal.dailyTasks || []).filter(t => t.stageId === stageId);
+}

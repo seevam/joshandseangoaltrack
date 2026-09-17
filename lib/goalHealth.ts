@@ -1,4 +1,5 @@
 import { getGoalProgress, type Goal } from './types';
+import { activeTasks } from './stages';
 
 export interface GoalHealth {
   /** 0–100. Starts full and is spent by missed work. */
@@ -107,7 +108,10 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
   // ── Days that have already ended ────────────────────────────────────────
   const today = startOfDay(now);
   const firstDay = startOfDay(Math.max(startTs, now - MAX_LOOKBACK_DAYS * DAY));
-  const tasks = goal.dailyTasks || [];
+  // Only the live stage's work counts. Penalising for tasks that belong to a
+  // phase the user has finished would mean the app docks you for missing
+  // something it stopped asking you to do.
+  const tasks = activeTasks(goal);
   const completions = goal.taskCompletions || {};
 
   let dayPenalty = 0;

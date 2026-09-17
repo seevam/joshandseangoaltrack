@@ -24,7 +24,7 @@ import MissionCard, { type Mission } from './MissionCard';
 import Panel from '@/components/ui/Panel';
 import DurationPrompt from './DurationPrompt';
 import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
-import { currentStage } from '@/lib/stages';
+import { currentStage, activeTasks } from '@/lib/stages';
 import FocusMode from './FocusMode';
 
 /** Last level we played the celebration for, so a reload never replays it. */
@@ -256,7 +256,9 @@ export default function Dashboard() {
     for (const goal of goals) {
       if (getGoalStatus(goal) === 'completed') continue;
       const completions = (goal.taskCompletions || {})[todayStr] || {};
-      for (const task of goal.dailyTasks || []) {
+      // Only the stage the user is actually in. A finished phase's tasks have
+      // no business still being asked for today.
+      for (const task of activeTasks(goal)) {
         const days = task.daysOfWeek;
         if (!days || days.length === 0 || days.includes(todayDow)) {
           out.push({ goal, task, value: completions[task.id] });

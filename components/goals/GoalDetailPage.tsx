@@ -15,7 +15,7 @@ import DurationPrompt from '@/components/dashboard/DurationPrompt';
 import { IconTile } from '@/components/ui/icons';
 import { AnimatedNumber, AnimatedCheck, Reveal } from '@/components/ui/motion';
 import { GoalHealthCard, RecoveryModeCard } from './AdaptiveTools';
-import { stageBreakdown } from '@/lib/stages';
+import { stageBreakdown, tasksForStage, activeTasks } from '@/lib/stages';
 import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
@@ -162,9 +162,17 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const daysLeft = goal.endDate ? Math.ceil((new Date(goal.endDate).getTime() - Date.now()) / 86400000) : null;
 
   const stages = useMemo(() => stageBreakdown(goal), [goal]);
+  /** Which phase's own plan is open, if any. */
+  const [openStage, setOpenStage] = useState<string | null>(null);
+  const stageTasks = (stageId: string) => tasksForStage(goal, stageId);
   const milestones = goal.subtasks || [];
   const doneCount = milestones.filter(s => s.completed).length;
-  const recurringTasks = goal.dailyTasks || [];
+  /*
+   * Only the live stage's work is completable here, for the same reason it is
+   * the only work on the dashboard: a finished phase's tasks are not today's
+   * job. The rest is still visible — inside the stage it belongs to.
+   */
+  const recurringTasks = activeTasks(goal);
   const todaysTasks = recurringTasks.filter(t => {
     const days = t.daysOfWeek;
     return !days || days.length === 0 || days.includes(todayDow);
@@ -306,16 +314,27 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
             <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
               {stages.map(st => (
-                <div
+                /*
+                 * The whole card is the target. Only the inner rows reacted
+                 * before, so most of a large tile did nothing when tapped —
+                 * a button that looks pressable everywhere must be pressable
+                 * everywhere.
+                 */
+                <button
                   key={st.stage.id}
+                  type="button"
+                  onClick={() => setOpenStage(openStage === st.stage.id ? null : st.stage.id)}
+                  aria-expanded={openStage === st.stage.id}
                   style={{ ['--i' as string]: st.index }}
-                  className={`stagger-fast rounded-xl border p-3.5 ${
+                  className={`stagger-fast block w-full text-left rounded-xl border p-3.5 glow-hover ${
                     st.status === 'current'
                       ? 'border-brand/40 bg-[var(--brand-light)]'
                       : 'border-line bg-card'
-                  } ${st.status === 'upcoming' ? 'opacity-70' : ''}`}
+                  } ${st.status === 'upcoming' ? 'opacity-70' : ''} ${
+                    openStage === st.stage.id ? 'ring-1 ring-inset ring-brand/30' : ''
+                  }`}
                 >
-                  <div className="flex items-start gap-2.5 mb-2">
+                  <span className="flex items-start gap-2.5 mb-2">
                     <span
                       className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 ${
                         st.status === 'complete'
@@ -329,46 +348,66 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                         ? <Check className="h-3 w-3" strokeWidth={3} />
                         : st.locked ? <Lock className="h-3 w-3" /> : st.index + 1}
                     </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-fg break-words">{st.stage.title}</p>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-semibold text-fg break-words">{st.stage.title}</span>
                       {st.stage.subtitle && (
-                        <p className="text-xs text-brand mt-0.5 break-words">{st.stage.subtitle}</p>
+                        <span className="block text-xs text-brand mt-0.5 break-words">{st.stage.subtitle}</span>
                       )}
-                    </div>
+                    </span>
                     {/* Phase state never rests on colour alone. */}
                     <span className="text-[10px] uppercase tracking-[0.12em] text-muted flex-shrink-0">
                       {st.status === 'current' ? 'Now' : st.status === 'complete' ? 'Done' : 'Locked'}
                     </span>
-                  </div>
+                  </span>
 
                   {st.locked ? (
-                    <p className="flex items-start gap-1.5 text-xs text-muted leading-relaxed mb-2.5">
+                    <span className="flex items-start gap-1.5 text-xs text-muted leading-relaxed mb-2.5">
                       <Lock className="h-3 w-3 mt-0.5 flex-shrink-0" />
                       <span>Unlocks when you finish the phase you&apos;re in.</span>
-                    </p>
+                    </span>
                   ) : st.stage.purpose ? (
-                    <p className="text-xs text-muted leading-relaxed break-words mb-2.5">{st.stage.purpose}</p>
+                    <span className="block text-xs text-muted leading-relaxed break-words mb-2.5">{st.stage.purpose}</span>
                   ) : null}
 
-                  <div className="h-1.5 bg-track rounded-full overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-brand transition-[width] duration-700 ease-out"
+                  <span className="block h-1.5 bg-track rounded-full overflow-hidden">
+                    <span
+                      className="block h-full rounded-full bg-brand transition-[width] duration-700 ease-out"
                       style={{ width: `${st.percent}%` }}
                     />
-                  </div>
-                  <p className="text-[10px] text-muted mt-1.5">
-                    {st.total > 0 ? `${st.done}/${st.total} milestones` : 'No milestones in this phase'}
-                  </p>
+                  </span>
+                  <span className="flex items-center justify-between gap-2 text-[10px] text-muted mt-1.5">
+                    <span className="truncate">
+                      {st.total > 0 ? `${st.done}/${st.total} milestones` : 'No milestones in this phase'}
+                      {stageTasks(st.stage.id).length > 0
+                        && ` · ${stageTasks(st.stage.id).length} recurring`}
+                    </span>
+                    <ChevronDown
+                      aria-hidden
+                      className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${
+                        openStage === st.stage.id ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </span>
 
                   {st.status === 'current' && st.stage.guidance && (
-                    <div className="mt-2.5 rounded-lg border border-line bg-card p-2.5">
-                      <p className="text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
+                    <span className="mt-2.5 block rounded-lg border border-line bg-card p-2.5">
+                      <span className="block text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
                         Approach
-                      </p>
-                      <p className="text-xs text-fg leading-relaxed break-words">{st.stage.guidance}</p>
-                    </div>
+                      </span>
+                      <span className="block text-xs text-fg leading-relaxed break-words">{st.stage.guidance}</span>
+                    </span>
                   )}
-                </div>
+
+                  {/* This phase's own plan. Stages carry different work — base
+                      building is not race week — so each one lists what it
+                      actually asks for. */}
+                  {openStage === st.stage.id && (
+                    <span className="mt-2.5 block rounded-lg border border-line bg-card p-2.5 space-y-2">
+                      <StageLine label="Milestones" items={st.milestones.map(m => m.title)} />
+                      <StageLine label="Recurring" items={stageTasks(st.stage.id).map(t => t.title)} />
+                    </span>
+                  )}
+                </button>
               ))}
             </div>
           </div>
@@ -843,5 +882,30 @@ function Sparkline({ history, target, color }: { history: { date: string; value:
         return <circle key={i} cx={x} cy={y} r="2.5" fill={color} />;
       })}
     </svg>
+  );
+}
+
+/**
+ * One list inside a stage card. Rendered with spans because its parent is a
+ * button, and a <ul> inside a <button> is invalid markup that React will
+ * happily produce and the browser will happily reflow out of place.
+ */
+function StageLine({ label, items }: { label: string; items: string[] }) {
+  return (
+    <span className="block">
+      <span className="block text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
+        {label}
+      </span>
+      {items.length === 0 ? (
+        <span className="block text-xs text-muted">Nothing assigned to this phase.</span>
+      ) : (
+        items.map((title, i) => (
+          <span key={`${title}-${i}`} className="flex gap-1.5 text-xs text-fg leading-relaxed">
+            <span className="text-muted flex-shrink-0">·</span>
+            <span className="min-w-0 break-words">{title}</span>
+          </span>
+        ))
+      )}
+    </span>
   );
 }

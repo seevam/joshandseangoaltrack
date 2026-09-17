@@ -8,6 +8,7 @@ import { Icon } from '@/components/ui/icons';
 import { AnimatedCheck } from '@/components/ui/motion';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
+import { activeTasks } from '@/lib/stages';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -62,7 +63,8 @@ export default function CalendarView() {
       if (start) { const s = new Date(start); s.setHours(0, 0, 0, 0); if (date < s) return; }
       if (end) { const e = new Date(end); e.setHours(0, 0, 0, 0); if (date > e) return; }
       const done = goal.taskCompletions?.[dateStr] || {};
-      (goal.dailyTasks || []).forEach(task => {
+      // Same rule as the dashboard: a completed stage's tasks are not scheduled.
+      activeTasks(goal).forEach(task => {
         const days = task.daysOfWeek;
         if (!days || days.length === 0 || days.includes(dow)) {
           out.push({ goal, task, done: !!done[task.id], dateStr });

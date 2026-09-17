@@ -129,7 +129,16 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
   produces, not what a coach prescribes. Real plans have heavy days, light days and
   rest days: a long session on a free day, something short on a busy one, and at
   least one genuine rest day a week for physical goals. Vary the load deliberately.
-- 3-5 recurring tasks with exact amounts in the title (e.g. "Run 5km at easy pace")
+- EVERY STAGE GETS ITS OWN RECURRING TASKS: 2-4 per stage, each carrying that
+  stage's stageId, with exact amounts in the title (e.g. "Run 5km at easy pace").
+  Do not write one flat set of tasks and hang them all off stage one. The work
+  genuinely changes as the plan progresses — base building is not race week,
+  scales are not repertoire, vocabulary drills are not conversation practice —
+  and only the current stage's tasks are shown to the user, so a stage with no
+  tasks of its own leaves them with nothing to do.
+- Weekly load is per stage, not cumulative: the 2-4 tasks in ANY ONE stage must
+  fit inside the user's weekly hours on their own.
+- Every milestone also carries the stageId of the phase it belongs to.
 - Every task needs protocol detail so the user never has to invent the missing steps:
   a one-sentence first instruction, realistic estimatedMinutes, 2-5 ordered
   executionSteps, and successCriteria. Add setup when anything must be prepared.
@@ -450,22 +459,26 @@ export function buildGoalTools() {
                 type: 'object',
                 properties: {
                   title:         { type: 'string', description: 'Specific, measurable milestone title' },
-                  stageId:       { type: 'string', description: 'id of the stage this milestone belongs to' },
+                  stageId:       { type: 'string', description: 'id of the stage this milestone belongs to. Required.' },
                   description:   { type: 'string', description: '2-3 sentence action guide for this phase' },
                   daysFromStart: { type: 'number', description: 'Day from today; must be ≤ days until deadline' },
                   difficulty:    { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
                 },
-                required: ['title', 'description', 'daysFromStart', 'difficulty'],
+                required: ['title', 'stageId', 'description', 'daysFromStart', 'difficulty'],
               },
             },
             dailyTasks: {
               type: 'array',
-              description: '3-5 recurring habits. ALL type=checkbox.',
+              description:
+                'Recurring habits, 2-4 PER STAGE — not 3-5 in total. Each carries the '
+                + 'stageId of the phase it belongs to, because only the current stage\u2019s '
+                + 'tasks are shown and a stage with none leaves the user with nothing to do. '
+                + 'ALL type=checkbox.',
               items: {
                 type: 'object',
                 properties: {
                   title:      { type: 'string', description: 'Full task with amount, e.g. "Run 5km"' },
-                  stageId:    { type: 'string', description: 'id of the stage this task belongs to' },
+                  stageId:    { type: 'string', description: 'id of the stage this task belongs to. Required.' },
                   daysOfWeek: { type: 'array', items: { type: 'number' }, description: '0=Sun…6=Sat, e.g. [1,3,5]' },
                   type:       { type: 'string', enum: ['checkbox'] },
                   difficulty: { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
@@ -488,13 +501,13 @@ export function buildGoalTools() {
                   },
                 },
                 required: [
-                  'title', 'daysOfWeek', 'type', 'difficulty',
+                  'title', 'stageId', 'daysOfWeek', 'type', 'difficulty',
                   'description', 'estimatedMinutes', 'executionSteps', 'successCriteria',
                 ],
               },
             },
           },
-          required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks', 'dailyTasks'],
+          required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'stages', 'subtasks', 'dailyTasks'],
         },
       },
     },
