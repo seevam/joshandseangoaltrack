@@ -7,7 +7,9 @@ import Image from 'next/image';
 import { Target, Flame, Briefcase, BookOpen, DollarSign, Heart, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { CATEGORY_COLORS, type Category } from '@/lib/types';
 import { useGoalStore } from '@/lib/store';
-import { IconTile } from '@/components/ui/icons';
+import { IconTile, Icon } from '@/components/ui/icons';
+import { GOAL_DOMAINS } from '@/lib/domains';
+import { saveSkillBaseline, MIN_RATING, MAX_RATING, type SkillBaseline } from '@/lib/skillBaseline';
 
 const CATEGORY_META: Record<Category, { icon: typeof Target; label: string; desc: string }> = {
   fitness:   { icon: Flame,     label: 'Fitness',    desc: 'Exercise, running, sports' },
@@ -36,6 +38,16 @@ export default function OnboardingPage() {
   const [selected, setSelected] = useState<Category[]>([]);
   const [motivation, setMotivation] = useState('medium');
   const [persona, setPersona] = useState<'energetic' | 'calm' | 'direct'>('calm');
+  /*
+   * Where the user says they already are. Everyone starting at Level 1 in all
+   * eight domains is a lie for anyone who arrives mid-life — a working
+   * musician's Creativity is not zero because they have not yet logged a task
+   * here. Defaults to the middle so the untouched answer is "average", not
+   * "hopeless".
+   */
+  const [ratings, setRatings] = useState<SkillBaseline>(
+    () => Object.fromEntries(GOAL_DOMAINS.map(d => [d.id, 5])) as SkillBaseline,
+  );
 
   const choosePersona = (p: 'energetic' | 'calm' | 'direct') => {
     setPersona(p);
@@ -47,13 +59,19 @@ export default function OnboardingPage() {
   };
 
   const handleFinish = () => {
+    saveSkillBaseline(ratings);
     router.push('/home');
   };
 
   const handleCreateFirst = () => {
+    saveSkillBaseline(ratings);
     router.push('/home');
     setTimeout(() => setShowCreateGoal(true), 150);
   };
+
+  const weakestName = GOAL_DOMAINS
+    .map(d => ({ name: d.name, r: ratings[d.id] ?? 5 }))
+    .sort((a, b) => a.r - b.r)[0].name;
 
   const STEPS = [
     {
@@ -128,6 +146,48 @@ export default function OnboardingPage() {
       ),
     },
     {
+      title: 'Where are you starting from?',
+      subtitle: 'Rate each area 1 to 10. Strong areas start at a higher level, so your progression means something from day one.',
+      content: (
+        <div className="space-y-3 py-2 max-h-[22rem] overflow-y-auto thin-scroll pr-1">
+          {GOAL_DOMAINS.map(d => {
+            const value = ratings[d.id] ?? 5;
+            return (
+              <div key={d.id} className="rounded-xl border border-line bg-card p-3">
+                <div className="flex items-center gap-2.5 mb-2">
+                  <Icon name={d.icon} className="h-4 w-4 flex-shrink-0" style={{ color: d.color }} />
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-semibold text-fg truncate">{d.name}</span>
+                    <span className="block text-[11px] text-muted truncate">{d.blurb}</span>
+                  </span>
+                  <span
+                    className="text-sm font-bold flex-shrink-0 tabular-nums"
+                    style={{ color: d.color }}
+                  >
+                    {value}
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={MIN_RATING}
+                  max={MAX_RATING}
+                  value={value}
+                  onChange={e => setRatings(r => ({ ...r, [d.id]: Number(e.target.value) }))}
+                  aria-label={`${d.name} rating`}
+                  className="w-full accent-[color:var(--brand)]"
+                />
+              </div>
+            );
+          })}
+          <p className="text-[11px] text-muted leading-relaxed">
+            This sets your starting skill levels only — it never counts towards your overall
+            rank, so there is nothing to gain by overrating yourself. Your coach will steer you
+            towards the areas you rate lowest.
+          </p>
+        </div>
+      ),
+    },
+    {
       title: 'Pick your coach style',
       subtitle: 'How should your AI coach talk to you?',
       content: (
@@ -167,6 +227,10 @@ export default function OnboardingPage() {
             {selected.length > 0
               ? `Ready to tackle your ${selected.join(', ')} goals with ${motivation} motivation. Let's go!`
               : "Your dashboard is ready. Create your first goal to get started!"}
+          </p>
+          <p className="text-xs text-muted text-center max-w-xs leading-relaxed">
+            Your coach will nudge you towards{' '}
+            <span className="text-fg">{weakestName}</span>, the area you rated lowest.
           </p>
           <button
             onClick={handleCreateFirst}

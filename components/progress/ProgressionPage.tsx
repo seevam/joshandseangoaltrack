@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { Lock, Check, CheckCircle2, X, ChevronRight } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { computeStats, earnedBadges, RANK_TIERS } from '@/lib/xp';
 import { buildActivityFeed } from '@/lib/activity';
 import { Icon, RankEmblem, BadgeArt } from '@/components/ui/icons';
 import { computeSkills, findSkillGaps, type SkillStat } from '@/lib/skills';
+import { loadSkillBaseline, type SkillBaseline } from '@/lib/skillBaseline';
 import { AnimatedNumber, Reveal } from '@/components/ui/motion';
 import PageHeader, { PanelHeading } from '@/components/ui/PageHeader';
 
@@ -14,6 +16,7 @@ export default function ProgressionPage() {
   const goals = useGoalStore(s => s.goals);
   const setGoals = useGoalStore(s => s.setGoals);
   const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
+  const router = useRouter();
 
   /*
    * A failed fetch used to be swallowed, leaving every section silently empty
@@ -38,7 +41,15 @@ export default function ProgressionPage() {
   const stats = useMemo(() => computeStats(goals), [goals]);
   const badges = useMemo(() => earnedBadges(stats, goals), [stats, goals]);
   const feed = useMemo(() => buildActivityFeed(goals), [goals]);
-  const skills = useMemo(() => computeSkills(goals), [goals]);
+  /*
+   * Read after mount. The server has no localStorage, so computing the head
+   * start during render would send markup that the first client render
+   * disagrees with.
+   */
+  const [baseline, setBaseline] = useState<SkillBaseline>({});
+  useEffect(() => { setBaseline(loadSkillBaseline()); }, []);
+
+  const skills = useMemo(() => computeSkills(goals, baseline), [goals, baseline]);
   const gaps = useMemo(() => findSkillGaps(skills), [skills]);
 
   const levelPct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
@@ -186,6 +197,26 @@ export default function ProgressionPage() {
             right="Select a domain to inspect its current rank, XP output, and completed objectives."
           />
 
+          {/* Anyone who signed up before the self-assessment existed, or skipped
+              it, still starts every domain at zero. Offer it rather than
+              leaving their Progression page permanently wrong about them. */}
+          {Object.keys(baseline).length === 0 && (
+            <button
+              onClick={() => router.push('/onboarding')}
+              className="w-full mb-3 flex items-center gap-3 rounded-xl border border-brand/30 bg-brand/5 p-3 text-left glow-hover"
+            >
+              <Icon name="target" className="h-4 w-4 text-brand flex-shrink-0" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-fg">Rate where you&apos;re starting from</span>
+                <span className="block text-xs text-muted break-words">
+                  Every domain currently starts at zero, which is unlikely to be true of you.
+                  Takes a minute, and never counts towards your overall rank.
+                </span>
+              </span>
+              <ChevronRight className="h-4 w-4 text-muted flex-shrink-0 icon-shift" />
+            </button>
+          )}
+
           <div className="grid gap-2.5 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3">
             {skills.map((sk, i) => {
               const pct = sk.levelSpan > 0 ? Math.min((sk.levelXp / sk.levelSpan) * 100, 100) : 0;
@@ -206,8 +237,10 @@ export default function ProgressionPage() {
                     </span>
                     <span className="flex-1 min-w-0">
                       <span className="block section-title text-sm text-fg truncate">{sk.name}</span>
-                      <span className="block text-[10px] tracking-[0.1em] uppercase text-muted mt-0.5">
+                      <span className="block text-[10px] tracking-[0.1em] uppercase text-muted mt-0.5 truncate">
                         {sk.tasks} tasks / {sk.clears} clears
+                        {/* Named, so a level nobody remembers earning isn't a mystery. */}
+                        {sk.baselineXp > 0 && ' / self-rated start'}
                       </span>
                     </span>
                     <RankEmblem slug={sk.rank.slug} size={30} dim={sk.xp === 0} className="flex-shrink-0" />
