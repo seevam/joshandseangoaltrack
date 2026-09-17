@@ -375,7 +375,10 @@ export default function Dashboard() {
               },
               {
                 label: 'XP', icon: Zap, color: '#5DBC70',
-                value: <AnimatedNumber value={stats.totalXp} />, context: 'total',
+                value: <AnimatedNumber value={stats.totalXp} />,
+                // Naming the weighting here stops the number looking arbitrary
+                // when it is lower than the XP the user watched themselves earn.
+                context: `${Math.round(stats.balance * 100)}% balanced`,
               },
               {
                 label: 'Streak', icon: Flame, color: '#FB923C',

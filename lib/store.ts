@@ -10,7 +10,9 @@ interface GoalStore {
 
   /** Two-mode "New Goal" chooser (Quick vs Detailed). Global so nav can open it anywhere. */
   showCreateGoal: boolean;
-  setShowCreateGoal: (v: boolean) => void;
+  /** Pre-filled ambition for the create flow, when one was suggested. */
+  goalSeed: string | null;
+  setShowCreateGoal: (v: boolean, seed?: string) => void;
 
   /** Sidebar collapsed to icons only. Shared so the main column can offset itself. */
   sidebarCollapsed: boolean;
@@ -66,7 +68,13 @@ export const useGoalStore = create<GoalStore>((set) => ({
   removeGoal: (id) => set(s => ({ goals: s.goals.filter(g => g.id !== id) })),
 
   showCreateGoal: false,
-  setShowCreateGoal: (v) => set({ showCreateGoal: v }),
+  goalSeed: null,
+  /*
+   * A seed is an ambition the user has already picked somewhere else — a
+   * suggested goal on the Progression page, say. Carrying it into the modal
+   * means the suggestion is acted on rather than merely acknowledged.
+   */
+  setShowCreateGoal: (v, seed) => set({ showCreateGoal: v, goalSeed: v ? (seed ?? null) : null }),
 
   sidebarCollapsed: false,
   toggleSidebar: () => set(s => {

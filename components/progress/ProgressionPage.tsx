@@ -82,14 +82,25 @@ export default function ProgressionPage() {
                   Lv. {stats.level}
                 </span>
               </h2>
-              <p className="text-sm text-muted mt-2">The composite rank rewards balanced growth.</p>
+              {/* The claim used to be decorative. It is now literally true, so
+                  it says what it costs and what it is worth. */}
+              <p className="text-sm text-muted mt-2 leading-relaxed">
+                The composite rank rewards balanced growth. You&apos;ve earned{' '}
+                <span className="text-fg">{stats.earnedXp.toLocaleString()} XP</span> across your
+                goals, weighted to{' '}
+                <span className="text-fg">{stats.totalXp.toLocaleString()}</span> by how evenly it
+                is spread over the eight domains
+                {stats.balance < 0.98 && (
+                  <> — pushing a quiet domain is worth more than another win in your strongest one</>
+                )}.
+              </p>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5">
                 {[
-                  { label: 'Total XP', icon: 'zap', value: <AnimatedNumber value={stats.totalXp} /> },
+                  { label: 'Rank XP', icon: 'zap', value: <AnimatedNumber value={stats.totalXp} /> },
                   { label: 'Level', icon: 'trending', value: stats.level },
                   { label: 'Next Rank', icon: 'flag', value: stats.nextRank?.name ?? 'Maxed' },
-                  { label: 'Domains', icon: 'target', value: `${skills.length}/${skills.length}` },
+                  { label: 'Balance', icon: 'target', value: `${Math.round(stats.balance * 100)}%` },
                 ].map(t => (
                   <div key={t.label} className="rounded-xl border border-line bg-elevated px-3 py-2.5 min-w-0">
                     <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.14em] text-muted mb-1">
@@ -222,19 +233,21 @@ export default function ProgressionPage() {
           {gaps.length > 0 && (
             <div className="mt-4 pt-4 border-t border-line">
               <p className="text-[10px] font-semibold text-muted uppercase tracking-[0.16em] mb-2.5">
-                Where you&apos;re falling behind
+                Worth starting next
               </p>
               <div className="space-y-2">
                 {gaps.map(g => (
                   <button
                     key={g.skill.id}
-                    onClick={() => setShowCreate(true)}
+                    onClick={() => setShowCreate(true, g.suggestion)}
                     className="w-full glow-hover flex items-center gap-3 p-3 rounded-xl border border-line text-left"
                   >
                     <Icon name={g.skill.icon} className="h-4 w-4 flex-shrink-0" style={{ color: g.skill.color }} />
                     <span className="flex-1 min-w-0">
                       <span className="block text-sm font-medium text-fg break-words">{g.suggestion}</span>
-                      <span className="block text-xs text-muted break-words">{g.reason}</span>
+                      <span className="block text-xs text-muted break-words">
+                        {g.skill.name} · {g.reason}
+                      </span>
                     </span>
                     <ChevronRight className="h-4 w-4 text-muted flex-shrink-0 icon-shift" />
                   </button>

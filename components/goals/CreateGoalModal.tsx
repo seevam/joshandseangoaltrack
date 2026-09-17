@@ -25,7 +25,10 @@ const QUICK_STARTERS = [
 type Step = 'pick' | 'quick' | 'detailed';
 
 export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<Step>('pick');
+  // Arriving with a suggested ambition skips the mode picker: the choice the
+  // picker asks about has already been made by tapping the suggestion.
+  const seed = useGoalStore(s => s.goalSeed);
+  const [step, setStep] = useState<Step>(seed ? 'quick' : 'pick');
   const addGoal = useGoalStore(s => s.addGoal);
   const coachName = useGoalStore(s => s.coachName);
   const persona = useGoalStore(s => s.coachPersona);
@@ -48,6 +51,7 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
             coachName={coachName}
             persona={persona}
             otherTaskCount={otherTaskCount}
+            seed={seed ?? ''}
           />
         )}
         {step === 'detailed' && (
@@ -113,16 +117,18 @@ function StepHeader({ onBack, title, right }: { onBack: () => void; title: strin
 }
 
 /* ── Step 2a: Quick — AI Generation | Manual Entry ───────────────────────── */
-function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: {
+function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, seed = '' }: {
   onBack: () => void;
   onCreated: (g: Awaited<ReturnType<typeof materialiseGoal>> extends infer T ? NonNullable<T> : never) => void;
   coachName: string;
   persona: 'energetic' | 'calm' | 'direct';
   otherTaskCount: number;
+  /** A suggested ambition to start from, if the user came in through one. */
+  seed?: string;
 }) {
   const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [category, setCategory] = useState<Category>('fitness');
-  const [ambition, setAmbition] = useState('');
+  const [ambition, setAmbition] = useState(seed);
   const [months, setMonths] = useState(6);
   const [deadlineType, setDeadlineType] = useState<'hard' | 'soft'>('soft');
   const [weeklyHours, setWeeklyHours] = useState(5);
