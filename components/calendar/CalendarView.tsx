@@ -259,12 +259,12 @@ export default function CalendarView() {
                   aria-label={d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
                   aria-current={isToday ? 'date' : undefined}
                   aria-pressed={isSel}
-                  className={`relative border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem] p-1.5 flex flex-col gap-1 text-left transition-colors ${
+                  className={`relative border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem] p-1 sm:p-1.5 flex flex-col gap-1 text-left transition-colors ${
                     isToday ? 'day-today' : isSel ? 'bg-elevated' : 'hover:bg-elevated'
                   } ${isSel && !isToday ? 'ring-1 ring-inset ring-brand/50' : ''}`}
                 >
                   <span
-                    className={`h-6 w-6 flex-shrink-0 rounded-full flex items-center justify-center text-[11px] transition-colors ${
+                    className={`h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] transition-colors ${
                       isToday
                         ? 'bg-brand text-black font-bold'
                         : `border border-line ${isSel ? 'text-fg font-semibold' : 'text-muted'}`
@@ -276,12 +276,12 @@ export default function CalendarView() {
                   {tasks.length > 0 && (
                     <>
                       <span
-                        className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
+                        className={`flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
                           allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
                         }`}
                       >
                         <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{done}/{tasks.length}</span>
+                        <span className="truncate min-w-0">{done}/{tasks.length}</span>
                       </span>
                       {/*
                        * Load bars. The plan is deliberately uneven — heavy days
@@ -311,10 +311,16 @@ export default function CalendarView() {
                   )}
 
                   {milestones > 0 && (
-                    <span className="flex items-center gap-1 rounded-md border border-brand/40 bg-[var(--brand-light)] px-1.5 py-0.5 text-[10px] sm:text-[11px] text-brand">
+                    <span
+                      className="flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border border-brand/40 bg-[var(--brand-light)] px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] text-brand"
+                      title={`${milestones} milestone${milestones === 1 ? '' : 's'}`}
+                    >
                       <Flag className="h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">
-                        {milestones} milestone{milestones === 1 ? '' : 's'}
+                      {/* A day cell is ~46px wide on a phone — the word does not
+                          fit there, so the count carries it and the label
+                          returns as soon as there is room. */}
+                      <span className="truncate min-w-0">
+                        {milestones}<span className="hidden sm:inline"> milestone{milestones === 1 ? '' : 's'}</span>
                       </span>
                     </span>
                   )}

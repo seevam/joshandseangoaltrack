@@ -27,7 +27,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-bg">
       <Sidebar onToggleChat={() => setIsChatOpen(!isChatOpen)} />
 
-      <main key={pathname} className={`flex-1 pb-24 lg:pb-0 page-enter sidebar-anim ${collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'}`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)' }}>
+      {/* The bottom nav overlays the page on mobile, so the page reserves room
+          for it — and gives that room back on desktop, where the nav is gone. */}
+      <main
+        key={pathname}
+        className={`flex-1 pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-0 page-enter sidebar-anim ${
+          collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'
+        }`}
+      >
         {children}
       </main>
 
