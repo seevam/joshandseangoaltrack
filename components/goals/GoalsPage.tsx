@@ -104,7 +104,7 @@ export default function GoalsPage() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+          <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(20rem,100%),1fr))]">
             {filtered.map((goal, i) => (
               <GoalCard
                 key={goal.id}

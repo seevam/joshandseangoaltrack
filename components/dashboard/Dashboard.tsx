@@ -517,7 +517,7 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(22rem,1fr))]">
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(22rem,100%),1fr))]">
                 {todaysTasks.map((item, i) => (
                   <div
                     key={`${item.goal.id}-${item.task.id}`}
@@ -677,7 +677,7 @@ export default function Dashboard() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(20rem,100%),1fr))]">
               {previewGoals.map((goal, i) => (
                 <GoalCard
                   key={goal.id}

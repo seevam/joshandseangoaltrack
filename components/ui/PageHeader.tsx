@@ -67,7 +67,9 @@ export function PanelHeading({
         </p>
         <h2 className="section-title text-lg text-fg">{title}</h2>
       </div>
-      {right && <div className="flex-shrink-0 text-xs text-muted text-right max-w-xs">{right}</div>}
+      {/* Wraps under the heading on narrow screens instead of holding a fixed
+          width, which pushed a sentence past the panel edge at 360px. */}
+      {right && <div className="min-w-0 sm:max-w-xs text-xs text-muted sm:text-right">{right}</div>}
     </div>
   );
 }

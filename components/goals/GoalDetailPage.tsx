@@ -313,7 +313,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
               </p>
             </div>
 
-            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
+            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr))]">
               {stages.map(st => (
                 /*
                  * The whole card is the target. Only the inner rows reacted

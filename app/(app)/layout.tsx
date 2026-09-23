@@ -30,10 +30,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Sidebar onToggleChat={() => setIsChatOpen(!isChatOpen)} />
 
       {/* The bottom nav overlays the page on mobile, so the page reserves room
-          for it — and gives that room back on desktop, where the nav is gone. */}
+          for it — and gives that room back on desktop, where the nav is gone.
+          min-w-0: as a flex item, main otherwise grows to its widest child
+          instead of containing it, and the whole page scrolls sideways. */}
       <main
         key={pathname}
-        className={`flex-1 pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-0 page-enter sidebar-anim ${
+        className={`flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-0 page-enter sidebar-anim ${
           collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'
         }`}
       >
