@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import MissionCard, { type Mission } from './MissionCard';
 import Panel from '@/components/ui/Panel';
+import { logCompletion } from '@/lib/completions';
 import DurationPrompt from './DurationPrompt';
 import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
 import { currentStage, activeTasks } from '@/lib/stages';
@@ -135,16 +136,11 @@ export default function Dashboard() {
   };
 
   const logTask = async (goalId: string, taskId: number, value: TaskCompletionValue, origin?: { x: number; y: number }) => {
-    const today = dayKey();
-    const goal = goals.find(g => g.id === goalId);
+    // One key, merged server-side, applied to the store first — see
+    // lib/completions.ts for the race this replaces.
+    const goal = await logCompletion(goalId, dayKey(), taskId, value);
     if (!goal) return;
-    const taskCompletions = {
-      ...(goal.taskCompletions || {}),
-      [today]: { ...(goal.taskCompletions?.[today] || {}), [taskId]: value },
-    };
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { taskCompletions });
-      updateGoal(saved);
+    {
       if (value) {
         const task = (goal.dailyTasks || []).find(t => t.id === taskId);
         fireXp(completionXp(value, task?.difficulty), origin);
@@ -160,8 +156,7 @@ export default function Dashboard() {
           setAskDuration({ goalId, taskId, title: task.title, planned: task.estimatedMinutes });
         }
       }
-      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-    } catch (err) { console.error('Failed to log task:', err); }
+    }
   };
 
   const correctEstimate = async (goalId: string, taskId: number, actual: number) => {

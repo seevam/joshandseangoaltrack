@@ -10,6 +10,7 @@ import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
 import { activeTasks } from '@/lib/stages';
 import { dayKey } from '@/lib/dates';
+import { logCompletion } from '@/lib/completions';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -91,23 +92,9 @@ export default function CalendarView() {
 
   const logTask = async (goalId: string, taskId: number, dateStr: string, done: boolean) => {
     const key = `${goalId}-${taskId}-${dateStr}`;
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const taskCompletions = {
-      ...(goal.taskCompletions || {}),
-      [dateStr]: { ...(goal.taskCompletions?.[dateStr] || {}), [taskId]: done },
-    };
-    try {
-      const res = await fetch(`/api/goals/${goalId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskCompletions }),
-      });
-      if (res.ok) {
-        updateGoal(await res.json());
-        if (done) { setFlashTask(key); setTimeout(() => setFlashTask(null), 700); }
-      }
-    } catch { /* best effort */ }
+    if (done) { setFlashTask(key); setTimeout(() => setFlashTask(null), 700); }
+    // One key, merged server-side — see lib/completions.ts.
+    await logCompletion(goalId, dateStr, taskId, done);
   };
 
   const exportICS = () => {
