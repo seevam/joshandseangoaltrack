@@ -32,10 +32,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* The bottom nav overlays the page on mobile, so the page reserves room
           for it — and gives that room back on desktop, where the nav is gone.
           min-w-0: as a flex item, main otherwise grows to its widest child
-          instead of containing it, and the whole page scrolls sideways. */}
+          instead of containing it, and the whole page scrolls sideways.
+          8.5rem clears the nav AND the floating coach above it, so the last
+          row of any list can be scrolled out from under the button. */}
       <main
         key={pathname}
-        className={`flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-0 page-enter sidebar-anim ${
+        className={`flex-1 min-w-0 pb-[calc(env(safe-area-inset-bottom)+8.5rem)] lg:pb-0 page-enter sidebar-anim ${
           collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'
         }`}
       >

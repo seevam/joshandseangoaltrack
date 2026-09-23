@@ -327,7 +327,10 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                   onClick={() => setOpenStage(openStage === st.stage.id ? null : st.stage.id)}
                   aria-expanded={openStage === st.stage.id}
                   style={{ ['--i' as string]: st.index }}
-                  className={`stagger-fast block w-full text-left rounded-xl border p-3.5 glow-hover ${
+                  // flex-col + justify-start: a <button> centres its content
+                  // vertically by default, which floated the shorter locked
+                  // cards halfway down the row.
+                  className={`stagger-fast flex flex-col justify-start h-full w-full text-left rounded-xl border p-3.5 glow-hover ${
                     st.status === 'current'
                       ? 'border-brand/40 bg-[var(--brand-light)]'
                       : 'border-line bg-card'

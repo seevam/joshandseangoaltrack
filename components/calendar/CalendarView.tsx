@@ -247,7 +247,9 @@ export default function CalendarView() {
                 allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
               }`}
             >
-              <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
+              {/* The icon goes on a phone: in a ~46px cell it left room for
+                  "0…" rather than "0/2". */}
+              <CheckCircle2 className="hidden sm:block h-3 w-3 flex-shrink-0" />
               <span className="truncate min-w-0">{done}/{tasks.length}</span>
             </span>
             {/*
