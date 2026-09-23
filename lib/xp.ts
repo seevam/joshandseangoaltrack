@@ -1,5 +1,6 @@
 import type { Goal } from './types';
 import { GOAL_DOMAINS, skillsForGoal } from './domains';
+import { dayKey } from './dates';
 
 /**
  * XP is derived entirely from goal data — never stored, never user-editable.
@@ -107,11 +108,11 @@ export function streaksFromCheckIns(all: string[]): { current: number; longest: 
     if (run > longest) longest = run;
   }
   const set = new Set(days);
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   const cursor = new Date();
   if (!set.has(today)) cursor.setDate(cursor.getDate() - 1);
   let current = 0;
-  while (set.has(cursor.toISOString().split('T')[0])) {
+  while (set.has(dayKey(cursor))) {
     current++;
     cursor.setDate(cursor.getDate() - 1);
   }

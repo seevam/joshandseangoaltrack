@@ -1,5 +1,6 @@
 import type { Goal } from './types';
 import { milestoneXp, completionXp } from './xp';
+import { dayKey } from './dates';
 
 export interface ActivityItem {
   id: string;
@@ -54,10 +55,10 @@ export function buildActivityFeed(goals: Goal[], limit = 25): ActivityItem[] {
        * later than the moment it was observed complete.
        */
       const planned = goal.startDate
-        ? new Date(new Date(goal.startDate).getTime() + s.daysFromStart * 86400000).toISOString().split('T')[0]
+        ? dayKey(new Date(new Date(goal.startDate).getTime() + s.daysFromStart * 86400000))
         : '';
       const fallback = (goal.updatedAt || goal.createdAt || '').split('T')[0];
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = dayKey();
       const candidate = planned || fallback;
       const date = candidate > todayStr ? (fallback && fallback <= todayStr ? fallback : todayStr) : candidate;
       items.push({

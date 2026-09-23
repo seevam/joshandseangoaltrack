@@ -20,6 +20,7 @@ import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
 import MissionCard from '@/components/dashboard/MissionCard';
+import { dayKey } from '@/lib/dates';
 
 const MILESTONE_BADGES = [
   { pct: 25,  label: 'First Quarter', icon: 'sprout', color: '#5DBC70' },
@@ -151,7 +152,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
     }
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   const todayDow = new Date().getDay();
   const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
   const progress = getGoalProgress(goal);

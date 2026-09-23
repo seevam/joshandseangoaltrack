@@ -1,5 +1,6 @@
 import { getGoalProgress, type Goal } from './types';
 import { activeTasks } from './stages';
+import { dayKey } from './dates';
 
 export interface GoalHealth {
   /** 0–100. Starts full and is spent by missed work. */
@@ -59,7 +60,7 @@ const CLEAR_DAY_CREDIT = 1;
 /** Far enough back to be fair, near enough to stay cheap. */
 const MAX_LOOKBACK_DAYS = 180;
 
-const iso = (d: Date) => d.toISOString().split('T')[0];
+const iso = (d: Date) => dayKey(d);
 
 /**
  * Local midnight of a stored date, or null when there isn't a usable one.

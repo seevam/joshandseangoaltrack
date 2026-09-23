@@ -26,6 +26,7 @@ import DurationPrompt from './DurationPrompt';
 import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
 import { currentStage, activeTasks } from '@/lib/stages';
 import FocusMode from './FocusMode';
+import { dayKey } from '@/lib/dates';
 
 /** Last level we played the celebration for, so a reload never replays it. */
 
@@ -94,7 +95,7 @@ export default function Dashboard() {
   };
 
   const checkIn = async (goalId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = dayKey();
     const goal = goals.find(g => g.id === goalId);
     if (!goal || (goal.checkIns || []).includes(today)) return;
     try {
@@ -134,7 +135,7 @@ export default function Dashboard() {
   };
 
   const logTask = async (goalId: string, taskId: number, value: TaskCompletionValue, origin?: { x: number; y: number }) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = dayKey();
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
     const taskCompletions = {
@@ -221,7 +222,7 @@ export default function Dashboard() {
   // Level-ups and rank-ups are celebrated app-wide by ProgressCelebrations in
   // the app layout, so a gain made on any page is seen — not only here.
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = dayKey();
   const todayDow = new Date().getDay();
 
   /** Every recurring task scheduled for today, flattened across goals. */

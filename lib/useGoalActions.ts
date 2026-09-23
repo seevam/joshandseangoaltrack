@@ -2,6 +2,7 @@
 
 import { useGoalStore } from './store';
 import { getGoalProgress, type TaskCompletionValue } from './types';
+import { dayKey } from './dates';
 
 async function apiCall(url: string, method: string, body?: unknown) {
   const opts: RequestInit = { method, headers: {} };
@@ -37,7 +38,7 @@ export function useGoalActions(hooks?: {
   };
 
   const onCheckIn = async (goalId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = dayKey();
     const goal = goals.find(g => g.id === goalId);
     if (!goal || (goal.checkIns || []).includes(today)) return;
     try {
@@ -71,7 +72,7 @@ export function useGoalActions(hooks?: {
   };
 
   const onLogTask = async (goalId: string, taskId: number, value: TaskCompletionValue) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = dayKey();
     const goal = goals.find(g => g.id === goalId);
     if (!goal) return;
     const taskCompletions = {

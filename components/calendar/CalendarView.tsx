@@ -9,6 +9,7 @@ import { AnimatedCheck } from '@/components/ui/motion';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
 import { activeTasks } from '@/lib/stages';
+import { dayKey } from '@/lib/dates';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -25,7 +26,7 @@ interface DayTask {
 const iso = (d: Date) => {
   const c = new Date(d);
   c.setHours(12, 0, 0, 0); // midday avoids DST/UTC date shifts
-  return c.toISOString().split('T')[0];
+  return dayKey(c);
 };
 
 /** Mini calendar on the left, the selected day's tasks on the right. */

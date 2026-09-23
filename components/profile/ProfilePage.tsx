@@ -12,6 +12,7 @@ import {
   setNotificationsEnabled, sendTestNotification,
 } from '@/lib/notifications';
 import { getGoalProgress, getGoalStatus, getStreak } from '@/lib/types';
+import { dayKey } from '@/lib/dates';
 
 const PERSONAS = [
   { value: 'energetic' as const, icon: 'flame',  color: '#FB923C', label: 'Energetic', desc: 'High-energy motivator' },
@@ -74,7 +75,7 @@ export default function ProfilePage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `goals-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `goals-${dayKey()}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
