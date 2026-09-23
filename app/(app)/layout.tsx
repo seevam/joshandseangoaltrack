@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/navigation/Sidebar';
 import BottomNav from '@/components/navigation/BottomNav';
+import CoachFab from '@/components/navigation/CoachFab';
 import AIChatPanel from '@/components/ai/AIChatPanel';
 import CreateGoalModal from '@/components/goals/CreateGoalModal';
 import { useGoalStore } from '@/lib/store';
@@ -27,11 +28,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen bg-bg">
       <Sidebar onToggleChat={() => setIsChatOpen(!isChatOpen)} />
 
-      <main key={pathname} className={`flex-1 pb-24 lg:pb-0 page-enter sidebar-anim ${collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'}`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 5rem)' }}>
+      {/* The bottom nav overlays the page on mobile, so the page reserves room
+          for it — and gives that room back on desktop, where the nav is gone. */}
+      <main
+        key={pathname}
+        className={`flex-1 pb-[calc(env(safe-area-inset-bottom)+5rem)] lg:pb-0 page-enter sidebar-anim ${
+          collapsed ? 'lg:ml-[4.5rem]' : 'lg:ml-64'
+        }`}
+      >
         {children}
       </main>
 
-      <BottomNav onToggleChat={() => setIsChatOpen(!isChatOpen)} />
+      <BottomNav />
+
+      {/* Hidden while the chat is open — it would sit on top of the panel it
+          opened, offering to open it again. */}
+      <CoachFab onClick={() => setIsChatOpen(true)} hidden={isChatOpen || showCreateGoal} />
 
       <AIChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 

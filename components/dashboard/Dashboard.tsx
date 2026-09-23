@@ -3,8 +3,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
-  Target, Plus, CheckCircle, AlertTriangle, ChevronRight, Search, X,
-  Zap, Trophy, Flame, ListChecks, Activity, Clock, ArrowUpRight, CalendarClock, Crosshair,
+  Target, Plus, CheckCircle, Zap, Trophy, Flame, ListChecks, Activity,
+  Clock, ArrowUpRight, CalendarClock, Crosshair,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category, type TaskCompletionValue } from '@/lib/types';
@@ -21,7 +21,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import MissionCard, { type Mission } from './MissionCard';
-import { currentStage } from '@/lib/stages';
+import Panel from '@/components/ui/Panel';
+import DurationPrompt from './DurationPrompt';
+import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
+import { currentStage, activeTasks } from '@/lib/stages';
 import FocusMode from './FocusMode';
 
 /** Last level we played the celebration for, so a reload never replays it. */
@@ -40,6 +43,10 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
   const [xpToast, setXpToast] = useState<{ id: number; amount: number } | null>(null);
   const [flashTask, setFlashTask] = useState<string | null>(null);
+  /** The completion currently being asked about, if any. */
+  const [askDuration, setAskDuration] = useState<
+    { goalId: string; taskId: number; title: string; planned?: number } | null
+  >(null);
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
   const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
   const prevLevel = useRef<number | null>(null);
@@ -147,6 +154,15 @@ export default function Dashboard() {
         fireXp(completionXp(value, task?.difficulty), origin);
         setFlashTask(`${goalId}-${taskId}`);
         setTimeout(() => setFlashTask(null), 650);
+        /*
+         * Ask how long it took at the only moment the user knows: just after
+         * finishing. Never after the ten-minute recovery version — its duration
+         * says nothing about the real task, and calibrating on it would shrink
+         * every future estimate.
+         */
+        if (task && value !== 'fallback' && noteCompletionAndMaybeAsk(task)) {
+          setAskDuration({ goalId, taskId, title: task.title, planned: task.estimatedMinutes });
+        }
       }
       if (selectedGoal?.id === goalId) setSelectedGoal(saved);
     } catch (err) { console.error('Failed to log task:', err); }
@@ -240,7 +256,9 @@ export default function Dashboard() {
     for (const goal of goals) {
       if (getGoalStatus(goal) === 'completed') continue;
       const completions = (goal.taskCompletions || {})[todayStr] || {};
-      for (const task of goal.dailyTasks || []) {
+      // Only the stage the user is actually in. A finished phase's tasks have
+      // no business still being asked for today.
+      for (const task of activeTasks(goal)) {
         const days = task.daysOfWeek;
         if (!days || days.length === 0 || days.includes(todayDow)) {
           out.push({ goal, task, value: completions[task.id] });
@@ -259,8 +277,13 @@ export default function Dashboard() {
     [nextAction],
   );
 
+  /*
+   * One goal, not three. This section is a pointer at the Goals page, and three
+   * cards of the same thing pushed the rest of the dashboard off the screen
+   * while saying nothing the list itself doesn't say better.
+   */
   const previewGoals = useMemo(
-    () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 3),
+    () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 1),
     [goals],
   );
   const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
@@ -314,65 +337,87 @@ export default function Dashboard() {
     <div className="min-h-screen bg-bg pb-24 lg:pb-8">
       <div className="w-full mx-auto px-4 py-5 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
 
-        {/* ── Header + rank ─────────────────────────────────────────────── */}
-        <PageHeader
-          eyebrow={`Dashboard / ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
-          icon="target"
-          title="COMMAND CENTER"
-          accent="COMMAND"
-          subtitle={`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}. Everything due today, and the plan behind it.`}
-          right={
-            <button
-              onClick={() => setShowCreate(true)}
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black font-semibold text-sm transition-colors"
-            >
-              <Plus className="h-4 w-4" /> New Goal
-            </button>
-          }
-        />
-
-        {/* ── Stat strip ────────────────────────────────────────────────── */}
-        <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(15rem,1fr))]">
-          {[
-            {
-              label: 'Overall Rank', glow: 'glow-rank', icon: Trophy, iconColor: stats.rank.color,
-              value: stats.rank.name, valueColor: stats.rank.color,
-              context: `Level ${stats.level}`,
-            },
-            {
-              label: 'Overall XP', glow: 'glow-xp', icon: Zap, iconColor: '#5DBC70',
-              value: <AnimatedNumber value={stats.totalXp} />, valueColor: '#5DBC70',
-              context: 'Balanced composite',
-            },
-            {
-              label: 'Streak', glow: 'glow-streak', icon: Flame, iconColor: '#FB923C',
-              value: <><AnimatedNumber value={stats.currentStreak} />d</>, valueColor: '#FB923C',
-              context: `Best: ${stats.longestStreak}d`, flicker: stats.currentStreak > 0,
-            },
-            {
-              label: 'Today', glow: 'glow-brand', icon: CheckCircle, iconColor: '#5DBC70',
-              value: <>{doneToday}/{todaysTasks.length}</>, valueColor: '#5DBC70',
-              context: 'tasks done',
-            },
-          ].map((s, i) => (
-            <div key={s.label} className="card-glow rounded-2xl p-4 stagger" style={{ ['--i' as string]: i + 1 }}>
-              <div className="flex items-start justify-between gap-2 mb-3">
-                <p className="text-[11px] uppercase tracking-[0.16em] text-muted truncate">{s.label}</p>
-                <s.icon
-                  className={`h-4 w-4 flex-shrink-0 ${s.flicker ? 'flame-flicker' : ''}`}
-                  style={{ color: s.iconColor }}
-                />
-              </div>
-              <p className="flex items-baseline gap-2 flex-wrap min-w-0">
-                <span className="text-2xl font-bold leading-none" style={{ color: s.valueColor }}>{s.value}</span>
-                <span className="text-xs text-muted">{s.context}</span>
-              </p>
-            </div>
-          ))}
+        {/*
+          * Desktop only. On a phone the masthead, the welcome line and a New
+          * Goal button cost most of the first screen and say nothing the user
+          * doesn't know — they arrived here from a tab marked Home, and the
+          * centre button in the nav already creates a goal.
+          */}
+        <div className="hidden lg:block">
+          <PageHeader
+            eyebrow={`Dashboard / ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}`}
+            icon="target"
+            title="COMMAND CENTER"
+            accent="COMMAND"
+            subtitle={`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}. Everything due today, and the plan behind it.`}
+            right={
+              <button
+                onClick={() => setShowCreate(true)}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black font-semibold text-sm transition-colors"
+              >
+                <Plus className="h-4 w-4" /> New Goal
+              </button>
+            }
+          />
         </div>
 
-        {/* ── Level progress ────────────────────────────────────────────── */}
-        <div className="card-glow glow-xp rounded-2xl px-4 py-3.5 animate-slide-up" style={{ ['--i' as string]: 2 }}>
+        {/*
+          * One row, four cells, one border. These were four full-width blocks
+          * stacked on mobile — four screens of scrolling to read four numbers.
+          * Rank is the cell that goes on a phone: it is the headline of the
+          * Progression tab, which is one tap away.
+          */}
+        <div className="card-glow rounded-2xl animate-slide-up" style={{ ['--i' as string]: 1 }}>
+          <div className="flex items-stretch divide-x divide-line">
+            {[
+              {
+                label: 'Rank', icon: Trophy, color: stats.rank.color,
+                value: stats.rank.name, context: `Level ${stats.level}`,
+                desktopOnly: true,
+              },
+              {
+                label: 'XP', icon: Zap, color: '#5DBC70',
+                value: <AnimatedNumber value={stats.totalXp} />,
+                // Naming the weighting here stops the number looking arbitrary
+                // when it is lower than the XP the user watched themselves earn.
+                context: `${Math.round(stats.balance * 100)}% balanced`,
+              },
+              {
+                label: 'Streak', icon: Flame, color: '#FB923C',
+                value: <><AnimatedNumber value={stats.currentStreak} />d</>,
+                context: `best ${stats.longestStreak}d`, flicker: stats.currentStreak > 0,
+              },
+              {
+                label: 'Today', icon: CheckCircle, color: '#5DBC70',
+                value: <>{doneToday}/{todaysTasks.length}</>, context: 'done',
+              },
+            ].map(s2 => (
+              <div
+                key={s2.label}
+                className={`flex-1 min-w-0 px-2.5 py-3 sm:px-4 text-center ${s2.desktopOnly ? 'hidden lg:block' : ''}`}
+              >
+                <p className="flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] uppercase tracking-[0.14em] text-muted">
+                  <s2.icon
+                    className={`h-3 w-3 flex-shrink-0 ${s2.flicker ? 'flame-flicker' : ''}`}
+                    style={{ color: s2.color }}
+                  />
+                  <span className="truncate">{s2.label}</span>
+                </p>
+                <p
+                  className="text-base sm:text-xl font-bold leading-tight mt-1.5 truncate"
+                  style={{ color: s2.color }}
+                  title={typeof s2.value === 'string' ? s2.value : undefined}
+                >
+                  {s2.value}
+                </p>
+                <p className="text-[10px] sm:text-xs text-muted truncate mt-0.5">{s2.context}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Level progress — desktop only; the mobile rank lives on /progress ── */}
+        <div className="hidden lg:block card-glow rounded-2xl px-4 py-3.5 animate-slide-up" style={{ ['--i' as string]: 2 }}>
           <div className="flex items-center justify-between gap-3 mb-2">
             <span className="text-sm text-muted">Level {stats.level} Progress</span>
             <span className="text-sm text-muted flex-shrink-0">
@@ -385,7 +430,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Next action — the one thing to start now ──────────────────── */}
-        <div className="card-glow card-primary glow-focus rounded-2xl p-5 animate-slide-up" style={{ ['--i' as string]: 3 }}>
+        <div className="card-glow card-primary glow-next rounded-2xl p-5 animate-slide-up" style={{ ['--i' as string]: 3 }}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-brand">
               <ListChecks className="h-3.5 w-3.5" /> Next Action
@@ -398,7 +443,7 @@ export default function Dashboard() {
           </div>
 
           {nextAction ? (
-            <div className="mt-3 flex items-start justify-between gap-4 flex-wrap">
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <h2 className="text-xl sm:text-2xl font-bold text-fg break-words">{nextAction.task.title}</h2>
                 <p className="text-[11px] uppercase tracking-[0.14em] text-brand mt-1.5">
@@ -412,13 +457,13 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => router.push(`/goals/${nextAction.goal.id}`)}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0 w-full sm:w-auto"
               >
                 Open full protocol <ArrowUpRight className="h-4 w-4" />
               </button>
             </div>
           ) : (
-            <div className="mt-3 flex items-start justify-between gap-4 flex-wrap">
+            <div className="mt-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="text-xl font-bold text-fg">
                   {todaysTasks.length === 0 ? 'Nothing scheduled today' : 'Today is clear'}
@@ -433,7 +478,7 @@ export default function Dashboard() {
               </div>
               <button
                 onClick={() => (goals.length === 0 ? setShowCreate(true) : router.push('/goals'))}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0"
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl border border-brand/40 text-brand text-sm font-semibold glow-hover flex-shrink-0 w-full sm:w-auto"
               >
                 {goals.length === 0 ? 'Create a goal' : 'Open goals'} <ArrowUpRight className="h-4 w-4" />
               </button>
@@ -443,10 +488,12 @@ export default function Dashboard() {
 
         {/* ── Due soon ──────────────────────────────────────────────────── */}
         {dueSoon.length > 0 && (
-          <div className="card-glow glow-rank rounded-2xl p-4 animate-slide-up">
-            <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-brand mb-2.5">
-              <Clock className="h-3.5 w-3.5" /> Closing in
-            </p>
+          <Panel
+            id="due-soon"
+            title="Closing in"
+            icon={<Clock className="h-4 w-4 text-brand" />}
+            className="animate-slide-up"
+          >
             <div className="space-y-1.5">
               {dueSoon.map(g => {
                 const d = Math.ceil((new Date(g.endDate!).getTime() - Date.now()) / 86400000);
@@ -464,30 +511,30 @@ export default function Dashboard() {
                 );
               })}
             </div>
-          </div>
+          </Panel>
         )}
 
         {/* ── Today's schedule ──────────────────────────────────────────── */}
         {todaysTasks.length > 0 && (
           <Reveal>
-            <div className="card-glow glow-plan rounded-2xl p-5">
-              <div className="mb-4">
-                <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-brand mb-1.5">
-                  <CalendarClock className="h-3.5 w-3.5" /> Today&apos;s Schedule
-                </p>
-                <p className="text-sm text-muted max-w-2xl leading-relaxed">
-                  The order to work through today, and which goal each block belongs to.
-                </p>
-              </div>
-
+            <Panel
+              id="schedule"
+              title="Today's Schedule"
+              icon={<CalendarClock className="h-4 w-4 text-brand" />}
+              subtitle="The order to work through today, and which goal each block belongs to."
+            >
               {/*
                * The reference also shows capacity chips (minutes scheduled,
                * flex buffer, crunch window) and Add commitment / Preview
                * replan. Those need the planning engine and a commitments
                * store, neither of which exists here — inventing them would
                * mean showing the user capacity numbers we cannot compute.
+               *
+               * The legend below is orientation for a first visit, so it is
+               * desktop-only: on a phone it is three paragraphs in front of
+               * the list they describe.
                */}
-              <div className="grid gap-4 sm:grid-cols-3 pb-4 mb-4 border-b border-line">
+              <div className="hidden lg:grid gap-4 sm:grid-cols-3 pb-4 mb-4 border-b border-line">
                 {[
                   { title: 'Focus', body: 'The one action to start next.' },
                   { title: 'Missions', body: 'The full list of tasks due today.' },
@@ -537,37 +584,38 @@ export default function Dashboard() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
           </Reveal>
         )}
 
         {/* ── Missions beside activity ──────────────────────────────────── */}
         <Reveal><div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Today's missions */}
-          <div className="lg:col-span-2 card-glow glow-missions rounded-2xl p-4 sm:p-5 animate-slide-up">
-            <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
-              <div className="min-w-0">
-                <h2 className="font-semibold text-fg flex items-center gap-2">
-                  <Target className="h-4 w-4 text-brand" />
-                  <span className="section-title">Today&apos;s Missions</span>
-                </h2>
-                <p className="text-sm text-muted mt-1 hidden sm:block">Every task due today.</p>
-              </div>
-              <div className="flex items-center gap-2 flex-wrap">
+          <Panel
+            id="missions"
+            title="Today's Missions"
+            icon={<Target className="h-4 w-4 text-brand" />}
+            subtitle="Every task due today."
+            className="lg:col-span-2 animate-slide-up"
+            right={
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 <span className="text-xs text-muted">
                   {doneToday}/{todaysTasks.length} complete
                 </span>
                 {todaysTasks.some(m => !m.value) && (
-                  <button
-                    onClick={() => setFocusOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-fg text-xs font-semibold glow-hover"
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={e => { e.stopPropagation(); setFocusOpen(true); }}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setFocusOpen(true); } }}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-fg text-xs font-semibold glow-hover cursor-pointer"
                   >
                     <Crosshair className="h-3.5 w-3.5 text-brand" /> Focus Mode
-                  </button>
+                  </span>
                 )}
               </div>
-            </div>
-
+            }
+          >
             {todaysTasks.length === 0 ? (
               <div className="text-center py-10">
                 <Target className="h-8 w-8 mx-auto mb-3 text-muted-dim" />
@@ -596,18 +644,19 @@ export default function Dashboard() {
                     onUndo={() => logTask(m.goal.id, m.task.id, false)}
                     onRecover={() => logTask(m.goal.id, m.task.id, 'fallback')}
                     onOpenGoal={() => router.push(`/goals/${m.goal.id}`)}
-                    onCorrectEstimate={mins => correctEstimate(m.goal.id, m.task.id, mins)}
                   />
                 ))}
               </div>
             )}
-          </div>
+          </Panel>
 
           {/* Activity feed */}
-          <div className="card-glow glow-activity rounded-2xl p-4 animate-slide-up">
-            <h2 className="font-semibold text-fg flex items-center gap-2 mb-3">
-              <Activity className="h-4 w-4 text-brand" /> <span className="section-title">Activity</span>
-            </h2>
+          <Panel
+            id="activity"
+            title="Activity"
+            icon={<Activity className="h-4 w-4 text-brand" />}
+            className="animate-slide-up"
+          >
             {feed.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
                 No activity yet. Complete your first task!
@@ -632,7 +681,7 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
-          </div>
+          </Panel>
         </div></Reveal>
 
         {/* ── Active goals — preview only (name, category, progress) ───── */}
@@ -679,6 +728,18 @@ export default function Dashboard() {
           missions={todaysTasks}
           onComplete={m => { logTask(m.goal.id, m.task.id, true); }}
           onClose={() => setFocusOpen(false)}
+        />
+      )}
+
+      {askDuration && (
+        <DurationPrompt
+          taskTitle={askDuration.title}
+          planned={askDuration.planned}
+          onSkip={() => setAskDuration(null)}
+          onSubmit={mins => {
+            correctEstimate(askDuration.goalId, askDuration.taskId, mins);
+            setAskDuration(null);
+          }}
         />
       )}
 

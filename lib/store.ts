@@ -10,7 +10,9 @@ interface GoalStore {
 
   /** Two-mode "New Goal" chooser (Quick vs Detailed). Global so nav can open it anywhere. */
   showCreateGoal: boolean;
-  setShowCreateGoal: (v: boolean) => void;
+  /** Pre-filled ambition for the create flow, when one was suggested. */
+  goalSeed: string | null;
+  setShowCreateGoal: (v: boolean, seed?: string) => void;
 
   /** Sidebar collapsed to icons only. Shared so the main column can offset itself. */
   sidebarCollapsed: boolean;
@@ -48,10 +50,13 @@ export type CoachPersona = 'energetic' | 'calm' | 'direct';
  * pure CSS driven by these two variables — no component needs to re-render for
  * the whole app to change.
  */
+/** Shipped glow level. Full strength is available but is not the default. */
+export const DEFAULT_GLOW = 0.75;
+
 function applyAppearance(strength?: number, animated?: boolean) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  if (strength !== undefined) root.style.setProperty('--glow-strength', String(strength));
+  if (strength !== undefined) root.style.setProperty('--glow-user', String(strength));
   if (animated !== undefined) root.style.setProperty('--glow-anim', animated ? 'glow-breathe' : 'none');
 }
 
@@ -63,7 +68,13 @@ export const useGoalStore = create<GoalStore>((set) => ({
   removeGoal: (id) => set(s => ({ goals: s.goals.filter(g => g.id !== id) })),
 
   showCreateGoal: false,
-  setShowCreateGoal: (v) => set({ showCreateGoal: v }),
+  goalSeed: null,
+  /*
+   * A seed is an ambition the user has already picked somewhere else — a
+   * suggested goal on the Progression page, say. Carrying it into the modal
+   * means the suggestion is acted on rather than merely acknowledged.
+   */
+  setShowCreateGoal: (v, seed) => set({ showCreateGoal: v, goalSeed: v ? (seed ?? null) : null }),
 
   sidebarCollapsed: false,
   toggleSidebar: () => set(s => {
@@ -84,7 +95,9 @@ export const useGoalStore = create<GoalStore>((set) => ({
   selectedGoal: null,
   setSelectedGoal: (goal) => set({ selectedGoal: goal }),
 
-  glowStrength: 1,
+  // 0.75 rather than 1: at full strength every panel edge competes for
+  // attention and the page reads as noise. The setting still goes to 2.
+  glowStrength: DEFAULT_GLOW,
   glowAnimated: true,
   setGlowStrength: (v) => {
     const n = Math.min(Math.max(v, 0), 2);
@@ -101,7 +114,7 @@ export const useGoalStore = create<GoalStore>((set) => ({
     if (typeof window === 'undefined') return;
     const rawStrength = localStorage.getItem('gq_glow_strength');
     const rawAnimated = localStorage.getItem('gq_glow_animated');
-    const strength = rawStrength === null ? 1 : Math.min(Math.max(Number(rawStrength) || 0, 0), 2);
+    const strength = rawStrength === null ? DEFAULT_GLOW : Math.min(Math.max(Number(rawStrength) || 0, 0), 2);
     const animated = rawAnimated === null ? true : rawAnimated === '1';
     applyAppearance(strength, animated);
     set({ glowStrength: strength, glowAnimated: animated });

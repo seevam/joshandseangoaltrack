@@ -1,4 +1,5 @@
 import type { Goal } from './types';
+import { GOAL_DOMAINS, skillsForGoal } from './domains';
 
 /**
  * XP is derived entirely from goal data — never stored, never user-editable.
@@ -77,7 +78,12 @@ export function rankFromXp(totalXp: number) {
 }
 
 export interface UserStats {
+  /** The balanced total the rank and level are read from. */
   totalXp: number;
+  /** What was earned before the balance weighting, for explaining the gap. */
+  earnedXp: number;
+  /** 0–1: how evenly that XP is spread across the eight life domains. */
+  balance: number;
   level: number;
   levelXp: number;      // XP earned inside the current level
   levelSpan: number;    // XP needed to clear the current level
@@ -112,16 +118,71 @@ export function streaksFromCheckIns(all: string[]): { current: number; longest: 
   return { current, longest };
 }
 
+/*
+ * Overall rank is a measure of the whole person, not of their best skill.
+ *
+ * XP is credited to the domains a goal feeds, so someone with one maxed domain
+ * and seven empty ones used to out-rank someone spread evenly across all
+ * eight, purely by grinding the same area. The raw total is therefore weighted
+ * by how evenly it is spread.
+ *
+ * The evenness term is (Σx)² / (n · Σx²): exactly 1 when every domain carries
+ * the same XP, and 1/n when every point sits in one domain. It is then mapped
+ * onto [FLOOR, 1] rather than used raw, because a single focused goal is a
+ * normal way to start and should still advance you — just more slowly than the
+ * same effort spread across your life.
+ */
+const BALANCE_FLOOR = 0.35;
+
+export function domainXp(goals: Goal[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const goal of goals) {
+    const domains = skillsForGoal(goal);
+    const share = 1 / domains.length;
+    let earned = 0;
+
+    for (const s of goal.subtasks || []) if (s.completed) earned += milestoneXp(s.difficulty);
+
+    const taskById = new Map((goal.dailyTasks || []).map(t => [String(t.id), t]));
+    for (const day of Object.values(goal.taskCompletions || {})) {
+      for (const [taskId, value] of Object.entries(day)) {
+        if (value) earned += completionXp(value, taskById.get(taskId)?.difficulty);
+      }
+    }
+
+    earned += (goal.checkIns || []).length * 5;
+
+    const subtasks = goal.subtasks || [];
+    const done = subtasks.length > 0
+      ? subtasks.every(s => s.completed)
+      : goal.targetValue > 0 && goal.currentValue >= goal.targetValue;
+    if (done) earned += 500;
+
+    for (const d of domains) out[d] = (out[d] || 0) + earned * share;
+  }
+  return out;
+}
+
+/** 0–1. 1 is perfectly even across the eight domains, FLOOR is all in one. */
+export function balanceFactor(goals: Goal[]): number {
+  const xs = GOAL_DOMAINS.map(d => domainXp(goals)[d.id] || 0);
+  const sum = xs.reduce((a, b) => a + b, 0);
+  if (sum <= 0) return 1; // Nothing earned yet — nothing to be unbalanced about.
+  const sumSq = xs.reduce((a, b) => a + b * b, 0);
+  const evenness = (sum * sum) / (xs.length * sumSq);
+  return BALANCE_FLOOR + (1 - BALANCE_FLOOR) * evenness;
+}
+
 function buildStats(
   totalXp: number, tasksCompleted: number, milestonesCompleted: number,
-  goalsCompleted: number, allCheckIns: string[],
+  goalsCompleted: number, allCheckIns: string[], earnedXp = totalXp, balance = 1,
 ): UserStats {
   const level = levelFromXp(totalXp);
   const levelStart = xpForLevel(level);
   const levelEnd = xpForLevel(level + 1);
   const { current, longest } = streaksFromCheckIns(allCheckIns);
   return {
-    totalXp, level,
+    totalXp, earnedXp, balance, level,
     levelXp: totalXp - levelStart,
     levelSpan: levelEnd - levelStart,
     rank: rankFromXp(totalXp),
@@ -169,9 +230,21 @@ export function computeStats(goals: Goal[]): UserStats {
     }
   }
 
-  // Badge rewards depend on stats, and stats depend on XP — resolve in two passes.
-  const base: UserStats = buildStats(totalXp, tasksCompleted, milestonesCompleted, goalsCompleted, allCheckIns);
-  totalXp += BADGES.reduce((sum, b) => sum + (b.earned(base, goals) ? b.xpReward : 0), 0);
+  const earnedXp = totalXp;
+
+  // Badge rewards depend on stats, and stats depend on XP — resolve in two
+  // passes. Badges are judged on what was actually earned, not on the balanced
+  // figure: you either did the thing or you didn't.
+  const base: UserStats = buildStats(earnedXp, tasksCompleted, milestonesCompleted, goalsCompleted, allCheckIns);
+  const badgeXp = BADGES.reduce((sum, b) => sum + (b.earned(base, goals) ? b.xpReward : 0), 0);
+
+  /*
+   * The rank ladder is climbed on the balanced total. Badge XP rides along with
+   * it rather than sitting outside — otherwise a one-domain player could bank
+   * unweighted badge XP and climb around the weighting.
+   */
+  const balance = balanceFactor(goals);
+  totalXp = Math.round((earnedXp + badgeXp) * balance);
 
   const level = levelFromXp(totalXp);
   const levelStart = xpForLevel(level);
@@ -182,6 +255,8 @@ export function computeStats(goals: Goal[]): UserStats {
 
   return {
     totalXp,
+    earnedXp: earnedXp + badgeXp,
+    balance,
     level,
     levelXp: totalXp - levelStart,
     levelSpan: levelEnd - levelStart,

@@ -11,6 +11,7 @@ import {
 import { useGoalStore } from '@/lib/store';
 import { computeStats } from '@/lib/xp';
 import { RankEmblem } from '@/components/ui/icons';
+import { isNavActive } from '@/lib/nav';
 
 const NAV = [
   { icon: LayoutDashboard, label: 'Dashboard',   href: '/home' },
@@ -74,7 +75,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
       {/* Nav */}
       <nav className="flex-1 px-2 space-y-0.5 overflow-y-auto thin-scroll">
         {NAV.map(item => {
-          const active = pathname === item.href;
+          const active = isNavActive(pathname, item.href);
           return (
             <Link
               key={item.href}

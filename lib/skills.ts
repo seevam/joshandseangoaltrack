@@ -1,5 +1,7 @@
 import type { Goal } from './types';
 import { taskXp, milestoneXp, completionXp, levelFromXp, xpForLevel, streaksFromCheckIns, rankFromXp } from './xp';
+import { GOAL_DOMAINS, DISCIPLINE, skillsForGoal, domainGoalIdea, type GoalDomainId, type SkillId } from './domains';
+import { baselineXp, loadSkillBaseline, weakestDomains, type SkillBaseline } from './skillBaseline';
 
 /**
  * Skill domains, matching the reference app's set. Eight are goal-linked: a
@@ -10,61 +12,10 @@ import { taskXp, milestoneXp, completionXp, levelFromXp, xpForLevel, streaksFrom
  * earned from follow-through and streak stability rather than from any goal's
  * subject matter — so it is computed separately and is never a goal category.
  */
-export const GOAL_DOMAINS = [
-  { id: 'health',       name: 'Health',       icon: 'heart',      color: '#00CD4B', blurb: 'Fitness, energy, recovery, physical resilience' },
-  { id: 'intelligence', name: 'Intelligence', icon: 'brain',      color: '#3B82F6', blurb: 'Reading, learning, knowledge, mental sharpness' },
-  { id: 'creativity',   name: 'Creativity',   icon: 'palette',    color: '#A78BFA', blurb: 'Expression, invention, original work' },
-  { id: 'charisma',     name: 'Charisma',     icon: 'speech',     color: '#EC4899', blurb: 'Relationships, communication, social presence' },
-  { id: 'vocation',     name: 'Vocation',     icon: 'briefcase',  color: '#14B8A6', blurb: 'Career momentum, financial capability, craft' },
-  { id: 'resilience',   name: 'Resilience',   icon: 'shield',     color: '#FB923C', blurb: 'Endurance, adaptability, fortitude under pressure' },
-  { id: 'leadership',   name: 'Leadership',   icon: 'swords',     color: '#FBBF24', blurb: 'Guiding teams, organising projects, taking command' },
-  { id: 'exploration',  name: 'Exploration',  icon: 'compass',    color: '#38BDF8', blurb: 'Discovering new horizons, broadening perspectives' },
-] as const;
-
-export const DISCIPLINE = {
-  id: 'discipline', name: 'Discipline', icon: 'flame', color: '#5DBC70',
-  blurb: 'Derived from follow-through and streak stability',
-} as const;
-
-/** All nine, in display order, with Discipline last since it is derived. */
-export const SKILLS = [...GOAL_DOMAINS, DISCIPLINE] as const;
-
-export type GoalDomainId = (typeof GOAL_DOMAINS)[number]['id'];
-export type SkillId = GoalDomainId | 'discipline';
-
-/** Category alone is coarse, so the title and description are also scanned. */
-const KEYWORDS: [RegExp, GoalDomainId][] = [
-  [/\b(run|marathon|5k|10k|gym|lift|strength|weight|muscle|swim|cycl|sport|sleep|diet|nutrition|eat|water|smok|drink)/i, 'health'],
-  [/\b(read|book|learn|study|course|language|spanish|french|degree|exam|cod|research|maths?)/i, 'intelligence'],
-  [/\b(write|novel|paint|draw|music|guitar|piano|art|photo|design|craft|creat|compose|film)/i, 'creativity'],
-  [/\b(friend|family|social|communit|relationship|date|partner|speak|present|confidence|network|converse)/i, 'charisma'],
-  [/\b(career|promot|job|interview|portfolio|business|startup|salary|save|saving|invest|budget|debt|money|financ|retire)/i, 'vocation'],
-  [/\b(meditat|mindful|therapy|quit|stress|anxiety|recover|endur|consistenc|sober|resilien)/i, 'resilience'],
-  [/\b(lead|team|manage|mentor|organis|organiz|coach|volunteer|found|delegate)/i, 'leadership'],
-  [/\b(travel|explor|visit|countr|adventure|discover|hike|camp|abroad)/i, 'exploration'],
-];
-
-/** Our goal categories mapped onto the domain set. */
-const CATEGORY_DOMAINS: Record<string, GoalDomainId[]> = {
-  fitness:   ['health'],
-  health:    ['health', 'resilience'],
-  education: ['intelligence'],
-  career:    ['vocation'],
-  finance:   ['vocation'],
-  personal:  ['exploration'],
-};
-
-/**
- * Which domains a goal feeds. Never includes discipline — that is derived from
- * behaviour, not from what the goal is about.
- */
-export function skillsForGoal(goal: Goal): GoalDomainId[] {
-  const found = new Set<GoalDomainId>(CATEGORY_DOMAINS[goal.category] || []);
-  const text = `${goal.title} ${goal.description || ''}`;
-  for (const [re, domain] of KEYWORDS) if (re.test(text)) found.add(domain);
-  if (found.size === 0) found.add('exploration');
-  return Array.from(found);
-}
+export {
+  GOAL_DOMAINS, DISCIPLINE, skillsForGoal,
+  type GoalDomainId, type SkillId,
+} from './domains';
 
 export interface SkillStat {
   id: SkillId;
@@ -87,6 +38,8 @@ export interface SkillStat {
   derived: boolean;
   /** Days since this domain last earned anything; null when it never has. */
   daysSinceActive: number | null;
+  /** Head start credited from the user's own self-assessment, if any. */
+  baselineXp: number;
 }
 
 /** Domain levels use a gentler curve than the global one — 100 XP per step. */
@@ -97,7 +50,13 @@ function skillLevel(xp: number) {
   return { level, levelXp: xp - start, levelSpan: end - start };
 }
 
-export function computeSkills(goals: Goal[]): SkillStat[] {
+export function computeSkills(goals: Goal[], baseline?: SkillBaseline): SkillStat[] {
+  /*
+   * The self-assessment is a head start on the SKILL ladder only. It never
+   * reaches the overall rank: a number you type about yourself must not buy a
+   * rank, or the honest answer becomes the losing one.
+   */
+  const rated = baseline ?? loadSkillBaseline();
   const xp: Record<string, number> = {};
   const goalCount: Record<string, number> = {};
   const lastActive: Record<string, string> = {};
@@ -172,7 +131,8 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
     iso ? Math.floor((today.getTime() - new Date(`${iso}T12:00:00`).getTime()) / 86400000) : null;
 
   const domainStats: SkillStat[] = GOAL_DOMAINS.map(d => {
-    const total = Math.round(xp[d.id] || 0);
+    const head = rated[d.id] ? baselineXp(rated[d.id]!) : 0;
+    const total = Math.round((xp[d.id] || 0) + head);
     const { level, levelXp, levelSpan } = skillLevel(total);
     return {
       id: d.id, name: d.name, icon: d.icon, color: d.color, blurb: d.blurb,
@@ -183,6 +143,7 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
       rank: rankFromXp(total),
       derived: false,
       daysSinceActive: daysSince(lastActive[d.id]),
+      baselineXp: head,
     };
   });
 
@@ -197,6 +158,8 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
     rank: rankFromXp(disciplineXp),
     derived: true,
     daysSinceActive: daysSince(disciplineLast),
+    // Discipline is earned by showing up. There is no self-assessed shortcut.
+    baselineXp: 0,
   });
 
   return domainStats;
@@ -205,6 +168,7 @@ export function computeSkills(goals: Goal[]): SkillStat[] {
 export interface SkillGap {
   skill: SkillStat;
   reason: string;
+  /** A specific goal worth setting, not an instruction to think of one. */
   suggestion: string;
 }
 
@@ -214,31 +178,31 @@ export interface SkillGap {
  * it is derived, so there is no goal you could set to "raise Discipline".
  */
 export function findSkillGaps(skills: SkillStat[]): SkillGap[] {
-  const active = skills.filter(s => !s.derived && s.xp > 0);
+  // Measured on earned XP, so a domain the user merely rated highly does not
+  // raise the bar that every other domain is judged against.
+  const active = skills.filter(s => !s.derived && s.xp - s.baselineXp > 0);
   if (active.length === 0) return [];
-  const avg = active.reduce((sum, s) => sum + s.xp, 0) / active.length;
+  const avg = active.reduce((sum, s) => sum + (s.xp - s.baselineXp), 0) / active.length;
 
   const gaps: SkillGap[] = [];
   for (const s of skills) {
     if (s.derived) continue;
-    if (s.goalCount === 0 && s.xp === 0) {
-      gaps.push({
-        skill: s,
-        reason: 'No goals feed this domain yet',
-        suggestion: `Set a ${s.name.toLowerCase()} goal to start building it`,
-      });
+    /*
+     * The idea is picked from the domain's own list rather than described in
+     * the abstract. "Set a creativity goal" restates the problem and leaves
+     * the hard part to the person who has already not done it.
+     *
+     * Seeded by the domain's XP and goal count so it is stable across renders
+     * but changes as the picture does.
+     */
+    const idea = domainGoalIdea(s.id as GoalDomainId, s.xp + s.goalCount * 7);
+    // goalCount alone, not xp: a self-assessed head start is not work done.
+    if (s.goalCount === 0) {
+      gaps.push({ skill: s, reason: 'Nothing feeds this domain yet', suggestion: idea });
     } else if (s.daysSinceActive !== null && s.daysSinceActive >= 14) {
-      gaps.push({
-        skill: s,
-        reason: `Quiet for ${s.daysSinceActive} days`,
-        suggestion: `Pick this back up, or set a smaller ${s.name.toLowerCase()} goal`,
-      });
-    } else if (s.xp > 0 && s.xp < avg * 0.35) {
-      gaps.push({
-        skill: s,
-        reason: 'Falling behind your other domains',
-        suggestion: `A focused ${s.name.toLowerCase()} goal would even things out`,
-      });
+      gaps.push({ skill: s, reason: `Quiet for ${s.daysSinceActive} days`, suggestion: idea });
+    } else if (s.xp - s.baselineXp > 0 && s.xp - s.baselineXp < avg * 0.35) {
+      gaps.push({ skill: s, reason: 'Falling behind your other domains', suggestion: idea });
     }
   }
   return gaps.sort((a, b) => a.skill.xp - b.skill.xp).slice(0, 3);
@@ -254,9 +218,25 @@ export function skillsContext(goals: Goal[]): string {
     .map(s => `${s.name} Lv.${s.level} (${s.xp} XP)`);
 
   let out = lines.length ? `SKILLS: ${lines.join(', ')}.` : 'SKILLS: none developed yet.';
+
+  /*
+   * What the user said about themselves at sign-up. The coach should recommend
+   * goals for the areas they rated lowest — that is the whole point of having
+   * asked — while knowing that a high rating is a claim, not an achievement.
+   */
+  const rated = loadSkillBaseline();
+  const weak = weakestDomains(rated, 3)
+    .map(id => GOAL_DOMAINS.find(d => d.id === id)?.name)
+    .filter(Boolean);
+  if (Object.keys(rated).length && weak.length) {
+    out += `\nSELF-RATED WEAKEST: ${weak.join(', ')}.`
+      + ' Prioritise goal ideas here when the user is open to a new goal.';
+  }
+
   if (gaps.length) {
-    out += `\nNEGLECTED: ${gaps.map(g => `${g.skill.name} — ${g.reason}`).join('; ')}.`
-      + ' If it fits naturally, suggest ONE goal that would build a neglected domain. Never force it.';
+    out += `\nNEGLECTED: ${gaps.map(g => `${g.skill.name} (${g.reason}) — e.g. "${g.suggestion}"`).join('; ')}.`
+      + ' If it fits naturally, suggest ONE concrete goal that would build a neglected domain —'
+      + ' name an actual goal, not "set a goal in this area". Offer it once and never force it.';
   }
   return out;
 }

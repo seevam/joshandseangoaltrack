@@ -3,11 +3,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { Zap, MessageSquare, ChevronRight, ChevronDown, ArrowLeft, Loader2, Send, Sparkles, ListChecks } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, CATEGORY_HEX, type Availability, type PlanDraft } from '@/lib/aiGoal';
+import { buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, splitInlineOptions, CATEGORY_HEX, type Availability, type PlanDraft } from '@/lib/aiGoal';
 import { GOAL_DOMAINS } from '@/lib/skills';
 import { type Category } from '@/lib/types';
 import Modal from '@/components/ui/Modal';
 import MarkdownText from '@/components/ui/MarkdownText';
+import ErrorDialog from '@/components/ui/ErrorDialog';
 
 const CATEGORIES: Category[] = ['fitness', 'health', 'personal', 'career', 'finance', 'education'];
 const TIMEFRAMES = [1, 3, 6, 12, 24];
@@ -24,7 +25,10 @@ const QUICK_STARTERS = [
 type Step = 'pick' | 'quick' | 'detailed';
 
 export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
-  const [step, setStep] = useState<Step>('pick');
+  // Arriving with a suggested ambition skips the mode picker: the choice the
+  // picker asks about has already been made by tapping the suggestion.
+  const seed = useGoalStore(s => s.goalSeed);
+  const [step, setStep] = useState<Step>(seed ? 'quick' : 'pick');
   const addGoal = useGoalStore(s => s.addGoal);
   const coachName = useGoalStore(s => s.coachName);
   const persona = useGoalStore(s => s.coachPersona);
@@ -47,6 +51,7 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
             coachName={coachName}
             persona={persona}
             otherTaskCount={otherTaskCount}
+            seed={seed ?? ''}
           />
         )}
         {step === 'detailed' && (
@@ -112,16 +117,18 @@ function StepHeader({ onBack, title, right }: { onBack: () => void; title: strin
 }
 
 /* ── Step 2a: Quick — AI Generation | Manual Entry ───────────────────────── */
-function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: {
+function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, seed = '' }: {
   onBack: () => void;
   onCreated: (g: Awaited<ReturnType<typeof materialiseGoal>> extends infer T ? NonNullable<T> : never) => void;
   coachName: string;
   persona: 'energetic' | 'calm' | 'direct';
   otherTaskCount: number;
+  /** A suggested ambition to start from, if the user came in through one. */
+  seed?: string;
 }) {
   const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [category, setCategory] = useState<Category>('fitness');
-  const [ambition, setAmbition] = useState('');
+  const [ambition, setAmbition] = useState(seed);
   const [months, setMonths] = useState(6);
   const [deadlineType, setDeadlineType] = useState<'hard' | 'soft'>('soft');
   const [weeklyHours, setWeeklyHours] = useState(5);
@@ -350,7 +357,6 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: 
           </>
         )}
 
-        {error && <p className="text-xs text-red-400">{error}</p>}
 
         <button
           onClick={submit}
@@ -362,6 +368,14 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount }: 
             : mode === 'ai' ? <><Sparkles className="h-4 w-4" /> Generate AI Plan</> : 'Create Goal'}
         </button>
       </div>
+
+      {error && (
+        <ErrorDialog
+          message={error}
+          onClose={() => setError('')}
+          onRetry={() => { setError(''); submit(); }}
+        />
+      )}
     </div>
   );
 }
@@ -380,6 +394,8 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  /** What to run again if the user presses Retry on the error dialog. */
+  const [retry, setRetry] = useState<(() => void) | null>(null);
   /** Chips answering the question Forge just asked, replaced every turn. */
   const [replies, setReplies] = useState<{ label: string; value: string }[]>([]);
   const [draft, setDraft] = useState<PlanDraft | null>(null);
@@ -426,6 +442,9 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
     setError('');
     setIsLoading(true);
     const next = [...history, { role: 'user', content: text }];
+    // Retrying re-sends the same turn; the user's message is already in the
+    // transcript, so nothing they typed is asked for twice.
+    const again = () => { setMessages(m => m.slice(0, -1)); send(text); };
     try {
       const toolCall = await call(next, false);
       if (toolCall?.function.name === 'create_goal') {
@@ -434,13 +453,24 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
         throw new Error();
       }
       const args = JSON.parse(toolCall.function.arguments);
+      /*
+       * The prompt forbids option lists inside the message, but a model that
+       * slips one in must not put it in front of the user: lettered choices in
+       * the text read as the only allowed answers. Anything it wrote inline is
+       * lifted out and re-offered as chips, which is where choices belong.
+       */
+      const { text, options } = splitInlineOptions(String(args.message ?? ''));
+      const chips = Array.isArray(args.options) && args.options.length
+        ? args.options.slice(0, 4)
+        : options;
       setHistory([...next, { role: 'assistant', content: args.message }]);
-      setMessages(m => [...m, { id: Date.now() + 1, role: 'ai', text: args.message }]);
-      setReplies(Array.isArray(args.options) ? args.options.slice(0, 3) : []);
+      setMessages(m => [...m, { id: Date.now() + 1, role: 'ai', text }]);
+      setReplies(chips);
       mergeDraft(args.draft);
     } catch {
       // The message stays in the transcript so nothing the user typed is lost.
-      setError(`${coachName} is unavailable right now. Your conversation is still here — try again.`);
+      setRetry(() => again);
+      setError(`${coachName} is unavailable right now. Your conversation is still here.`);
     } finally { setIsLoading(false); }
   };
 
@@ -448,6 +478,7 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
     if (isLoading) return;
     setError('');
     setIsLoading(true);
+    setRetry(() => buildNow);
     try {
       const toolCall = await call(
         history.length ? history : [{ role: 'user', content: 'Build the best plan you can from what you know so far.' }],
@@ -455,9 +486,9 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
       );
       const saved = await materialiseGoal(JSON.parse(toolCall.function.arguments));
       if (saved) onCreated(saved);
-      else setError('The plan could not be saved. Nothing was created — try again.');
+      else setError('The plan was built but could not be saved. Nothing was created.');
     } catch {
-      setError("I couldn't build that yet — tell me a bit more about the goal first.");
+      setError(`${coachName} couldn't build a plan from this yet. Say a little more about the goal, then try again.`);
     } finally { setIsLoading(false); }
   };
 
@@ -541,7 +572,6 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
             </button>
           </form>
 
-          {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
 
           {/* Planning context gathered so far */}
           <div className="mt-3 space-y-2">
@@ -563,20 +593,12 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
             )}
           </div>
 
-          {!!draft?.signals?.length && (
-            <div className="mt-3 rounded-xl border border-line bg-card p-3">
-              <p className="text-[10px] font-semibold text-brand uppercase tracking-[0.16em] mb-2">
-                Planning signals captured
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {draft.signals.map(sig => (
-                  <span key={sig} className="rounded-full border border-line px-2.5 py-1 text-xs text-muted">
-                    {sig}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          {/*
+            * Planning signals are deliberately not rendered. They are working
+            * memory for the coach — a block of "Target: 24 books / Free time:
+            * 3h" tells the user nothing they did not just say, and read as
+            * internal machinery leaking into the conversation.
+            */}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
             <button
@@ -714,6 +736,15 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
           )}
         </aside>
       </div>
+
+      {error && (
+        <ErrorDialog
+          title={`${coachName} couldn\u2019t reply`}
+          message={error}
+          onClose={() => { setError(''); setRetry(null); }}
+          onRetry={retry ? () => { const run = retry; setError(''); setRetry(null); run(); } : undefined}
+        />
+      )}
     </div>
   );
 }

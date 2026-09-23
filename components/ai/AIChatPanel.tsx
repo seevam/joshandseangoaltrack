@@ -7,7 +7,7 @@ import { useGoalStore } from '@/lib/store';
 import { getGoalProgress } from '@/lib/types';
 import MarkdownText from '@/components/ui/MarkdownText';
 import { Icon } from '@/components/ui/icons';
-import { buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal } from '@/lib/aiGoal';
+import { splitInlineOptions, buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal } from '@/lib/aiGoal';
 import { skillsContext } from '@/lib/skills';
 import { useDismiss } from '@/components/ui/Modal';
 
@@ -17,7 +17,6 @@ interface Message {
   content: string;
   timestamp: Date;
   isError?: boolean;
-  options?: { label: string; value: string }[];
 }
 
 /** Concrete goal starters, grouped. A vague starter leaves the AI nothing to work from. */
@@ -40,6 +39,13 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const hydrateCoachSettings = useGoalStore(s => s.hydrateCoachSettings);
 
   const [messages, setMessages] = useState<Message[]>([]);
+  /*
+   * Quick replies live in one place above the input, not inside the bubble
+   * they answer. Chips attached to a message read as the only permitted
+   * answers and pushed people away from typing what they actually meant;
+   * they also piled up down the transcript, one dead set per old question.
+   */
+  const [replies, setReplies] = useState<{ label: string; value: string }[]>([]);
   const [history, setHistory] = useState<{ role: string; content: string }[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -91,6 +97,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const send = async (content: string) => {
     if (!content.trim() || isLoading) return;
     setMessages(prev => [...prev, { id: Date.now(), type: 'user', content, timestamp: new Date() }]);
+    setReplies([]);
     setInput('');
     setOpenGroup(null);
     setIsLoading(true);
@@ -132,11 +139,16 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
         }]);
       } else if (toolCall?.function.name === 'respond') {
         const args = JSON.parse(toolCall.function.arguments);
+        // Anything the model wrote as an inline A)/B)/C) list is lifted out of
+        // the text and re-offered as chips, where choices belong.
+        const { text, options } = splitInlineOptions(String(args.message ?? ''));
         setHistory([...updatedHistory, { role: 'assistant', content: args.message }]);
         setMessages(prev => [...prev, {
-          id: Date.now() + 1, type: 'ai', content: args.message, timestamp: new Date(),
-          options: args.options || undefined,
+          id: Date.now() + 1, type: 'ai', content: text, timestamp: new Date(),
         }]);
+        setReplies(
+          (Array.isArray(args.options) && args.options.length ? args.options : options).slice(0, 4),
+        );
       } else {
         setHistory(updatedHistory);
         setMessages(prev => [...prev, {
@@ -222,28 +234,6 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
                   }
                 </div>
 
-                {/* Quick-reply chips + explicit "type your own" affordance */}
-                {msg.options && msg.options.length > 0 && (
-                  <div className="flex flex-wrap gap-2 items-center">
-                    {msg.options.map((opt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => send(opt.value)}
-                        disabled={isLoading}
-                        className="px-3 py-1.5 bg-card border border-brand/60 text-brand rounded-full text-xs font-semibold hover:bg-brand hover:text-black transition-colors disabled:opacity-40"
-                      >
-                        {String.fromCharCode(65 + i)}) {opt.label}
-                      </button>
-                    ))}
-                    <button
-                      onClick={() => document.getElementById('ai-chat-input')?.focus()}
-                      disabled={isLoading}
-                      className="px-3 py-1.5 border border-dashed border-line text-muted rounded-full text-xs font-medium hover:border-brand/60 hover:text-brand transition-colors disabled:opacity-40 flex items-center gap-1"
-                    >
-                      <Pencil className="h-3 w-3" /> Type your own
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           ))}
@@ -304,6 +294,22 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
 
         {/* Input — always available, so free text is never blocked */}
         <div className="flex-shrink-0 px-4 pt-3 pb-4 bg-card border-t border-line" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1rem)' }}>
+          {replies.length > 0 && !isLoading && (
+            <div className="flex flex-wrap gap-2 items-center mb-2.5">
+              {replies.map((opt, i) => (
+                <button
+                  key={i}
+                  onClick={() => send(opt.value)}
+                  className="px-3 py-1.5 bg-elevated border border-brand/50 text-brand rounded-full text-xs font-medium hover:bg-brand hover:text-black transition-colors"
+                >
+                  {opt.label}
+                </button>
+              ))}
+              <span className="text-[11px] text-muted-dim inline-flex items-center gap-1">
+                <Pencil className="h-3 w-3" /> or type your own
+              </span>
+            </div>
+          )}
           <form onSubmit={e => { e.preventDefault(); send(input); }} className="flex items-end gap-2">
             <textarea
               id="ai-chat-input"

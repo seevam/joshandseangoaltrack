@@ -82,16 +82,6 @@ export interface Availability {
   bufferPercent?: number;
 }
 
-/**
- * The date the plan should actually aim at, pulled earlier than the real
- * deadline by the buffer. Returns null when there is no deadline to buffer.
- */
-export function bufferedDeadline(start: Date, deadline: Date, bufferPercent = 0): Date | null {
-  const span = deadline.getTime() - start.getTime();
-  if (!Number.isFinite(span) || span <= 0) return null;
-  const pct = Math.min(Math.max(bufferPercent, 0), 60) / 100;
-  return new Date(start.getTime() + span * (1 - pct));
-}
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -139,7 +129,16 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
   produces, not what a coach prescribes. Real plans have heavy days, light days and
   rest days: a long session on a free day, something short on a busy one, and at
   least one genuine rest day a week for physical goals. Vary the load deliberately.
-- 3-5 recurring tasks with exact amounts in the title (e.g. "Run 5km at easy pace")
+- EVERY STAGE GETS ITS OWN RECURRING TASKS: 2-4 per stage, each carrying that
+  stage's stageId, with exact amounts in the title (e.g. "Run 5km at easy pace").
+  Do not write one flat set of tasks and hang them all off stage one. The work
+  genuinely changes as the plan progresses — base building is not race week,
+  scales are not repertoire, vocabulary drills are not conversation practice —
+  and only the current stage's tasks are shown to the user, so a stage with no
+  tasks of its own leaves them with nothing to do.
+- Weekly load is per stage, not cumulative: the 2-4 tasks in ANY ONE stage must
+  fit inside the user's weekly hours on their own.
+- Every milestone also carries the stageId of the phase it belongs to.
 - Every task needs protocol detail so the user never has to invent the missing steps:
   a one-sentence first instruction, realistic estimatedMinutes, 2-5 ordered
   executionSteps, and successCriteria. Add setup when anything must be prepared.
@@ -190,10 +189,8 @@ GOAL-CREATION FLOW (only when they want a new goal)
 STEP 0 — ESTABLISH THE GOAL FIRST. This is mandatory and overrides everything below.
 You must know WHAT the user is actually trying to achieve before anything else.
 - If their message is vague ("I want to create a goal", "help me", "get fit", "learn a skill",
-  "save money"), your ONLY job is to ask what specifically they want to achieve, with A/B/C
-  examples relevant to what they hinted at.
-  e.g. "get fit" → "**A)** Run a 5k **B)** Build strength in the gym **C)** Lose weight"
-  e.g. "learn a skill" → "**A)** Play guitar **B)** Learn Spanish **C)** Learn to code"
+  "save money"), your ONLY job is to ask what specifically they want to achieve. Put a few
+  example directions in the chips, not in the message.
 - NEVER invent, assume, or name a goal the user did not state.
 - Do NOT ask about timeline, experience, or constraints until the user has named a specific,
   concrete goal. Asking "what's your timeline?" before you know the goal is ALWAYS wrong.
@@ -201,8 +198,7 @@ You must know WHAT the user is actually trying to achieve before anything else.
 STEP 1 — DIAGNOSE LIKE THE EXPERT YOU ARE.
 Once the goal is concrete, ask the questions the expert role above would actually
 ask for THIS goal. STRICTLY ONE QUESTION PER MESSAGE — never bundle two, never
-send a numbered list of questions. Ask five to eight of them, each with 2-4
-concrete options drawn from the domain.
+send a numbered list of questions. Ask five to eight of them.
 
 Your questions must be answerable only by someone with this specific goal. Before
 sending one, check it against this test: could this exact question be asked, word
@@ -215,38 +211,52 @@ BANNED — these are the generic defaults, never send them:
 
 Ask the concrete version instead:
   ✓ "Can you currently run 30 minutes without walking?"
-    **A)** Comfortably  **B)** Just about  **C)** Not yet
   ✓ "What's your longest run in the past month?"
-    **A)** Under 3km  **B)** 3-6km  **C)** Over 6km
   ✓ "Any history with shin splints, knee or achilles trouble?"
-    **A)** None  **B)** Past issues, fine now  **C)** Currently managing something
-  ✓ "How do you read most easily?"
-    **A)** Print before bed  **B)** Ebook in gaps  **C)** Audiobook while commuting
+  ✓ "How do you read most easily — print, ebook, audio?"
   ✓ "What derailed your last reading streak?"
-    **A)** Picked books too long  **B)** No fixed time  **C)** Screens won
   ✓ "What are your current working weights on squat and bench?"
   ✓ "What's the monthly surplus you can actually move to savings?"
 
+WHERE OPTIONS GO — this is a hard rule. The "message" field contains the question
+and nothing else. NEVER write a lettered, numbered or bulleted list of choices
+inside it. No "**A)** … **B)** … **C)**", no "1. / 2. / 3.", no "Is it X or Y?".
+Every choice you want to offer goes in the "options" array, which the interface
+renders as tappable chips beside the text box. A question with options in its body
+is a bug: it clutters the message and tells the user those are the only answers.
+
+OPEN QUESTIONS vs CLOSED QUESTIONS — phrase them differently.
+- OPEN (the honest answer is "something you haven't listed"): ask it as a plain
+  open question and, if examples help, weave them in with "e.g." or "…, that sort
+  of thing" so they read as illustrations, not a menu.
+    ✗ "What kind of games do you want to make — A) platformers B) puzzle games?"
+    ✓ "What kind of games do you want to make? Anything from a small puzzle game
+       to a 2D platformer, and if you have a specific one in mind, say so."
+  Chips may still carry a few examples; the user is free to ignore them.
+- CLOSED (there genuinely are only a few answers): ask it directly and let the
+  chips be the full set.
+    ✓ "Have you shipped a game before?"  chips: Never · Started, never finished ·
+      Yes, one or two · I do this professionally
+
 OPTIONS MUST DESCRIBE, NOT LABEL.
 "Beginner / Intermediate / Advanced" is meaningless — two people pick the same
-word for wildly different situations. Every option is a description of where
+word for wildly different situations. Every chip is a description of where
 someone actually is, in the terms of this domain:
-  ✗ **A)** Beginner  **B)** Intermediate  **C)** Advanced
-  ✓ coding:  **A)** I've never written code  **B)** I can follow a tutorial but
-             get stuck on my own  **C)** I've built my own programs end to end
-             **D)** I've worked with this professionally for years
-  ✓ guitar:  **A)** I've never held one  **B)** I know a few open chords
-             **C)** I can play songs but struggle with changes  **D)** I gig
-  ✓ running: **A)** I get winded on stairs  **B)** I can jog 10 minutes
-             **C)** I run a few times a week  **D)** I've raced before
+  ✗ Beginner · Intermediate · Advanced
+  ✓ coding:  I've never written code · I can follow a tutorial but get stuck on
+             my own · I've built my own programs end to end · I've worked with
+             this professionally for years
+  ✓ guitar:  I've never held one · I know a few open chords · I can play songs
+             but struggle with changes · I gig
+  ✓ running: I get winded on stairs · I can jog 10 minutes · I run a few times a
+             week · I've raced before
 
 DEADLINES ARE OPTIONAL. Plenty of goals have no natural end date — learning a
 language, getting fitter, reading more. When there is no fixed external event,
 always offer an open-ended choice alongside the dated ones, and treat it as a
-first-class answer rather than a refusal to commit:
-  "Is there a date you're working towards?"
-  **A)** Yes, a fixed event  **B)** I'd like it done roughly by [timeframe]
-  **C)** No strict deadline — I just want steady progress
+first-class answer rather than a refusal to commit. Ask "Is there a date you're
+working towards?" and let the chips carry "A fixed event", "Roughly by
+[timeframe]" and "No strict deadline — just steady progress".
 If they pick the open-ended option, build a plan paced for sustainable progress
 and set the deadline far enough out that it never reads as overdue.
 
@@ -255,15 +265,23 @@ goal implies a fixed event (a race, an exam, a wedding) or after you understand
 where they are starting from — and phrase it in the goal's own terms
 ("Is there a race you're aiming at, or is the date open?").
 
-The user can always type a free-text answer instead of picking an option — accept
-whatever they give you and move on. If they pick a bare letter ("A"), map it to the
-option you listed. Never re-ask something they already told you.
+The user can always type a free-text answer instead of tapping a chip — accept
+whatever they give you and move on. Never re-ask something they already told you.
 NEVER ask "why does this matter" or any motivation question.
 
 WHO DECIDES WHEN TO BUILD: the user does, not you. Never state or imply that the
 consultation is finished, that you have everything you need, or that you are now
-building the plan. Keep asking useful questions until they press the build button.
-Only call create_goal when explicitly told to build.
+building the plan. Keep asking useful questions until they say to build.
+
+BUILD THE INSTANT THEY SAY SO. When the user signals they are ready — "build it",
+"go ahead", "that's everything", "make the plan", "sounds good, do it" — call
+create_goal on THAT turn. Do not reply first. Do not confirm. Do not ask "shall I
+go ahead?". Do not send a summary of what you have gathered: a wall of recap text
+before the plan makes the user think the plan is already done and nothing is
+coming. One tool call, straight to the plan.
+
+NEVER RECAP. At no point send a block listing everything the user has told you.
+They can see the plan taking shape beside the chat; repeating it back is noise.
 
 BUILD THE PLAN WHERE THEY CAN SEE IT. Each answer should visibly change the
 draft: refine chapter titles, sharpen subtitles, add a signal. The user should
@@ -283,9 +301,11 @@ Carry forward everything you already established on each turn.
 Two further rules:
 - Include "timeframe" ONLY if the user stated one. If they have not, omit it — the UI
   will say the plan is adaptive. Never assume six months or any other span.
-- "signals" are only facts the user actually told you, never your inferences.
+- "signals" are only facts the user actually told you, never your inferences. They
+  are working memory for you, not something the user reads.
 
-FORMATTING: Use **bold** for emphasis and emojis naturally. Put options on separate lines.
+FORMATTING: Keep it to 2-3 sentences. **bold** for emphasis and the occasional emoji
+are fine. No option lists, no headings, no recap blocks.
 
 ${PLAN_RULES}
 Today: ${today}.
@@ -331,8 +351,11 @@ export function buildGoalTools() {
             options: {
               type: 'array',
               description:
-                'Up to 3 quick-reply chips answering THE QUESTION YOU JUST ASKED. '
-                + 'They must be specific to this message — never generic starters reused each turn.',
+                'Up to 4 quick-reply chips answering THE QUESTION YOU JUST ASKED. This is '
+                + 'the ONLY place choices may appear — never list them in the message. For a '
+                + 'closed question they are the full set of answers; for an open one they are '
+                + 'examples the user is free to ignore. Always specific to this message, never '
+                + 'generic starters reused each turn.',
               items: {
                 type: 'object',
                 properties: {
@@ -436,22 +459,26 @@ export function buildGoalTools() {
                 type: 'object',
                 properties: {
                   title:         { type: 'string', description: 'Specific, measurable milestone title' },
-                  stageId:       { type: 'string', description: 'id of the stage this milestone belongs to' },
+                  stageId:       { type: 'string', description: 'id of the stage this milestone belongs to. Required.' },
                   description:   { type: 'string', description: '2-3 sentence action guide for this phase' },
                   daysFromStart: { type: 'number', description: 'Day from today; must be ≤ days until deadline' },
                   difficulty:    { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
                 },
-                required: ['title', 'description', 'daysFromStart', 'difficulty'],
+                required: ['title', 'stageId', 'description', 'daysFromStart', 'difficulty'],
               },
             },
             dailyTasks: {
               type: 'array',
-              description: '3-5 recurring habits. ALL type=checkbox.',
+              description:
+                'Recurring habits, 2-4 PER STAGE — not 3-5 in total. Each carries the '
+                + 'stageId of the phase it belongs to, because only the current stage\u2019s '
+                + 'tasks are shown and a stage with none leaves the user with nothing to do. '
+                + 'ALL type=checkbox.',
               items: {
                 type: 'object',
                 properties: {
                   title:      { type: 'string', description: 'Full task with amount, e.g. "Run 5km"' },
-                  stageId:    { type: 'string', description: 'id of the stage this task belongs to' },
+                  stageId:    { type: 'string', description: 'id of the stage this task belongs to. Required.' },
                   daysOfWeek: { type: 'array', items: { type: 'number' }, description: '0=Sun…6=Sat, e.g. [1,3,5]' },
                   type:       { type: 'string', enum: ['checkbox'] },
                   difficulty: { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
@@ -474,13 +501,13 @@ export function buildGoalTools() {
                   },
                 },
                 required: [
-                  'title', 'daysOfWeek', 'type', 'difficulty',
+                  'title', 'stageId', 'daysOfWeek', 'type', 'difficulty',
                   'description', 'estimatedMinutes', 'executionSteps', 'successCriteria',
                 ],
               },
             },
           },
-          required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'subtasks', 'dailyTasks'],
+          required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'stages', 'subtasks', 'dailyTasks'],
         },
       },
     },
@@ -579,4 +606,54 @@ export async function materialiseGoal(args: CreateGoalArgs): Promise<Goal | null
   });
   if (!res.ok) return null;
   return res.json();
+}
+
+/**
+ * Pulls any multiple-choice list the model wrote into its message back out.
+ *
+ * The prompt forbids them, and the model mostly obeys, but "mostly" is not good
+ * enough for the thing the user complained about: lettered options inside the
+ * message read as the only permitted answers and stop people typing what they
+ * actually mean. So the message is cleaned on the way in and the choices are
+ * re-offered as chips, where they belong.
+ *
+ * Only fires on two or more options, so a sentence that happens to contain
+ * "A)" survives untouched.
+ */
+export function splitInlineOptions(message: string): { text: string; options: { label: string; value: string }[] } {
+  const found: string[] = [];
+  const kept: string[] = [];
+
+  // A) Whole lines that are nothing but one option.
+  const lineRe = /^\s*(?:[-*]\s*)?\*{0,2}(?:[A-Da-d]|[1-4])[).]\*{0,2}[:\s]\s*(.+?)\s*$/;
+  // B) Several options run together on one line: "**A)** X **B)** Y".
+  const inlineRe = /\*\*\s*(?:[A-Da-d]|[1-4])\s*[).]\s*\*\*/;
+
+  for (const line of message.split('\n')) {
+    const asLine = line.match(lineRe);
+    if (asLine) { found.push(asLine[1]); continue; }
+
+    if (inlineRe.test(line)) {
+      const parts = line.split(/\*\*\s*(?:[A-Da-d]|[1-4])\s*[).]\s*\*\*/);
+      const lead = parts.shift()?.trim();
+      const opts = parts.map(p => p.trim()).filter(Boolean);
+      if (opts.length >= 2) {
+        found.push(...opts);
+        if (lead) kept.push(lead);
+        continue;
+      }
+    }
+    kept.push(line);
+  }
+
+  if (found.length < 2) return { text: message, options: [] };
+
+  const options = found
+    .map(o => o.replace(/\*\*/g, '').replace(/\s+/g, ' ').trim())
+    .filter(o => o.length > 0 && o.length <= 90)
+    .slice(0, 4)
+    .map(o => ({ label: o, value: o }));
+
+  if (options.length < 2) return { text: message, options: [] };
+  return { text: kept.join('\n').replace(/\n{3,}/g, '\n\n').trim(), options };
 }
