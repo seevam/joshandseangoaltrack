@@ -3,6 +3,12 @@ import type { Goal } from './types';
 
 interface GoalStore {
   goals: Goal[];
+  /**
+   * True once any page has finished fetching goals. Before that, `goals` is an
+   * empty placeholder, and anything derived from it (level, rank) is a lie that
+   * must not be celebrated or persisted.
+   */
+  goalsLoaded: boolean;
   setGoals: (goals: Goal[]) => void;
   addGoal: (goal: Goal) => void;
   updateGoal: (goal: Goal) => void;
@@ -62,7 +68,8 @@ function applyAppearance(strength?: number, animated?: boolean) {
 
 export const useGoalStore = create<GoalStore>((set) => ({
   goals: [],
-  setGoals: (goals) => set({ goals }),
+  goalsLoaded: false,
+  setGoals: (goals) => set({ goals, goalsLoaded: true }),
   addGoal: (goal) => set(s => ({ goals: [goal, ...s.goals] })),
   updateGoal: (goal) => set(s => ({ goals: s.goals.map(g => g.id === goal.id ? goal : g) })),
   removeGoal: (id) => set(s => ({ goals: s.goals.filter(g => g.id !== id) })),

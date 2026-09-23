@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Sidebar from '@/components/navigation/Sidebar';
 import BottomNav from '@/components/navigation/BottomNav';
 import CoachFab from '@/components/navigation/CoachFab';
+import ProgressCelebrations from '@/components/ui/ProgressCelebrations';
 import AIChatPanel from '@/components/ai/AIChatPanel';
 import CreateGoalModal from '@/components/goals/CreateGoalModal';
 import { useGoalStore } from '@/lib/store';
@@ -48,6 +49,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AIChatPanel isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
       {showCreateGoal && <CreateGoalModal onClose={() => setShowCreateGoal(false)} />}
+
+      {/* Level and rank celebrations, watched here so a gain on any page is seen. */}
+      <ProgressCelebrations />
     </div>
   );
 }

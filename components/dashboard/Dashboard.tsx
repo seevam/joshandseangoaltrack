@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Target, Plus, CheckCircle, Zap, Trophy, Flame, ListChecks, Activity,
@@ -14,7 +14,7 @@ import { maybeNotifyTodaysTasks } from '@/lib/notifications';
 import { XpToast, Confetti } from '@/components/ui/GameUI';
 import { IconTile, Icon } from '@/components/ui/icons';
 import {
-  AnimatedNumber, AnimatedCheck, Sparks, LevelUpOverlay, Reveal,
+  AnimatedNumber, AnimatedCheck, Sparks, Reveal,
 } from '@/components/ui/motion';
 import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
@@ -28,7 +28,6 @@ import { currentStage, activeTasks } from '@/lib/stages';
 import FocusMode from './FocusMode';
 
 /** Last level we played the celebration for, so a reload never replays it. */
-const LEVEL_KEY = 'gq_celebrated_level';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
@@ -48,9 +47,6 @@ export default function Dashboard() {
     { goalId: string; taskId: number; title: string; planned?: number } | null
   >(null);
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
-  const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
-  const prevLevel = useRef<number | null>(null);
-  const [goalsSettled, setGoalsSettled] = useState(false);
   const [focusOpen, setFocusOpen] = useState(false);
 
   useEffect(() => {
@@ -65,7 +61,6 @@ export default function Dashboard() {
         setGoals([]);
       } finally {
         setIsLoadingGoals(false);
-        setGoalsSettled(true);
       }
     };
     load();
@@ -223,29 +218,8 @@ export default function Dashboard() {
 
   const levelPct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
 
-  /*
-   * Level is derived from goal data, so watching it catches gains from any
-   * source. Two things stop it from firing spuriously:
-   *
-   *  - We wait for the goals fetch to settle. Before it does, `goals` is empty
-   *    and the derived level is 1; when the real data arrived, that read as a
-   *    jump from 1 to the true level and replayed the celebration on every
-   *    page load.
-   *  - The last celebrated level is persisted, so a reload at the same level
-   *    is silent while a genuine level-up still plays exactly once.
-   */
-  useEffect(() => {
-    if (!goalsSettled) return;
-
-    const stored = Number(localStorage.getItem(LEVEL_KEY) ?? 'NaN');
-    const last = Number.isFinite(stored) ? stored : prevLevel.current;
-
-    if (last !== null && stats.level > last) {
-      setLevelUp({ level: stats.level, name: stats.rank.name, color: stats.rank.color });
-    }
-    prevLevel.current = stats.level;
-    localStorage.setItem(LEVEL_KEY, String(stats.level));
-  }, [goalsSettled, stats.level, stats.rank]);
+  // Level-ups and rank-ups are celebrated app-wide by ProgressCelebrations in
+  // the app layout, so a gain made on any page is seen — not only here.
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayDow = new Date().getDay();
@@ -745,14 +719,6 @@ export default function Dashboard() {
 
       {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
       {sparks && <Sparks key={sparks.id} x={sparks.x} y={sparks.y} />}
-      {levelUp && (
-        <LevelUpOverlay
-          level={levelUp.level}
-          rankName={levelUp.name}
-          rankColor={levelUp.color}
-          onDone={() => setLevelUp(null)}
-        />
-      )}
 
       {celebratingGoal && (
         <>
