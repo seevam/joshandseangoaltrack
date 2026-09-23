@@ -22,6 +22,9 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import MissionCard, { type Mission } from './MissionCard';
 import Panel from '@/components/ui/Panel';
+import { useDayPlan } from '@/lib/useDayPlan';
+import { formatTime } from '@/lib/schedule';
+import CalendarBar from './CalendarBar';
 import { logCompletion } from '@/lib/completions';
 import DurationPrompt from './DurationPrompt';
 import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
@@ -237,6 +240,20 @@ export default function Dashboard() {
     }
     return out.sort((a, b) => Number(!!a.value) - Number(!!b.value));
   }, [goals, todayStr, todayDow]);
+
+  /*
+   * Suggested times for today's open tasks, fitted around the user's Google
+   * Calendar. Keys are goal+task so the plan survives re-renders; the list is
+   * memoised so the plan only recomputes when the work actually changes.
+   */
+  const planTasks = useMemo(
+    () => todaysTasks.filter(t => !t.value).map(t => ({
+      key: `${t.goal.id}-${t.task.id}`,
+      minutes: t.task.estimatedMinutes,
+    })),
+    [todaysTasks],
+  );
+  const dayPlan = useDayPlan(planTasks);
 
   /** The single task to start next: the first one due today that isn't done. */
   const nextAction = useMemo(() => todaysTasks.find(t => !t.value) ?? null, [todaysTasks]);
@@ -517,8 +534,13 @@ export default function Dashboard() {
                 ))}
               </div>
 
+              <CalendarBar plan={dayPlan} />
+
               <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(22rem,100%),1fr))]">
-                {todaysTasks.map((item, i) => (
+                {todaysTasks.map((item, i) => {
+                  const slot = dayPlan.plan?.slots[`${item.goal.id}-${item.task.id}`];
+                  const unplaced = dayPlan.plan?.unplaced.includes(`${item.goal.id}-${item.task.id}`);
+                  return (
                   <div
                     key={`${item.goal.id}-${item.task.id}`}
                     style={{ ['--i' as string]: i }}
@@ -543,6 +565,27 @@ export default function Dashboard() {
                           {item.task.estimatedMinutes ? `${item.task.estimatedMinutes} min block · ` : ''}
                           {item.goal.title}
                         </p>
+                        {/* A suggested time, never a booking: it can be refused,
+                            and the day re-plans around the refusal. */}
+                        {!item.value && slot && (
+                          <p className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-md border border-brand/40 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
+                              <Clock className="h-3 w-3" />
+                              {formatTime(slot.start)} – {formatTime(slot.end)}
+                            </span>
+                            <button
+                              onClick={() => dayPlan.block(slot)}
+                              className="text-[11px] text-muted hover:text-fg underline underline-offset-2"
+                            >
+                              I&apos;m busy then
+                            </button>
+                          </p>
+                        )}
+                        {!item.value && unplaced && (
+                          <p className="mt-2 text-[11px] text-amber-300/90">
+                            No gap left today that fits this. Do the 10-minute version, or move it.
+                          </p>
+                        )}
                         <button
                           onClick={() => router.push(`/goals/${item.goal.id}`)}
                           className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand/40 text-brand text-xs font-semibold glow-hover"
@@ -552,7 +595,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </Panel>
           </Reveal>
