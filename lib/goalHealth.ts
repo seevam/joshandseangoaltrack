@@ -61,6 +61,24 @@ const MAX_LOOKBACK_DAYS = 180;
 
 const iso = (d: Date) => d.toISOString().split('T')[0];
 
+/**
+ * Local midnight of a stored date, or null when there isn't a usable one.
+ *
+ * Goals store dates both ways — a bare "2026-09-23" from forms, a full
+ * "2026-09-23T10:15:00.000Z" from the API — and appending "T00:00:00" to the
+ * second produced an invalid date. Every figure downstream became NaN, and a
+ * brand new goal showed "NaN/100, Stalled, 12 milestones past their date".
+ */
+function dayStartTs(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T00:00:00`)      // bare date: local midnight, not UTC
+    : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 function startOfDay(ts: number) {
   const d = new Date(ts);
   d.setHours(0, 0, 0, 0);
@@ -94,10 +112,8 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
     };
   }
 
-  const startTs = goal.startDate
-    ? new Date(`${goal.startDate}T00:00:00`).getTime()
-    : new Date(goal.createdAt).getTime();
-  const endTs = goal.endDate ? new Date(`${goal.endDate}T00:00:00`).getTime() : null;
+  const startTs = dayStartTs(goal.startDate) ?? dayStartTs(goal.createdAt) ?? now;
+  const endTs = dayStartTs(goal.endDate);
 
   // Kept for the card's "x% complete, y% expected by now" line. It is a
   // reference point the user can read, not a thing that moves the score.
@@ -161,7 +177,8 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
    * cannot pre-pay for it — the miss still shows.
    */
   const debt = dayPenalty + milestonePenalty;
-  const score = Math.max(0, Math.min(100, Math.round(100 - debt + Math.min(credit, debt))));
+  const raw = Math.round(100 - debt + Math.min(credit, debt));
+  const score = Number.isFinite(raw) ? Math.max(0, Math.min(100, raw)) : 100;
 
   // ── Reasons, most significant first ─────────────────────────────────────
   if (missedMilestones > 0) {
