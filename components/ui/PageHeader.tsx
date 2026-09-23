@@ -24,19 +24,24 @@ export default function PageHeader({
   const accentPart = accent && title.startsWith(accent) ? accent : '';
   const rest = accentPart ? title.slice(accentPart.length) : title;
 
+  /*
+   * On a phone the eyebrow and explanation are hidden and the title shrinks.
+   * The full masthead cost a third of the first screen on every page to say
+   * what the bottom nav already says: which tab you are on.
+   */
   return (
-    <header className="flex items-start justify-between gap-4 flex-wrap animate-slide-up">
+    <header className="flex items-center lg:items-start justify-between gap-3 lg:gap-4 flex-wrap animate-slide-up">
       <div className="min-w-0">
-        <p className="flex items-center gap-2 text-[11px] tracking-[0.22em] text-brand/80 uppercase mb-1.5">
+        <p className="hidden lg:flex items-center gap-2 text-[11px] tracking-[0.22em] text-brand/80 uppercase mb-1.5">
           {icon && <Icon name={icon} className="h-3.5 w-3.5" />}
           <span className="break-words">{eyebrow}</span>
         </p>
-        <h1 className="font-display text-[clamp(2.25rem,5vw,3.5rem)] leading-[0.95] tracking-wide">
+        <h1 className="font-display text-[1.75rem] lg:text-[clamp(2.25rem,5vw,3.5rem)] leading-[0.95] tracking-wide">
           {accentPart && <span className="text-brand-gradient">{accentPart}</span>}
           <span className="text-fg">{rest}</span>
         </h1>
         {subtitle && (
-          <p className="text-sm text-muted mt-2.5 max-w-2xl leading-relaxed break-words">{subtitle}</p>
+          <p className="hidden lg:block text-sm text-muted mt-2.5 max-w-2xl leading-relaxed break-words">{subtitle}</p>
         )}
       </div>
       {right && <div className="flex-shrink-0">{right}</div>}
