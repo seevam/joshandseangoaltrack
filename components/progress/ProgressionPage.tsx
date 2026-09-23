@@ -78,7 +78,14 @@ export default function ProgressionPage() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.85fr)_minmax(0,1fr)] gap-5 items-stretch">
 
         <div className="card-glow rounded-2xl p-5 sm:p-6 animate-slide-up" style={{ ['--i' as string]: 1 }}>
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+          {/*
+            * Emblem beside the text only when the card is actually wide. At lg
+            * the card shares the row with the Tier Archive, and side-by-side it
+            * left the text a ~190px column: the stat tiles collapsed to 36px and
+            * "1,346" read "1.", "Journeyman" read "J.". So it stacks at lg and
+            * goes side by side again at xl, where there is room.
+            */}
+          <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center sm:items-start lg:items-center xl:items-start gap-6">
             <span className="emblem-halo flex-shrink-0" style={{ ['--halo' as string]: stats.rank.color }}>
               <RankEmblem slug={stats.rank.slug} size={168} />
             </span>
@@ -106,7 +113,9 @@ export default function ProgressionPage() {
                 )}.
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-5">
+              {/* Two by two at every width: four tiles never leave an orphan,
+                  and each keeps room for a word like "JOURNEYMAN". */}
+              <div className="grid grid-cols-2 gap-2.5 mt-5">
                 {[
                   { label: 'Rank XP', icon: 'zap', value: <AnimatedNumber value={stats.totalXp} /> },
                   { label: 'Level', icon: 'trending', value: stats.level },
@@ -152,7 +161,10 @@ export default function ProgressionPage() {
             title="Tier Archive"
             right={`${RANK_TIERS.length} tiers`}
           />
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-5 gap-2">
+          {/* Ten tiers, so two or five columns — both divide evenly. Five in the
+              narrow right-hand panel made each tile ~50px and "TRANSCENDENT"
+              ran 34px out past its border, so the panel uses two at lg. */}
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-5 lg:grid-cols-2">
             {RANK_TIERS.map(tier => {
               const unlocked = stats.totalXp >= tier.minXp;
               const current = stats.rank.name === tier.name;
@@ -174,7 +186,7 @@ export default function ProgressionPage() {
                   {/* Rank names are single words — break-words split them
                       mid-word ("TRANSCEND/ENT"), which the spec forbids. */}
                   <p
-                    className="text-[8px] leading-tight uppercase [overflow-wrap:normal] [word-break:keep-all]"
+                    className="text-[8px] leading-tight uppercase tracking-[0.06em] whitespace-nowrap truncate"
                     style={{ color: unlocked ? tier.color : 'var(--muted-dim)' }}
                   >
                     {tier.name}
@@ -302,7 +314,7 @@ export default function ProgressionPage() {
               title="Badge Arsenal"
               right={`${earnedCount}/${badges.length} unlocked`}
             />
-            <div className="grid gap-2.5 max-h-[26rem] overflow-y-auto thin-scroll pr-1 [grid-template-columns:repeat(auto-fill,minmax(13rem,1fr))]">
+            <div className="grid gap-2.5 max-h-[26rem] overflow-y-auto thin-scroll pr-1 [grid-template-columns:repeat(auto-fill,minmax(min(13rem,100%),1fr))]">
               {badges.map((b, i) => (
                 <div
                   key={b.id}

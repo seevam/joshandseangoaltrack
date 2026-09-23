@@ -9,6 +9,8 @@ import { AnimatedCheck } from '@/components/ui/motion';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
 import { activeTasks } from '@/lib/stages';
+import { dayKey } from '@/lib/dates';
+import { logCompletion } from '@/lib/completions';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -25,7 +27,7 @@ interface DayTask {
 const iso = (d: Date) => {
   const c = new Date(d);
   c.setHours(12, 0, 0, 0); // midday avoids DST/UTC date shifts
-  return c.toISOString().split('T')[0];
+  return dayKey(c);
 };
 
 /** Mini calendar on the left, the selected day's tasks on the right. */
@@ -90,23 +92,9 @@ export default function CalendarView() {
 
   const logTask = async (goalId: string, taskId: number, dateStr: string, done: boolean) => {
     const key = `${goalId}-${taskId}-${dateStr}`;
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const taskCompletions = {
-      ...(goal.taskCompletions || {}),
-      [dateStr]: { ...(goal.taskCompletions?.[dateStr] || {}), [taskId]: done },
-    };
-    try {
-      const res = await fetch(`/api/goals/${goalId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ taskCompletions }),
-      });
-      if (res.ok) {
-        updateGoal(await res.json());
-        if (done) { setFlashTask(key); setTimeout(() => setFlashTask(null), 700); }
-      }
-    } catch { /* best effort */ }
+    if (done) { setFlashTask(key); setTimeout(() => setFlashTask(null), 700); }
+    // One key, merged server-side — see lib/completions.ts.
+    await logCompletion(goalId, dateStr, taskId, done);
   };
 
   const exportICS = () => {
@@ -145,6 +133,29 @@ export default function CalendarView() {
     while (out.length % 7 !== 0) out.push(null);
     return out;
   }, [month]);
+
+  /*
+   * On a phone the month grid is six rows of 46px cells — most of the screen
+   * before a single task shows. It opens as the selected week instead, one
+   * tap from the full month. Desktop always shows the month.
+   */
+  const [monthOpen, setMonthOpen] = useState(false);
+  const weekCells = useMemo(() => {
+    const start = new Date(selected);
+    start.setDate(start.getDate() - start.getDay());
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      d.setHours(0, 0, 0, 0);
+      return d;
+    });
+  }, [selected]);
+  const shiftWeek = (delta: number) => {
+    const d = new Date(selected);
+    d.setDate(d.getDate() + delta * 7);
+    setSelected(d);
+    setMonth(new Date(d.getFullYear(), d.getMonth(), 1));
+  };
 
   const selectedTasks = getTasksForDate(selected);
   const selectedDone = selectedTasks.filter(t => t.done).length;
@@ -194,6 +205,98 @@ export default function CalendarView() {
     );
   };
 
+  /** One day cell. Shared by the month grid and the mobile week strip. */
+  const renderCell = (d: Date | null, i: number) => {
+    if (!d) return <span key={i} className="border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem]" />;
+    const tasks = getTasksForDate(d);
+    const done = tasks.filter(t => t.done).length;
+    const isToday = d.getTime() === today.getTime();
+    const isSel = d.getTime() === selected.getTime();
+    const allDone = tasks.length > 0 && done === tasks.length;
+    const milestones = milestonesForDate(d);
+    return (
+      <button
+        key={i}
+        onClick={() => setSelected(d)}
+        aria-label={d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        aria-current={isToday ? 'date' : undefined}
+        aria-pressed={isSel}
+        className={`relative border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem] p-1 sm:p-1.5 flex flex-col gap-1 text-left transition-colors ${
+          isToday ? 'day-today' : isSel ? 'day-selected' : 'hover:bg-elevated'
+        }`}
+      >
+        <span
+          /* Selection is carried by the date itself rather than an
+             outline around the whole cell — the ring read as a stray
+             coloured border cutting across the grid. */
+          className={`h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] transition-colors ${
+            isToday
+              ? 'bg-brand text-black font-bold'
+              : isSel
+                ? 'border border-brand text-fg font-semibold'
+                : 'border border-line text-muted'
+          }`}
+        >
+          {d.getDate()}
+        </span>
+
+        {tasks.length > 0 && (
+          <>
+            <span
+              className={`flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
+                allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
+              }`}
+            >
+              {/* The icon goes on a phone: in a ~46px cell it left room for
+                  "0…" rather than "0/2". */}
+              <CheckCircle2 className="hidden sm:block h-3 w-3 flex-shrink-0" />
+              <span className="truncate min-w-0">{done}/{tasks.length}</span>
+            </span>
+            {/*
+             * Load bars. The plan is deliberately uneven — heavy days
+             * on free days, light ones elsewhere — so the month should
+             * show that shape at a glance rather than making every day
+             * look identical. One bar per task, capped at four.
+             */}
+            <span
+              className="flex gap-0.5 mt-auto pt-1"
+              aria-label={`${tasks.length} task${tasks.length === 1 ? '' : 's'} scheduled`}
+            >
+              {Array.from({ length: Math.min(tasks.length, 4) }, (_, k) => (
+                <span
+                  key={k}
+                  className="h-1 flex-1 rounded-full"
+                  style={{
+                    backgroundColor: k < done ? 'var(--brand)' : 'var(--line-strong)',
+                    opacity: k < done ? 1 : 0.9,
+                  }}
+                />
+              ))}
+              {tasks.length > 4 && (
+                <span className="text-[9px] text-muted leading-none ml-0.5">+{tasks.length - 4}</span>
+              )}
+            </span>
+          </>
+        )}
+
+        {milestones > 0 && (
+          <span
+            className="flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border border-brand/40 bg-[var(--brand-light)] px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] text-brand"
+            title={`${milestones} milestone${milestones === 1 ? '' : 's'}`}
+          >
+            <Flag className="h-3 w-3 flex-shrink-0" />
+            {/* A day cell is ~46px wide on a phone — the word does not
+                fit there, so the count carries it and the label
+                returns as soon as there is room. */}
+            <span className="truncate min-w-0">
+              {milestones}<span className="hidden sm:inline"> milestone{milestones === 1 ? '' : 's'}</span>
+            </span>
+          </span>
+        )}
+      </button>
+    );
+  };
+
   return (
     <div className="w-full mx-auto px-4 py-6 sm:px-6 xl:px-8 2xl:px-12 space-y-5">
       <PageHeader
@@ -217,7 +320,32 @@ export default function CalendarView() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
         {/* ── Calendar ──────────────────────────────────────────────────── */}
         <div className="lg:col-span-2 card-glow rounded-2xl p-4 sm:p-5 animate-slide-up">
-          <div className="flex items-center justify-between mb-3">
+          {/* Week navigation — phone, month folded away. */}
+          {!monthOpen && (
+            <div className="flex lg:hidden items-center justify-between mb-3">
+              <button
+                onClick={() => shiftWeek(-1)}
+                aria-label="Previous week"
+                className="p-1.5 rounded-lg text-muted hover:text-fg transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-sm font-semibold text-fg">
+                {MONTHS[weekCells[0].getMonth()].slice(0, 3)} {weekCells[0].getDate()}
+                {' – '}
+                {MONTHS[weekCells[6].getMonth()].slice(0, 3)} {weekCells[6].getDate()}
+              </span>
+              <button
+                onClick={() => shiftWeek(1)}
+                aria-label="Next week"
+                className="p-1.5 rounded-lg text-muted hover:text-fg transition-colors"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          <div className={`${monthOpen ? 'flex' : 'hidden lg:flex'} items-center justify-between mb-3`}>
             <button
               onClick={() => shiftMonth(-1)}
               aria-label="Previous month"
@@ -253,97 +381,25 @@ export default function CalendarView() {
               as one board rather than detached tiles. */}
           <div
             key={`${month.getFullYear()}-${month.getMonth()}`}
-            className={`grid grid-cols-7 border-l border-b border-line rounded-b-xl overflow-hidden month-${dir}`}
+            className={`${monthOpen ? 'grid' : 'hidden lg:grid'} grid-cols-7 border-l border-b border-line rounded-b-xl overflow-hidden month-${dir}`}
           >
-            {cells.map((d, i) => {
-              if (!d) return <span key={i} className="border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem]" />;
-              const tasks = getTasksForDate(d);
-              const done = tasks.filter(t => t.done).length;
-              const isToday = d.getTime() === today.getTime();
-              const isSel = d.getTime() === selected.getTime();
-              const allDone = tasks.length > 0 && done === tasks.length;
-              const milestones = milestonesForDate(d);
-              return (
-                <button
-                  key={i}
-                  onClick={() => setSelected(d)}
-                  aria-label={d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  aria-current={isToday ? 'date' : undefined}
-                  aria-pressed={isSel}
-                  className={`relative border-r border-t border-line min-h-[4.5rem] sm:min-h-[6rem] p-1 sm:p-1.5 flex flex-col gap-1 text-left transition-colors ${
-                    isToday ? 'day-today' : isSel ? 'day-selected' : 'hover:bg-elevated'
-                  }`}
-                >
-                  <span
-                    /* Selection is carried by the date itself rather than an
-                       outline around the whole cell — the ring read as a stray
-                       coloured border cutting across the grid. */
-                    className={`h-5 w-5 sm:h-6 sm:w-6 flex-shrink-0 rounded-full flex items-center justify-center text-[10px] sm:text-[11px] transition-colors ${
-                      isToday
-                        ? 'bg-brand text-black font-bold'
-                        : isSel
-                          ? 'border border-brand text-fg font-semibold'
-                          : 'border border-line text-muted'
-                    }`}
-                  >
-                    {d.getDate()}
-                  </span>
-
-                  {tasks.length > 0 && (
-                    <>
-                      <span
-                        className={`flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
-                          allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
-                        }`}
-                      >
-                        <CheckCircle2 className="h-3 w-3 flex-shrink-0" />
-                        <span className="truncate min-w-0">{done}/{tasks.length}</span>
-                      </span>
-                      {/*
-                       * Load bars. The plan is deliberately uneven — heavy days
-                       * on free days, light ones elsewhere — so the month should
-                       * show that shape at a glance rather than making every day
-                       * look identical. One bar per task, capped at four.
-                       */}
-                      <span
-                        className="flex gap-0.5 mt-auto pt-1"
-                        aria-label={`${tasks.length} task${tasks.length === 1 ? '' : 's'} scheduled`}
-                      >
-                        {Array.from({ length: Math.min(tasks.length, 4) }, (_, k) => (
-                          <span
-                            key={k}
-                            className="h-1 flex-1 rounded-full"
-                            style={{
-                              backgroundColor: k < done ? 'var(--brand)' : 'var(--line-strong)',
-                              opacity: k < done ? 1 : 0.9,
-                            }}
-                          />
-                        ))}
-                        {tasks.length > 4 && (
-                          <span className="text-[9px] text-muted leading-none ml-0.5">+{tasks.length - 4}</span>
-                        )}
-                      </span>
-                    </>
-                  )}
-
-                  {milestones > 0 && (
-                    <span
-                      className="flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border border-brand/40 bg-[var(--brand-light)] px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] text-brand"
-                      title={`${milestones} milestone${milestones === 1 ? '' : 's'}`}
-                    >
-                      <Flag className="h-3 w-3 flex-shrink-0" />
-                      {/* A day cell is ~46px wide on a phone — the word does not
-                          fit there, so the count carries it and the label
-                          returns as soon as there is room. */}
-                      <span className="truncate min-w-0">
-                        {milestones}<span className="hidden sm:inline"> milestone{milestones === 1 ? '' : 's'}</span>
-                      </span>
-                    </span>
-                  )}
-                </button>
-              );
-            })}
+            {cells.map(renderCell)}
           </div>
+
+          {!monthOpen && (
+            <div className="grid lg:hidden grid-cols-7 border-l border-b border-line rounded-b-xl overflow-hidden">
+              {weekCells.map(renderCell)}
+            </div>
+          )}
+
+          <button
+            onClick={() => setMonthOpen(o => !o)}
+            aria-expanded={monthOpen}
+            className="lg:hidden w-full mt-2 flex items-center justify-center gap-1.5 py-1.5 text-xs font-medium text-muted hover:text-fg"
+          >
+            {monthOpen ? 'Show one week' : 'Show the whole month'}
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${monthOpen ? 'rotate-180' : ''}`} />
+          </button>
 
           <button
             onClick={() => {

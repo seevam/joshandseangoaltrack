@@ -1,5 +1,6 @@
 import type { CoachPersona } from './store';
 import type { Goal } from './types';
+import { dayKey } from './dates';
 
 /** Shared between the chat coach and Quick Create so both build the same shape of plan. */
 
@@ -152,7 +153,7 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
   early/simple items are easy, sustained or demanding ones are hard/epic. Never make everything medium.`;
 
 export function quickCreatePrompt(coachName: string, style: string, availability?: Availability, otherTasks = 0): string {
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   return `You are ${coachName}, an expert goal coach. ${style}
 
 ${EXPERT_ROLES}
@@ -172,7 +173,7 @@ Today: ${today}.`;
 }
 
 export function chatCoachPrompt(coachName: string, style: string, goalsContext: string): string {
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   return `You are ${coachName}, an expert goal coach. ${style}
 Always call one of the two tools. Keep replies to 2-3 sentences max.
 
@@ -337,7 +338,7 @@ export interface PlanDraft {
 }
 
 export function buildGoalTools() {
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   return [
     {
       type: 'function' as const,

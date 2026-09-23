@@ -1,6 +1,8 @@
 'use client';
 
 import type { Goal } from './types';
+import { dayKey } from './dates';
+import { activeTasks } from './stages';
 
 const ENABLED_KEY = 'task_notifications_enabled';
 const LAST_SENT_KEY = 'task_notifications_last_sent';
@@ -34,20 +36,19 @@ export async function requestNotifications(): Promise<boolean> {
 }
 
 function todaysOutstanding(goals: Goal[]): { count: number; first?: string } {
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   const dow = new Date().getDay();
   let count = 0;
   let first: string | undefined;
 
   for (const goal of goals) {
-    const start = goal.startDate ? new Date(goal.startDate) : null;
-    const end = goal.endDate ? new Date(goal.endDate) : null;
-    const now = new Date(today);
-    if (start && now < new Date(start.toISOString().split('T')[0])) continue;
-    if (end && now > new Date(end.toISOString().split('T')[0])) continue;
+    // Compared as "YYYY-MM-DD" strings, which sort chronologically.
+    if (goal.startDate && today < dayKey(new Date(goal.startDate))) continue;
+    if (goal.endDate && today > dayKey(new Date(goal.endDate))) continue;
 
     const done = goal.taskCompletions?.[today] || {};
-    for (const task of goal.dailyTasks || []) {
+    // The live stage's work only — the same set the dashboard shows.
+    for (const task of activeTasks(goal)) {
       const days = task.daysOfWeek;
       const scheduled = !days || days.length === 0 || days.includes(dow);
       if (scheduled && !done[task.id]) {
@@ -66,7 +67,7 @@ function todaysOutstanding(goals: Goal[]): { count: number; first?: string } {
 export function maybeNotifyTodaysTasks(goals: Goal[], afterHour = 17) {
   if (!notificationsEnabled() || !goals.length) return;
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   if (localStorage.getItem(LAST_SENT_KEY) === today) return;
   if (new Date().getHours() < afterHour) return;
 

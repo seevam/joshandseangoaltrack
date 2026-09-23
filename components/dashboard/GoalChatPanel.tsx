@@ -8,6 +8,7 @@ import { getGoalProgress, getGoalStatus, getStreak } from '@/lib/types';
 import { useGoalStore, type CoachPersona } from '@/lib/store';
 import MarkdownText from '@/components/ui/MarkdownText';
 import { useDismiss } from '@/components/ui/Modal';
+import { dayKey } from '@/lib/dates';
 
 interface Message {
   id: number;
@@ -25,7 +26,7 @@ function buildGoalContext(goal: Goal, coachName: string, persona: CoachPersona):
   const status = getGoalStatus(goal);
   const streak = getStreak(goal.checkIns);
   const checkInCount = (goal.checkIns || []).length;
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   const checkedToday = (goal.checkIns || []).includes(today);
 
   const daysLeft = goal.endDate

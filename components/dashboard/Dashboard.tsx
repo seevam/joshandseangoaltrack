@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Target, Plus, CheckCircle, Zap, Trophy, Flame, ListChecks, Activity,
@@ -14,7 +14,7 @@ import { maybeNotifyTodaysTasks } from '@/lib/notifications';
 import { XpToast, Confetti } from '@/components/ui/GameUI';
 import { IconTile, Icon } from '@/components/ui/icons';
 import {
-  AnimatedNumber, AnimatedCheck, Sparks, LevelUpOverlay, Reveal,
+  AnimatedNumber, AnimatedCheck, Sparks, Reveal,
 } from '@/components/ui/motion';
 import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
@@ -22,13 +22,17 @@ import { useRouter } from 'next/navigation';
 import PageHeader from '@/components/ui/PageHeader';
 import MissionCard, { type Mission } from './MissionCard';
 import Panel from '@/components/ui/Panel';
+import { useDayPlan } from '@/lib/useDayPlan';
+import { formatTime } from '@/lib/schedule';
+import CalendarBar from './CalendarBar';
+import { logCompletion } from '@/lib/completions';
 import DurationPrompt from './DurationPrompt';
 import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
 import { currentStage, activeTasks } from '@/lib/stages';
 import FocusMode from './FocusMode';
+import { dayKey } from '@/lib/dates';
 
 /** Last level we played the celebration for, so a reload never replays it. */
-const LEVEL_KEY = 'gq_celebrated_level';
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
@@ -48,9 +52,6 @@ export default function Dashboard() {
     { goalId: string; taskId: number; title: string; planned?: number } | null
   >(null);
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
-  const [levelUp, setLevelUp] = useState<{ level: number; name: string; color: string } | null>(null);
-  const prevLevel = useRef<number | null>(null);
-  const [goalsSettled, setGoalsSettled] = useState(false);
   const [focusOpen, setFocusOpen] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,6 @@ export default function Dashboard() {
         setGoals([]);
       } finally {
         setIsLoadingGoals(false);
-        setGoalsSettled(true);
       }
     };
     load();
@@ -99,7 +99,7 @@ export default function Dashboard() {
   };
 
   const checkIn = async (goalId: string) => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = dayKey();
     const goal = goals.find(g => g.id === goalId);
     if (!goal || (goal.checkIns || []).includes(today)) return;
     try {
@@ -139,16 +139,11 @@ export default function Dashboard() {
   };
 
   const logTask = async (goalId: string, taskId: number, value: TaskCompletionValue, origin?: { x: number; y: number }) => {
-    const today = new Date().toISOString().split('T')[0];
-    const goal = goals.find(g => g.id === goalId);
+    // One key, merged server-side, applied to the store first — see
+    // lib/completions.ts for the race this replaces.
+    const goal = await logCompletion(goalId, dayKey(), taskId, value);
     if (!goal) return;
-    const taskCompletions = {
-      ...(goal.taskCompletions || {}),
-      [today]: { ...(goal.taskCompletions?.[today] || {}), [taskId]: value },
-    };
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { taskCompletions });
-      updateGoal(saved);
+    {
       if (value) {
         const task = (goal.dailyTasks || []).find(t => t.id === taskId);
         fireXp(completionXp(value, task?.difficulty), origin);
@@ -164,8 +159,7 @@ export default function Dashboard() {
           setAskDuration({ goalId, taskId, title: task.title, planned: task.estimatedMinutes });
         }
       }
-      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-    } catch (err) { console.error('Failed to log task:', err); }
+    }
   };
 
   const correctEstimate = async (goalId: string, taskId: number, actual: number) => {
@@ -223,31 +217,10 @@ export default function Dashboard() {
 
   const levelPct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
 
-  /*
-   * Level is derived from goal data, so watching it catches gains from any
-   * source. Two things stop it from firing spuriously:
-   *
-   *  - We wait for the goals fetch to settle. Before it does, `goals` is empty
-   *    and the derived level is 1; when the real data arrived, that read as a
-   *    jump from 1 to the true level and replayed the celebration on every
-   *    page load.
-   *  - The last celebrated level is persisted, so a reload at the same level
-   *    is silent while a genuine level-up still plays exactly once.
-   */
-  useEffect(() => {
-    if (!goalsSettled) return;
+  // Level-ups and rank-ups are celebrated app-wide by ProgressCelebrations in
+  // the app layout, so a gain made on any page is seen — not only here.
 
-    const stored = Number(localStorage.getItem(LEVEL_KEY) ?? 'NaN');
-    const last = Number.isFinite(stored) ? stored : prevLevel.current;
-
-    if (last !== null && stats.level > last) {
-      setLevelUp({ level: stats.level, name: stats.rank.name, color: stats.rank.color });
-    }
-    prevLevel.current = stats.level;
-    localStorage.setItem(LEVEL_KEY, String(stats.level));
-  }, [goalsSettled, stats.level, stats.rank]);
-
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = dayKey();
   const todayDow = new Date().getDay();
 
   /** Every recurring task scheduled for today, flattened across goals. */
@@ -267,6 +240,20 @@ export default function Dashboard() {
     }
     return out.sort((a, b) => Number(!!a.value) - Number(!!b.value));
   }, [goals, todayStr, todayDow]);
+
+  /*
+   * Suggested times for today's open tasks, fitted around the user's Google
+   * Calendar. Keys are goal+task so the plan survives re-renders; the list is
+   * memoised so the plan only recomputes when the work actually changes.
+   */
+  const planTasks = useMemo(
+    () => todaysTasks.filter(t => !t.value).map(t => ({
+      key: `${t.goal.id}-${t.task.id}`,
+      minutes: t.task.estimatedMinutes,
+    })),
+    [todaysTasks],
+  );
+  const dayPlan = useDayPlan(planTasks);
 
   /** The single task to start next: the first one due today that isn't done. */
   const nextAction = useMemo(() => todaysTasks.find(t => !t.value) ?? null, [todaysTasks]);
@@ -547,8 +534,13 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(22rem,1fr))]">
-                {todaysTasks.map((item, i) => (
+              <CalendarBar plan={dayPlan} />
+
+              <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(22rem,100%),1fr))]">
+                {todaysTasks.map((item, i) => {
+                  const slot = dayPlan.plan?.slots[`${item.goal.id}-${item.task.id}`];
+                  const unplaced = dayPlan.plan?.unplaced.includes(`${item.goal.id}-${item.task.id}`);
+                  return (
                   <div
                     key={`${item.goal.id}-${item.task.id}`}
                     style={{ ['--i' as string]: i }}
@@ -573,6 +565,27 @@ export default function Dashboard() {
                           {item.task.estimatedMinutes ? `${item.task.estimatedMinutes} min block · ` : ''}
                           {item.goal.title}
                         </p>
+                        {/* A suggested time, never a booking: it can be refused,
+                            and the day re-plans around the refusal. */}
+                        {!item.value && slot && (
+                          <p className="mt-2 flex flex-wrap items-center gap-2">
+                            <span className="inline-flex items-center gap-1 rounded-md border border-brand/40 bg-brand/10 px-2 py-0.5 text-[11px] font-semibold text-brand">
+                              <Clock className="h-3 w-3" />
+                              {formatTime(slot.start)} – {formatTime(slot.end)}
+                            </span>
+                            <button
+                              onClick={() => dayPlan.block(slot)}
+                              className="text-[11px] text-muted hover:text-fg underline underline-offset-2"
+                            >
+                              I&apos;m busy then
+                            </button>
+                          </p>
+                        )}
+                        {!item.value && unplaced && (
+                          <p className="mt-2 text-[11px] text-amber-300/90">
+                            No gap left today that fits this. Do the 10-minute version, or move it.
+                          </p>
+                        )}
                         <button
                           onClick={() => router.push(`/goals/${item.goal.id}`)}
                           className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand/40 text-brand text-xs font-semibold glow-hover"
@@ -582,7 +595,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </Panel>
           </Reveal>
@@ -707,7 +721,7 @@ export default function Dashboard() {
               </button>
             </div>
           ) : (
-            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+            <div className="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(20rem,100%),1fr))]">
               {previewGoals.map((goal, i) => (
                 <GoalCard
                   key={goal.id}
@@ -745,14 +759,6 @@ export default function Dashboard() {
 
       {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
       {sparks && <Sparks key={sparks.id} x={sparks.x} y={sparks.y} />}
-      {levelUp && (
-        <LevelUpOverlay
-          level={levelUp.level}
-          rankName={levelUp.name}
-          rankColor={levelUp.color}
-          onDone={() => setLevelUp(null)}
-        />
-      )}
 
       {celebratingGoal && (
         <>

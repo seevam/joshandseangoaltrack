@@ -46,7 +46,12 @@ export function stageBreakdown(goal: Goal): StageProgress[] {
     };
   });
 
-  const currentIdx = rows.findIndex(r => r.total === 0 || r.done < r.total);
+  /*
+   * A stage with no milestones cannot be finished — there is nothing to tick —
+   * so treating it as "current" locked every stage after it forever, along
+   * with their milestones. Empty stages are passed over instead of blocking.
+   */
+  const currentIdx = rows.findIndex(r => r.total > 0 && r.done < r.total);
   return rows.map((r, i) => {
     const status: StageProgress['status'] = currentIdx === -1
       ? 'complete'

@@ -20,6 +20,7 @@ import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
 import MissionCard from '@/components/dashboard/MissionCard';
+import { dayKey } from '@/lib/dates';
 
 const MILESTONE_BADGES = [
   { pct: 25,  label: 'First Quarter', icon: 'sprout', color: '#5DBC70' },
@@ -151,7 +152,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
     }
   };
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   const todayDow = new Date().getDay();
   const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
   const progress = getGoalProgress(goal);
@@ -312,7 +313,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
               </p>
             </div>
 
-            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))]">
+            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr))]">
               {stages.map(st => (
                 /*
                  * The whole card is the target. Only the inner rows reacted
@@ -326,7 +327,10 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                   onClick={() => setOpenStage(openStage === st.stage.id ? null : st.stage.id)}
                   aria-expanded={openStage === st.stage.id}
                   style={{ ['--i' as string]: st.index }}
-                  className={`stagger-fast block w-full text-left rounded-xl border p-3.5 glow-hover ${
+                  // flex-col + justify-start: a <button> centres its content
+                  // vertically by default, which floated the shorter locked
+                  // cards halfway down the row.
+                  className={`stagger-fast flex flex-col justify-start h-full w-full text-left rounded-xl border p-3.5 glow-hover ${
                     st.status === 'current'
                       ? 'border-brand/40 bg-[var(--brand-light)]'
                       : 'border-line bg-card'

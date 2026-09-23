@@ -250,6 +250,45 @@ const { user } = useUser();
 
 ---
 
+## Google Calendar
+
+Optional. When `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is set, Today's Schedule offers
+"Connect Google Calendar". The app then reads the user's **busy times** for
+today and suggests a time for each open task in the gaps; "I'm busy then"
+rejects a slot and the day re-plans. Nothing is written to the calendar.
+
+How it works: entirely in the browser via Google Identity Services
+(`lib/googleCalendar.ts`). Scope is `calendar.freebusy` — availability only,
+never event titles or details. The access token lives about an hour in
+`sessionStorage`; there is no server route and no stored refresh token.
+Planning is `lib/schedule.ts` (pure, tested).
+
+Cost: standard use of the Google Calendar API is at no additional cost,
+within a per-project limit of 1,000,000 requests per day (plus per-minute
+limits). This app makes one request per dashboard load for a connected user,
+far inside that. Google has said exceeding the daily limit will start to
+incur charges to the project's billing account later in 2026 — irrelevant at
+this app's scale, but worth knowing. (Checked September 2026.)
+
+Setup (about ten minutes, done once by the project owner):
+
+1. Google Cloud Console → create or pick a project.
+2. APIs & Services → Library → enable **Google Calendar API**.
+3. APIs & Services → OAuth consent screen → External. Add the scope
+   `.../auth/calendar.freebusy`. While the app is in "Testing", add the
+   Google accounts that will try it as test users (up to 100).
+4. APIs & Services → Credentials → Create credentials → OAuth client ID →
+   **Web application**. Authorised JavaScript origins:
+   `https://joshandseangoaltrack.vercel.app` and `http://localhost:3000`.
+   No redirect URI is needed for the browser token flow.
+5. Copy the client ID into Vercel → Project → Settings → Environment
+   Variables as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, then redeploy (NEXT_PUBLIC_
+   values are baked in at build time).
+
+To open it beyond the test-user list, publish the consent screen; Google may
+require verification for Calendar scopes before it shows without an
+"unverified app" warning. Check the consent screen page when publishing.
+
 ## Neon + Prisma Setup
 
 Neon provides a serverless Postgres database with connection pooling via PgBouncer. Use the pooled URL for app queries and the direct URL for migrations.

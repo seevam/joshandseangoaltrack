@@ -1,4 +1,5 @@
 export type Category = 'personal' | 'health' | 'career' | 'finance' | 'education' | 'fitness';
+import { dayKey } from './dates';
 
 /**
  * A phase of the journey. Stages stop a long plan reading as one flat list:
@@ -129,13 +130,13 @@ export function getGoalStatus(goal: Goal): 'completed' | 'overdue' | 'in-progres
 
 export function getStreak(checkIns: string[] = []): number {
   if (!checkIns.length) return 0;
-  const today = new Date().toISOString().split('T')[0];
+  const today = dayKey();
   const set = new Set(checkIns);
   let streak = 0;
   const cursor = new Date();
   if (!set.has(today)) cursor.setDate(cursor.getDate() - 1);
   while (true) {
-    const d = cursor.toISOString().split('T')[0];
+    const d = dayKey(cursor);
     if (!set.has(d)) break;
     streak++;
     cursor.setDate(cursor.getDate() - 1);

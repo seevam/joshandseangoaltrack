@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, type Category, type Subtask, type Goal } from '@/lib/types';
+import { dayKey } from '@/lib/dates';
 
 const CATEGORIES: Category[] = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
 
@@ -31,7 +32,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
     category:    (editGoal?.category   ?? 'personal') as Category,
     targetValue: editGoal?.targetValue != null ? String(editGoal.targetValue) : '',
     unit:        editGoal?.unit        ?? '',
-    startDate:   editGoal?.startDate   ?? new Date().toISOString().split('T')[0],
+    startDate:   editGoal?.startDate   ?? dayKey(),
     endDate:     editGoal?.endDate     ?? '',
   });
   const [subtasks, setSubtasks] = useState<Partial<Subtask>[]>(editGoal?.subtasks ?? []);

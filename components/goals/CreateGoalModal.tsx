@@ -9,6 +9,7 @@ import { type Category } from '@/lib/types';
 import Modal from '@/components/ui/Modal';
 import MarkdownText from '@/components/ui/MarkdownText';
 import ErrorDialog from '@/components/ui/ErrorDialog';
+import { dayKey } from '@/lib/dates';
 
 const CATEGORIES: Category[] = ['fitness', 'health', 'personal', 'career', 'finance', 'education'];
 const TIMEFRAMES = [1, 3, 6, 12, 24];
@@ -188,7 +189,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
             {
               role: 'user',
               content: `Goal: ${ambition.trim()}\nCategory: ${category}\nTimeframe: ${months} month${months === 1 ? '' : 's'} `
-                + `(deadline ${deadline.toISOString().split('T')[0]}). Use exactly this category and deadline.`,
+                + `(deadline ${dayKey(deadline)}). Use exactly this category and deadline.`,
             },
           ],
           tools: buildGoalTools().filter(t => t.function.name === 'create_goal'),
