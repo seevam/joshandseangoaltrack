@@ -7,14 +7,14 @@ import {
   Clock, ArrowUpRight, CalendarClock, Crosshair,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category, type TaskCompletionValue } from '@/lib/types';
-import { computeStats, taskXp, milestoneXp, completionXp } from '@/lib/xp';
+import { getGoalStatus, type TaskCompletionValue } from '@/lib/types';
+import { computeStats, completionXp } from '@/lib/xp';
 import { buildActivityFeed } from '@/lib/activity';
 import { maybeNotifyTodaysTasks } from '@/lib/notifications';
-import { XpToast, Confetti } from '@/components/ui/GameUI';
-import { IconTile, Icon } from '@/components/ui/icons';
+import { XpToast } from '@/components/ui/GameUI';
+import { Icon } from '@/components/ui/icons';
 import {
-  AnimatedNumber, AnimatedCheck, Sparks, Reveal,
+  AnimatedNumber, Sparks, Reveal,
 } from '@/components/ui/motion';
 import GoalCard from '@/components/goals/GoalCard';
 import Link from 'next/link';
@@ -32,19 +32,14 @@ import { currentStage, activeTasks } from '@/lib/stages';
 import FocusMode from './FocusMode';
 import { dayKey } from '@/lib/dates';
 
-/** Last level we played the celebration for, so a reload never replays it. */
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
-  const { goals, setGoals, updateGoal, removeGoal, selectedGoal, setSelectedGoal } = useGoalStore();
+  const { goals, setGoals, updateGoal } = useGoalStore();
   const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
   const [isLoadingGoals, setIsLoadingGoals] = useState(false);
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [celebratingGoal, setCelebratingGoal] = useState<Goal | null>(null);
 
-  const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'active' | 'completed' | 'all'>('active');
   const [xpToast, setXpToast] = useState<{ id: number; amount: number } | null>(null);
   const [flashTask, setFlashTask] = useState<string | null>(null);
   /** The completion currently being asked about, if any. */
@@ -89,53 +84,6 @@ export default function Dashboard() {
       setSparks({ id: Date.now(), ...origin });
       setTimeout(() => setSparks(null), 700);
     }
-  };
-
-  const deleteGoal = async (id: string) => {
-    try {
-      await apiCall(`/api/goals/${id}`, 'DELETE');
-      removeGoal(id);
-    } catch (err) { console.error('Failed to delete goal:', err); }
-  };
-
-  const checkIn = async (goalId: string) => {
-    const today = dayKey();
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal || (goal.checkIns || []).includes(today)) return;
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { checkIns: [...(goal.checkIns || []), today] });
-      updateGoal(saved);
-      fireXp(5);
-      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-    } catch (err) { console.error('Failed to check in:', err); }
-  };
-
-  const updateProgress = async (goalId: string, newValue: number) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const wasComplete = getGoalProgress(goal) >= 100;
-    const progressHistory = [...(goal.progressHistory || []), { date: new Date().toISOString(), value: newValue }];
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { currentValue: newValue, progressHistory });
-      updateGoal(saved);
-      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-      if (!wasComplete && getGoalProgress(saved) >= 100) setCelebratingGoal(saved)
-    } catch (err) { console.error('Failed to update progress:', err); }
-  };
-
-  const toggleSubtask = async (goalId: string, idx: number) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const wasComplete = getGoalProgress(goal) >= 100;
-    const target = goal.subtasks[idx];
-    const subtasks = goal.subtasks.map((s, i) => i === idx ? { ...s, completed: !s.completed } : s);
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { subtasks });
-      updateGoal(saved);
-      if (!target.completed) fireXp(milestoneXp(target.difficulty));
-      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-      if (!wasComplete && getGoalProgress(saved) >= 100) setCelebratingGoal(saved)
-    } catch (err) { console.error('Failed to toggle subtask:', err); }
   };
 
   const logTask = async (goalId: string, taskId: number, value: TaskCompletionValue, origin?: { x: number; y: number }) => {
@@ -184,28 +132,6 @@ export default function Dashboard() {
     try {
       updateGoal(await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks }));
     } catch (err) { console.error('Failed to correct estimate:', err); }
-  };
-
-  const addDailyTask = async (goalId: string, task: { title: string; targetValue: number | null; unit: string; type: 'number' | 'checkbox' }) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const dailyTasks = [...(goal.dailyTasks || []), { id: Date.now(), ...task }];
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks });
-      updateGoal(saved);
-      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-    } catch (err) { console.error('Failed to add task:', err); }
-  };
-
-  const removeDailyTask = async (goalId: string, taskId: number) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const dailyTasks = goal.dailyTasks.filter(t => t.id !== taskId);
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks });
-      updateGoal(saved);
-      if (selectedGoal?.id === goalId) setSelectedGoal(saved);
-    } catch (err) { console.error('Failed to remove task:', err); }
   };
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -273,8 +199,6 @@ export default function Dashboard() {
     () => goals.filter(g => getGoalStatus(g) !== 'completed').slice(0, 1),
     [goals],
   );
-  const activeGoals = goals.filter(g => getGoalStatus(g) === 'in-progress').length;
-  const completedGoals = goals.filter(g => getGoalStatus(g) === 'completed').length;
   const doneToday = todaysTasks.filter(t => !!t.value).length;
 
   const dueSoon = goals.filter(g => {
@@ -282,17 +206,6 @@ export default function Dashboard() {
     return (new Date(g.endDate).getTime() - Date.now()) / 86400000 <= 7;
   });
 
-  const filtered = goals.filter(g => {
-    if (filterCategory !== 'all' && g.category !== filterCategory) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      if (!g.title.toLowerCase().includes(q) && !g.description?.toLowerCase().includes(q) && !g.category.toLowerCase().includes(q)) return false;
-    }
-    const status = getGoalStatus(g);
-    if (activeTab === 'active') return status !== 'completed';
-    if (activeTab === 'completed') return status === 'completed';
-    return true;
-  });
 
   /*
    * Two pieces of feedback pull against each other here: no shimmering
@@ -760,27 +673,6 @@ export default function Dashboard() {
       {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
       {sparks && <Sparks key={sparks.id} x={sparks.x} y={sparks.y} />}
 
-      {celebratingGoal && (
-        <>
-          <Confetti />
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[85] p-4 animate-fade-in">
-            <div className="card-glow rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-pop-in">
-              <IconTile name="trophy" color="#FBBF24" size="lg" className="mx-auto mb-4" />
-              <h2 className="text-2xl font-bold text-fg mb-2">Goal Complete!</h2>
-              <p className="text-muted mb-1">{celebratingGoal.title}</p>
-              <p className="text-brand font-semibold mb-6 flex items-center justify-center gap-1">
-                <Zap className="h-4 w-4" /> +500 XP
-              </p>
-              <button
-                onClick={() => setCelebratingGoal(null)}
-                className="px-6 py-2.5 bg-brand hover:bg-brand-dark text-black rounded-xl font-semibold"
-              >
-                Awesome!
-              </button>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }

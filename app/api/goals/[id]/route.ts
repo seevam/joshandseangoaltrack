@@ -56,6 +56,58 @@ export async function PUT(req: Request, { params }: Params) {
       return NextResponse.json(updated);
     }
 
+    /*
+     * One milestone ticked or unticked, in place. Addressed by position AND id:
+     * the element at that position is changed only if its id still matches, so
+     * a list that moved underneath the client is left alone rather than having
+     * the wrong milestone flipped. Same race as completions — the whole array
+     * used to be sent, built from a copy that could be one tap out of date.
+     */
+    const m = body.milestone as { index?: unknown; id?: unknown; completed?: unknown } | undefined;
+    if (m !== undefined) {
+      const index = Number(m.index);
+      const completed = m.completed;
+      const id = m.id === undefined || m.id === null ? null : String(m.id);
+      if (!Number.isInteger(index) || index < 0 || typeof completed !== 'boolean') {
+        return NextResponse.json({ error: 'Invalid milestone' }, { status: 400 });
+      }
+      await prisma.$executeRaw`
+        UPDATE goals
+        SET subtasks = COALESCE((
+              SELECT jsonb_agg(
+                       CASE WHEN t.ord = ${index + 1}
+                             AND (${id}::text IS NULL OR t.e ->> 'id' = ${id}::text)
+                            THEN jsonb_set(t.e, '{completed}', to_jsonb(${completed}::boolean))
+                            ELSE t.e END
+                       ORDER BY t.ord)
+              FROM jsonb_array_elements(COALESCE(subtasks, '[]'::jsonb)) WITH ORDINALITY AS t(e, ord)
+            ), '[]'::jsonb),
+            "updatedAt" = NOW()
+        WHERE id = ${params.id} AND "userId" = ${userId}
+      `;
+      const updated = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+      return NextResponse.json(updated);
+    }
+
+    /* A check-in for one day, appended only if that day isn't there already. */
+    if (typeof body.checkIn === 'string') {
+      const day = body.checkIn;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+        return NextResponse.json({ error: 'Invalid check-in' }, { status: 400 });
+      }
+      await prisma.$executeRaw`
+        UPDATE goals
+        SET "checkIns" = CASE
+              WHEN COALESCE("checkIns", '[]'::jsonb) ? ${day} THEN "checkIns"
+              ELSE COALESCE("checkIns", '[]'::jsonb) || to_jsonb(${day}::text)
+            END,
+            "updatedAt" = NOW()
+        WHERE id = ${params.id} AND "userId" = ${userId}
+      `;
+      const updated = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+      return NextResponse.json(updated);
+    }
+
     const data: Record<string, unknown> = {};
     const fields = [
       'title', 'description', 'category', 'unit', 'startDate', 'endDate', 'color',

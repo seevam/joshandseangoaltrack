@@ -3,15 +3,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useGoalStore } from '@/lib/store';
 import { computeStats, RANK_TIERS } from '@/lib/xp';
+import { getGoalStatus } from '@/lib/types';
 import { LevelUpOverlay } from '@/components/ui/motion';
 import RankUpOverlay from '@/components/ui/RankUpOverlay';
+import GoalCompleteOverlay from '@/components/ui/GoalCompleteOverlay';
 
 const LEVEL_KEY = 'gq_celebrated_level';
 const RANK_KEY = 'gq_celebrated_rank';
+const GOALS_KEY = 'gq_celebrated_goals';
 
 type Celebration =
+  | { kind: 'goal'; title: string }
   | { kind: 'rank'; fromSlug: string; fromName: string; toSlug: string; toName: string; toColor: string; level: number }
   | { kind: 'level'; level: number; name: string; color: string };
+
+function readIds(): string[] | null {
+  try {
+    const raw = localStorage.getItem(GOALS_KEY);
+    return raw === null ? null : (JSON.parse(raw) as string[]);
+  } catch { return null; }
+}
 
 function readNumber(key: string): number | null {
   try {
@@ -47,7 +58,13 @@ export default function ProgressCelebrations() {
   const goals = useGoalStore(s => s.goals);
   const loaded = useGoalStore(s => s.goalsLoaded);
   const stats = useMemo(() => computeStats(goals), [goals]);
-  const [queue, setQueue] = useState<Celebration | null>(null);
+  /*
+   * A queue, not a single slot: finishing a goal pays 500 XP, which often
+   * levels or ranks you up in the same moment. Each gets its own turn —
+   * goal first, then what it earned — instead of one overwriting the other.
+   */
+  const [queue, setQueue] = useState<Celebration[]>([]);
+  const enqueue = (c: Celebration[]) => { if (c.length) setQueue(q => [...q, ...c]); };
 
   useEffect(() => {
     if (!loaded) return;
@@ -55,53 +72,83 @@ export default function ProgressCelebrations() {
     const rankIdx = RANK_TIERS.findIndex(t => t.slug === stats.rank.slug);
     const lastLevel = readNumber(LEVEL_KEY);
     const lastRank = readNumber(RANK_KEY);
+    const doneIds = goals.filter(g => getGoalStatus(g) === 'completed').map(g => g.id);
+    const seenIds = readIds();
 
     // First visit on this device: record, don't celebrate history.
-    if (lastLevel === null || lastRank === null) {
+    if (lastLevel === null || lastRank === null || seenIds === null) {
       write(LEVEL_KEY, String(stats.level));
       write(RANK_KEY, String(rankIdx));
+      write(GOALS_KEY, JSON.stringify(doneIds));
       return;
+    }
+
+    const next: Celebration[] = [];
+
+    // A goal finished anywhere — its last milestone ticked on the goal page,
+    // or its target reached. This used to live on the dashboard, wired only
+    // to two handlers nothing called any more, so it never played at all.
+    //
+    // Only from a real, non-empty list: a failed fetch yields [], and treating
+    // that as truth would forget every goal already celebrated and replay them
+    // all on the next good load.
+    const real = goals.length > 0;
+    if (real) {
+      const fresh = goals.filter(g => doneIds.includes(g.id) && !seenIds.includes(g.id));
+      for (const g of fresh) next.push({ kind: 'goal', title: g.title });
+      // Celebrated stays celebrated: un-ticking and re-ticking the last
+      // milestone does not replay it. Deleted goals drop out, so it can't grow.
+      const existing = new Set(goals.map(g => g.id));
+      const seen = Array.from(new Set([...seenIds.filter(id => existing.has(id)), ...doneIds]));
+      if (seen.length !== seenIds.length || fresh.length) write(GOALS_KEY, JSON.stringify(seen));
     }
 
     if (rankIdx > lastRank) {
       const from = RANK_TIERS[Math.max(0, Math.min(lastRank, RANK_TIERS.length - 1))];
-      setQueue({
+      next.push({
         kind: 'rank',
         fromSlug: from.slug, fromName: from.name,
         toSlug: stats.rank.slug, toName: stats.rank.name, toColor: stats.rank.color,
         level: stats.level,
       });
     } else if (stats.level > lastLevel) {
-      setQueue({ kind: 'level', level: stats.level, name: stats.rank.name, color: stats.rank.color });
+      next.push({ kind: 'level', level: stats.level, name: stats.rank.name, color: stats.rank.color });
     }
+    enqueue(next);
 
-    const real = goals.length > 0;
     if (stats.level > lastLevel || real) write(LEVEL_KEY, String(stats.level));
     if (rankIdx > lastRank || real) write(RANK_KEY, String(rankIdx));
-  }, [loaded, goals.length, stats.level, stats.rank]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, goals, stats.level, stats.rank]);
 
-  if (!queue) return null;
+  const current = queue[0];
+  if (!current) return null;
+  const done = () => setQueue(q => q.slice(1));
 
-  if (queue.kind === 'rank') {
+  if (current.kind === 'goal') {
+    return <GoalCompleteOverlay title={current.title} onDone={done} />;
+  }
+
+  if (current.kind === 'rank') {
     return (
       <RankUpOverlay
-        fromSlug={queue.fromSlug}
-        fromName={queue.fromName}
-        toSlug={queue.toSlug}
-        toName={queue.toName}
-        toColor={queue.toColor}
-        level={queue.level}
-        onDone={() => setQueue(null)}
+        fromSlug={current.fromSlug}
+        fromName={current.fromName}
+        toSlug={current.toSlug}
+        toName={current.toName}
+        toColor={current.toColor}
+        level={current.level}
+        onDone={done}
       />
     );
   }
 
   return (
     <LevelUpOverlay
-      level={queue.level}
-      rankName={queue.name}
-      rankColor={queue.color}
-      onDone={() => setQueue(null)}
+      level={current.level}
+      rankName={current.name}
+      rankColor={current.color}
+      onDone={done}
     />
   );
 }

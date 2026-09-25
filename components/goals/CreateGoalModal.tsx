@@ -13,7 +13,6 @@ import { dayKey } from '@/lib/dates';
 
 const CATEGORIES: Category[] = ['fitness', 'health', 'personal', 'career', 'finance', 'education'];
 const TIMEFRAMES = [1, 3, 6, 12, 24];
-const TOTAL_STEPS = 3;
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const QUICK_STARTERS = [

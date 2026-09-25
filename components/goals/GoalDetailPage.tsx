@@ -20,6 +20,7 @@ import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
 import MissionCard from '@/components/dashboard/MissionCard';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 import { dayKey } from '@/lib/dates';
 
 const MILESTONE_BADGES = [
@@ -30,6 +31,11 @@ const MILESTONE_BADGES = [
 ];
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** "1 check-in", "2 check-ins", "no check-ins" — never "all 1 check-in". */
+function plural(n: number, word: string) {
+  return n === 0 ? `no ${word}s` : `${n} ${word}${n === 1 ? '' : 's'}`;
+}
 
 function formatSchedule(daysOfWeek?: number[]): string {
   if (!daysOfWeek || daysOfWeek.length === 0) return 'Every day';
@@ -86,6 +92,7 @@ export default function GoalDetailPage({ goalId }: { goalId: string }) {
 function GoalDetailContent({ goal }: { goal: Goal }) {
   const router = useRouter();
   const actions = useGoalActions();
+  const updateGoal = useGoalStore(s => s.updateGoal);
   /** The completion currently being asked about, if any. */
   const [askDuration, setAskDuration] = useState<
     { taskId: number; title: string; planned?: number } | null
@@ -108,9 +115,14 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  /** The destructive action awaiting confirmation, if any. One dialog serves all three. */
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: 'goal' }
+    | { kind: 'milestone'; index: number; id?: number; title: string }
+    | { kind: 'task'; id: number; title: string }
+    | null
+  >(null);
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(null);
-  const [confirmMilestone, setConfirmMilestone] = useState<number | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState('');
@@ -129,6 +141,9 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
         body: JSON.stringify({ sharedWith: [...partners, email] }),
       });
       if (!res.ok) throw new Error();
+      // The saved goal goes back into the store, or the new partner never
+      // appears until a reload — the request succeeded and the list didn't move.
+      updateGoal(await res.json());
       setShareEmail('');
     } catch {
       setShareError('Could not add that partner. Make sure you own this goal.');
@@ -139,14 +154,17 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
   const removePartner = async (email: string) => {
     setShareLoading(true);
+    setShareError('');
     try {
-      await fetch(`/api/goals/${goal.id}`, {
+      const res = await fetch(`/api/goals/${goal.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sharedWith: partners.filter(e => e !== email) }),
       });
+      if (!res.ok) throw new Error();
+      updateGoal(await res.json());
     } catch {
-      // best effort
+      setShareError('Could not remove that partner. Try again.');
     } finally {
       setShareLoading(false);
     }
@@ -202,9 +220,11 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const statusLabel = status === 'completed' ? 'Completed' : status === 'overdue' ? 'Overdue' : 'Active';
   const statusColor = status === 'completed' ? '#5DBC70' : status === 'overdue' ? '#F87171' : '#A1A1A1';
 
+  // Only leaves the page once the goal is actually gone.
   const handleDelete = async () => {
-    await actions.onDelete(goal.id);
-    router.push('/goals');
+    const ok = await actions.onDelete(goal.id);
+    if (ok) router.push('/goals');
+    return ok;
   };
 
   return (
@@ -254,7 +274,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
             <Pencil className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => setPendingDelete({ kind: 'goal' })}
             aria-label="Delete goal"
             title="Delete goal"
             className="p-2 bg-elevated hover:bg-line rounded-lg text-muted hover:text-red-400 transition-colors"
@@ -576,7 +596,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             mistake or read as one target. */}
                         <span className="flex items-center gap-1 flex-shrink-0 pl-2 ml-1 border-l border-line">
                           <button
-                            onClick={() => setConfirmMilestone(confirmMilestone === i ? null : i)}
+                            onClick={() => setPendingDelete({ kind: 'milestone', index: i, id: s.id, title: s.title })}
                             aria-label={`Delete milestone ${s.title}`}
                             title="Delete milestone"
                             className="p-1.5 rounded-lg text-muted hover:text-red-400 transition-colors"
@@ -585,30 +605,6 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                           </button>
                         </span>
                       </div>
-
-                      {confirmMilestone === i && (
-                        <div className="px-3 pb-3 -mt-1">
-                          <div className="rounded-lg border border-red-500/30 bg-card p-2.5 flex items-center justify-between gap-2 flex-wrap">
-                            <span className="text-xs text-muted min-w-0 break-words">
-                              Delete &ldquo;{s.title}&rdquo;?
-                            </span>
-                            <span className="flex gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => { actions.onRemoveMilestone(goal.id, i); setConfirmMilestone(null); }}
-                                className="px-2.5 py-1 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold"
-                              >
-                                Delete
-                              </button>
-                              <button
-                                onClick={() => setConfirmMilestone(null)}
-                                className="px-2.5 py-1 rounded-lg border border-line text-fg text-xs font-semibold"
-                              >
-                                Keep
-                              </button>
-                            </span>
-                          </div>
-                        </div>
-                      )}
 
                       {isExpanded && (
                         <div className="px-4 pb-3 space-y-2">
@@ -688,7 +684,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                       onComplete={() => completeTask(task)}
                       onUndo={() => actions.onLogTask(goal.id, task.id, false)}
                       onRecover={() => actions.onLogTask(goal.id, task.id, 'fallback')}
-                      onRemove={() => actions.onRemoveDailyTask(goal.id, task.id)}
+                      onRemove={() => setPendingDelete({ kind: 'task', id: task.id, title: task.title })}
                     />
                   );
                 })}
@@ -816,41 +812,49 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
       {/* ── 8. Management ───────────────────────────────────────────────── */}
       <div className="pt-1">
-        {confirmDelete ? (
-          <div className="rounded-2xl border border-red-500/30 bg-card p-4">
-            <p className="text-sm font-semibold text-fg">Delete &ldquo;{goal.title}&rdquo;?</p>
-            <p className="text-xs text-muted mt-1">
-              This removes the goal, its {milestones.length} milestone{milestones.length === 1 ? '' : 's'},
-              {' '}{recurringTasks.length} recurring task{recurringTasks.length === 1 ? '' : 's'}, and all
-              {' '}{(goal.checkIns || []).length} check-in{(goal.checkIns || []).length === 1 ? '' : 's'}. This cannot be undone.
-            </p>
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
-              >
-                Delete goal
-              </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="px-4 py-2 rounded-xl border border-line text-fg text-sm font-medium hover:bg-elevated transition-colors"
-              >
-                Keep it
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 border border-line text-red-400 rounded-xl text-sm font-medium hover:border-red-500/50 transition-colors"
-          >
-            <Trash2 className="h-4 w-4" /> Delete Goal
-          </button>
-        )}
+        <button
+          onClick={() => setPendingDelete({ kind: 'goal' })}
+          className="w-full flex items-center justify-center gap-2 py-2.5 border border-line text-red-400 rounded-xl text-sm font-medium hover:border-red-500/50 transition-colors"
+        >
+          <Trash2 className="h-4 w-4" /> Delete Goal
+        </button>
       </div>
 
       {showEdit && <GoalForm editGoal={goal} onClose={() => setShowEdit(false)} />}
       {showChat && <GoalChatPanel goal={goal} onClose={() => setShowChat(false)} />}
+
+      {/* Centred, so it appears wherever the user pressed delete — the goal's
+          own confirmation used to open at the foot of the page, out of sight
+          of the trash icon in the header that triggered it. */}
+      {pendingDelete?.kind === 'goal' && (
+        <ConfirmDialog
+          title={`Delete \u201c${goal.title}\u201d?`}
+          body={<>This removes the goal with {plural(milestones.length, 'milestone')},{' '}
+            {plural((goal.dailyTasks || []).length, 'recurring task')} and{' '}
+            {plural((goal.checkIns || []).length, 'check-in')}. It can&apos;t be undone.</>}
+          confirmLabel="Delete goal"
+          onConfirm={handleDelete}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
+      {pendingDelete?.kind === 'milestone' && (
+        <ConfirmDialog
+          title="Delete this milestone?"
+          body={<><span className="text-fg">{pendingDelete.title}</span> will be removed from the plan.</>}
+          confirmLabel="Delete milestone"
+          onConfirm={() => actions.onRemoveMilestone(goal.id, pendingDelete.index, pendingDelete.id)}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
+      {pendingDelete?.kind === 'task' && (
+        <ConfirmDialog
+          title="Delete this recurring task?"
+          body={<><span className="text-fg">{pendingDelete.title}</span> stops appearing on your schedule. Days you already logged are kept.</>}
+          confirmLabel="Delete task"
+          onConfirm={() => actions.onRemoveDailyTask(goal.id, pendingDelete.id)}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
 
       {askDuration && (
         <DurationPrompt

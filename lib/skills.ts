@@ -1,5 +1,5 @@
 import type { Goal } from './types';
-import { taskXp, milestoneXp, completionXp, levelFromXp, xpForLevel, streaksFromCheckIns, rankFromXp } from './xp';
+import { milestoneXp, completionXp, levelFromXp, xpForLevel, streaksFromCheckIns, rankFromXp } from './xp';
 import { GOAL_DOMAINS, DISCIPLINE, skillsForGoal, domainGoalIdea, type GoalDomainId, type SkillId } from './domains';
 import { baselineXp, loadSkillBaseline, weakestDomains, type SkillBaseline } from './skillBaseline';
 

@@ -33,7 +33,6 @@ const iso = (d: Date) => {
 /** Mini calendar on the left, the selected day's tasks on the right. */
 export default function CalendarView() {
   const goals = useGoalStore(s => s.goals);
-  const updateGoal = useGoalStore(s => s.updateGoal);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
