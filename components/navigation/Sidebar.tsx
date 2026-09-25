@@ -133,7 +133,10 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
                 Lv.{stats.level}
               </span>
             </span>
-            <span className="block text-[10px] tracking-[0.16em] uppercase text-muted mb-1.5">
+            {/* One line: 0.1em tracking sets it at ~190px inside a ~197px strip.
+                At 0.16em it needed ~207px and wrapped onto two. nowrap +
+                truncate keep it on one line even if a font renders wider. */}
+            <span className="block text-[10px] tracking-[0.1em] uppercase text-muted mb-1.5 whitespace-nowrap truncate">
               Balanced overall progression
             </span>
             <span className="block h-1.5 bg-track rounded-full overflow-hidden">
