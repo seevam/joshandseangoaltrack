@@ -64,8 +64,12 @@ export default function CalendarView() {
       if (start) { const s = new Date(start); s.setHours(0, 0, 0, 0); if (date < s) return; }
       if (end) { const e = new Date(end); e.setHours(0, 0, 0, 0); if (date > e) return; }
       const done = goal.taskCompletions?.[dateStr] || {};
-      // Same rule as the dashboard: a completed stage's tasks are not scheduled.
-      activeTasks(goal).forEach(task => {
+      // The stage live ON that day, not today's: once stage 2 opens, the days
+      // before it still show stage 1's work — otherwise every past day
+      // "misses" tasks that did not exist yet and the overdue list fills with
+      // them. Same rule goal health uses.
+      const endOfDay = new Date(date); endOfDay.setHours(23, 59, 59, 999);
+      activeTasks(goal, endOfDay.getTime()).forEach(task => {
         const days = task.daysOfWeek;
         if (!days || days.length === 0 || days.includes(dow)) {
           out.push({ goal, task, done: !!done[task.id], dateStr });
@@ -162,14 +166,19 @@ export default function CalendarView() {
   const selectedDone = selectedTasks.filter(t => t.done).length;
 
   /** Incomplete tasks before today — shown whatever day is selected. */
-  const overdue = useMemo(() => {
+  const { overdue, overdueTotal } = useMemo(() => {
     const out: DayTask[] = [];
     for (let back = 1; back <= 21; back++) {
       const d = new Date(today);
       d.setDate(d.getDate() - back);
       out.push(...getTasksForDate(d).filter(t => !t.done));
     }
-    return out.sort((a, b) => b.dateStr.localeCompare(a.dateStr)).slice(0, 12);
+    // The list shows the most recent twelve; the count says how many there
+    // really are, rather than "12 tasks" whenever there are more.
+    return {
+      overdue: out.sort((a, b) => b.dateStr.localeCompare(a.dateStr)).slice(0, 12),
+      overdueTotal: out.length,
+    };
   }, [getTasksForDate, today]);
 
   const TaskRow = ({ item, overdueRow = false, index = 0 }: { item: DayTask; overdueRow?: boolean; index?: number }) => {
@@ -181,7 +190,9 @@ export default function CalendarView() {
         className={`stagger-fast flex items-center gap-3 p-3 rounded-xl border ${
           flashTask === key ? 'task-flash task-complete-anim' : ''
         } ${
-          overdueRow ? 'border-red-500/30' : item.done ? 'border-brand/30' : 'border-line glow-hover'
+          overdueRow
+            ? 'border-red-500/45 bg-red-500/[0.07]'
+            : item.done ? 'border-brand/30' : 'border-line glow-hover'
         }`}
       >
         <span
@@ -193,8 +204,12 @@ export default function CalendarView() {
             {item.task.title}
           </p>
           <p className="text-xs text-muted truncate">
+            {overdueRow && (
+              <span className="text-red-400 font-medium">
+                Missed {new Date(`${item.dateStr}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ·{' '}
+              </span>
+            )}
             {item.goal.title}
-            {overdueRow && ` · ${new Date(item.dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
           </p>
         </div>
         <AnimatedCheck
@@ -214,6 +229,9 @@ export default function CalendarView() {
     const isToday = d.getTime() === today.getTime();
     const isSel = d.getTime() === selected.getTime();
     const allDone = tasks.length > 0 && done === tasks.length;
+    // A day that has ended with work left undone. Today never counts — it
+    // isn't over — the same rule goal health uses.
+    const missed = d.getTime() < today.getTime() && tasks.length > 0 && done < tasks.length;
     const milestones = milestonesForDate(d);
     return (
       <button
@@ -245,8 +263,9 @@ export default function CalendarView() {
           <>
             <span
               className={`flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
-                allDone ? 'border-brand/40 text-brand' : 'border-line text-fg'
+                allDone ? 'border-brand/40 text-brand' : missed ? 'border-red-500/50 bg-red-500/10 text-red-300' : 'border-line text-fg'
               }`}
+              title={missed ? `${tasks.length - done} missed` : undefined}
             >
               {/* The icon goes on a phone: in a ~46px cell it left room for
                   "0…" rather than "0/2". */}
@@ -268,8 +287,8 @@ export default function CalendarView() {
                   key={k}
                   className="h-1 flex-1 rounded-full"
                   style={{
-                    backgroundColor: k < done ? 'var(--brand)' : 'var(--line-strong)',
-                    opacity: k < done ? 1 : 0.9,
+                    backgroundColor: k < done ? 'var(--brand)' : missed ? '#F87171' : 'var(--line-strong)',
+                    opacity: k < done ? 1 : missed ? 0.75 : 0.9,
                   }}
                 />
               ))}
@@ -283,15 +302,14 @@ export default function CalendarView() {
         {milestones > 0 && (
           <span
             className="flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border border-brand/40 bg-[var(--brand-light)] px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] text-brand"
-            title={`${milestones} milestone${milestones === 1 ? '' : 's'}`}
+            title={`${milestones} milestone${milestones === 1 ? '' : 's'} due`}
+            aria-label={`${milestones} milestone${milestones === 1 ? '' : 's'} due`}
           >
             <Flag className="h-3 w-3 flex-shrink-0" />
-            {/* A day cell is ~46px wide on a phone — the word does not
-                fit there, so the count carries it and the label
-                returns as soon as there is room. */}
-            <span className="truncate min-w-0">
-              {milestones}<span className="hidden sm:inline"> milestone{milestones === 1 ? '' : 's'}</span>
-            </span>
+            {/* Flag and count only. "2 milestones" does not fit a day cell at
+                any width — it read "2 milesto…" even on a wide desktop — and
+                the flag already says what it counts. */}
+            <span className="truncate min-w-0">{milestones}</span>
           </span>
         )}
       </button>
@@ -416,36 +434,6 @@ export default function CalendarView() {
 
         {/* ── Selected day + overdue ────────────────────────────────────── */}
         <div className="space-y-5">
-          {overdue.length > 0 && (
-            <section className="animate-slide-up">
-              {/* A long backlog pushed today off the screen, which is the one
-                  thing this page exists to show. The count stays visible when
-                  it is folded away, so hiding it is not the same as forgetting
-                  it. */}
-              <button
-                onClick={() => setShowOverdue(o => { try { localStorage.setItem(OVERDUE_KEY, o ? '0' : '1'); } catch { /* ignore */ } return !o; })}
-                aria-expanded={showOverdue}
-                className="w-full flex items-baseline justify-between gap-3 mb-2.5 text-left"
-              >
-                <h2 className="flex items-center gap-1.5 text-red-400 min-w-0">
-                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                  <span className="section-title truncate">Overdue</span>
-                </h2>
-                <span className="flex items-center gap-1.5 text-xs text-muted flex-shrink-0">
-                  {overdue.length} task{overdue.length === 1 ? '' : 's'}
-                  <ChevronDown className={`h-4 w-4 transition-transform ${showOverdue ? 'rotate-180' : ''}`} />
-                </span>
-              </button>
-              {showOverdue && (
-                <div className="space-y-2">
-                  {overdue.map((item, i) => (
-                    <TaskRow key={`${item.goal.id}-${item.task.id}-${item.dateStr}`} item={item} overdueRow index={i} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
           <section className="animate-slide-up">
             <div className="flex items-baseline justify-between mb-2.5">
               <h2 className="flex items-center gap-2 text-fg">
@@ -476,6 +464,43 @@ export default function CalendarView() {
               </div>
             )}
           </section>
+
+          {overdue.length > 0 && (
+            <section className="animate-slide-up">
+              {/* Below the day, not above it: twelve red rows pushed today's
+                  tasks — the reason to open this page — off a phone screen.
+                  It folds away, and the count stays visible when it does, so
+                  hiding it is not the same as forgetting it. */}
+              <button
+                onClick={() => setShowOverdue(o => { try { localStorage.setItem(OVERDUE_KEY, o ? '0' : '1'); } catch { /* ignore */ } return !o; })}
+                aria-expanded={showOverdue}
+                className="w-full flex items-baseline justify-between gap-3 mb-2.5 text-left"
+              >
+                <h2 className="flex items-center gap-1.5 text-red-400 min-w-0">
+                  <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+                  <span className="section-title truncate">Overdue</span>
+                </h2>
+                <span className="flex items-center gap-1.5 text-xs flex-shrink-0">
+                  <span className="rounded-full border border-red-500/50 bg-red-500/15 px-2 py-0.5 font-semibold text-red-300">
+                    {overdueTotal} missed
+                  </span>
+                  <ChevronDown className={`h-4 w-4 text-red-400 transition-transform ${showOverdue ? 'rotate-180' : ''}`} />
+                </span>
+              </button>
+              {showOverdue && (
+                <div className="space-y-2">
+                  {overdue.map((item, i) => (
+                    <TaskRow key={`${item.goal.id}-${item.task.id}-${item.dateStr}`} item={item} overdueRow index={i} />
+                  ))}
+                  {overdueTotal > overdue.length && (
+                    <p className="text-xs text-muted text-center pt-1">
+                      Showing the {overdue.length} most recent of {overdueTotal} from the last three weeks.
+                    </p>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </div>
 
