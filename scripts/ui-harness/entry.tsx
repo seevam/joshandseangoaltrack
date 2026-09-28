@@ -92,6 +92,11 @@ w.__ai = (req: unknown) => {
       estimatedMinutes: 150,
     });
   }
+  if (tool === 'rate_plan') {
+    const items = Array.from(users[0].matchAll(/^- (\S+) \[(milestone|recurring task)/gm))
+      .map(m => (m[2] === 'milestone' ? { key: m[1], difficulty: 'hard', kind: 'action' } : { key: m[1], difficulty: 'easy', estimatedMinutes: 15 }));
+    return call(tool, { items });
+  }
   if (tool === 'task_protocols') {
     const ids = Array.from(users[0].matchAll(/- id (\d+):/g)).map(m => Number(m[1]));
     return call(tool, { tasks: ids.map(id => ({ id, setup: 'Shoes and water.', executionSteps: ['Warm up', 'Run it easy', 'Stretch'], successCriteria: 'Distance covered.' })) });

@@ -14,6 +14,9 @@ import Modal from '@/components/ui/Modal';
 import MarkdownText from '@/components/ui/MarkdownText';
 import ErrorDialog from '@/components/ui/ErrorDialog';
 import { dayKey } from '@/lib/dates';
+import PlanEditor from '@/components/goals/PlanEditor';
+import { emptyPlan, planToGoalFields, validatePlan, unrated, type EditablePlan } from '@/lib/planEdit';
+import { ratePlan } from '@/lib/planRating';
 
 const CATEGORIES: Category[] = ['fitness', 'health', 'personal', 'career', 'finance', 'education'];
 const TIMEFRAMES = [1, 3, 6, 12, 24];
@@ -33,6 +36,8 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
   // picker asks about has already been made by tapping the suggestion.
   const seed = useGoalStore(s => s.goalSeed);
   const [step, setStep] = useState<Step>(seed ? 'quick' : 'pick');
+  // Lifted so the modal can widen for Manual Entry's plan builder.
+  const [quickMode, setQuickMode] = useState<'ai' | 'manual'>('ai');
   const addGoal = useGoalStore(s => s.addGoal);
   const coachName = useGoalStore(s => s.coachName);
   const persona = useGoalStore(s => s.coachPersona);
@@ -40,7 +45,7 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
   const otherTaskCount = goals.reduce((n, g) => n + (g.dailyTasks?.length || 0), 0);
 
   return (
-    <Modal onClose={onClose} maxWidth={step === 'detailed' ? 'sm:max-w-4xl' : step === 'pick' ? 'sm:max-w-2xl' : 'sm:max-w-lg'} padded={false}>
+    <Modal onClose={onClose} maxWidth={step === 'detailed' ? 'sm:max-w-4xl' : step === 'pick' || quickMode === 'manual' ? 'sm:max-w-2xl' : 'sm:max-w-lg'} padded={false}>
       <div className="p-5 pt-5">
         <h2 className="font-display text-2xl tracking-wide mb-5">
           <span className="text-brand-gradient">FORGE</span>{' '}
@@ -50,6 +55,8 @@ export default function CreateGoalModal({ onClose }: { onClose: () => void }) {
         {step === 'pick' && <Chooser onPick={setStep} coachName={coachName} />}
         {step === 'quick' && (
           <QuickCreate
+            mode={quickMode}
+            setMode={setQuickMode}
             onBack={() => setStep('pick')}
             onCreated={g => { addGoal(g); onClose(); }}
             coachName={coachName}
@@ -121,7 +128,9 @@ function StepHeader({ onBack, title, right }: { onBack: () => void; title: strin
 }
 
 /* ── Step 2a: Quick — AI Generation | Manual Entry ───────────────────────── */
-function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, seed = '' }: {
+function QuickCreate({ mode, setMode, onBack, onCreated, coachName, persona, otherTaskCount, seed = '' }: {
+  mode: 'ai' | 'manual';
+  setMode: (m: 'ai' | 'manual') => void;
   onBack: () => void;
   onCreated: (g: Awaited<ReturnType<typeof materialiseGoal>> extends infer T ? NonNullable<T> : never) => void;
   coachName: string;
@@ -130,7 +139,6 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
   /** A suggested ambition to start from, if the user came in through one. */
   seed?: string;
 }) {
-  const [mode, setMode] = useState<'ai' | 'manual'>('ai');
   const [category, setCategory] = useState<Category>('fitness');
   const [ambition, setAmbition] = useState(seed);
   const [months, setMonths] = useState(6);
@@ -143,6 +151,11 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
   const [targetDate, setTargetDate] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  /** Only a failed request is worth retrying; a missing title is not. */
+  const [canRetry, setCanRetry] = useState(false);
+  const [plan, setPlan] = useState<EditablePlan>(emptyPlan);
+  const [invalid, setInvalid] = useState<Set<string>>(new Set());
+  const [rating, setRating] = useState(false);
 
   const fieldCls = 'w-full bg-elevated border border-line rounded-xl px-3 py-2.5 text-sm text-fg placeholder:text-muted-dim focus:outline-none focus:border-brand glow-hover';
   const selectCls = `${fieldCls} appearance-none pr-9 cursor-pointer capitalize`;
@@ -152,32 +165,43 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
     setError('');
 
     if (mode === 'manual') {
-      if (!title.trim()) { setError('Enter a title.'); return; }
+      const problems = validatePlan(plan);
+      if (!title.trim()) problems.unshift({ key: 'title', message: 'Give your goal a title.' });
+      setInvalid(new Set(problems.map(p => p.key)));
+      if (problems.length) { setCanRetry(false); setError(problems[0].message); return; }
       setIsLoading(true);
       try {
-        const end = targetDate ? new Date(targetDate) : new Date(Date.now() + 180 * 86400000);
+        const todo = unrated(plan);
+        setRating(todo.milestones.length + todo.tasks.length > 0);
+        // The user built the structure; the coach sets what each step is worth.
+        const rated = await ratePlan(title.trim(), plan);
+        setRating(false);
+        const start = new Date();
+        const end = targetDate ? new Date(`${targetDate}T00:00:00`) : new Date(Date.now() + 180 * 86400000);
+        const fields = planToGoalFields(rated, start.toISOString());
         const res = await fetch('/api/goals', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             title: title.trim(), description, category,
             targetValue: 1, currentValue: 0, unit: '',
-            startDate: new Date().toISOString(), endDate: end.toISOString(),
+            startDate: start.toISOString(), endDate: end.toISOString(),
             color: CATEGORY_HEX[category] || '#5DBC70',
-            subtasks: [], dailyTasks: [],
-            progressHistory: [{ date: new Date().toISOString(), value: 0 }],
+            ...fields,
+            progressHistory: [{ date: start.toISOString(), value: 0 }],
             checkIns: [], taskCompletions: {}, milestones: [],
           }),
         });
         if (!res.ok) throw new Error();
         onCreated(await res.json());
       } catch {
-        setError('Could not save that goal. Please try again.');
-      } finally { setIsLoading(false); }
+        setCanRetry(true);
+        setError('Could not save that goal. Nothing was lost — please try again.');
+      } finally { setIsLoading(false); setRating(false); }
       return;
     }
 
-    if (!ambition.trim()) { setError('Describe your ambition.'); return; }
+    if (!ambition.trim()) { setCanRetry(false); setError('Describe your ambition.'); return; }
     const availability: Availability = { deadlineType, weeklyHours, freeDays, bufferPercent };
     setIsLoading(true);
     try {
@@ -201,6 +225,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
       if (!saved) throw new PlanError('The plan was built but couldn\u2019t be saved, so nothing was created. Please try again.');
       onCreated(saved);
     } catch (err) {
+      setCanRetry(true);
       setError(err instanceof PlanError ? err.message : 'Couldn\u2019t build that plan. Please try again.');
     } finally { setIsLoading(false); }
   };
@@ -340,16 +365,21 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
         ) : (
           <>
             <div>
-              <label className="block text-xs font-semibold text-fg mb-1.5">Title</label>
-              <input autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Read 24 books" className={fieldCls} />
+              <label htmlFor="manual-title" className="block text-xs font-semibold text-fg mb-1.5">Title</label>
+              <input id="manual-title" autoFocus value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Run my first marathon"
+                className={`${fieldCls} ${invalid.has('title') ? 'border-red-500/70' : ''}`} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-fg mb-1.5">Description</label>
-              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Optional" className={`${fieldCls} resize-none`} />
+              <label htmlFor="manual-why" className="block text-xs font-semibold text-fg mb-1.5">Why it matters</label>
+              <textarea id="manual-why" value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Optional" className={`${fieldCls} resize-none`} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-fg mb-1.5">Target date</label>
-              <input type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className={fieldCls} />
+              <label htmlFor="manual-date" className="block text-xs font-semibold text-fg mb-1.5">Target date</label>
+              <input id="manual-date" type="date" value={targetDate} onChange={e => setTargetDate(e.target.value)} className={fieldCls} />
+            </div>
+            <div>
+              <p className="block text-xs font-semibold text-fg mb-1.5">Your plan</p>
+              <PlanEditor plan={plan} onChange={setPlan} coachName={coachName} invalid={invalid} startDate={dayKey()} />
             </div>
           </>
         )}
@@ -361,7 +391,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
           className="w-full flex items-center justify-center gap-2 py-3 bg-brand hover:bg-brand-dark disabled:bg-elevated disabled:text-muted-dim text-black font-semibold rounded-xl text-sm transition-colors"
         >
           {isLoading
-            ? <><Loader2 className="h-4 w-4 animate-spin" /> Building…</>
+            ? <><Loader2 className="h-4 w-4 animate-spin" /> {rating ? `${coachName} is setting XP…` : mode === 'ai' ? 'Building…' : 'Saving…'}</>
             : mode === 'ai' ? <><Sparkles className="h-4 w-4" /> Generate AI Plan</> : 'Create Goal'}
         </button>
         {isLoading && mode === 'ai' && (
@@ -375,7 +405,7 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
         <ErrorDialog
           message={error}
           onClose={() => setError('')}
-          onRetry={() => { setError(''); submit(); }}
+          onRetry={canRetry ? () => { setError(''); submit(); } : undefined}
         />
       )}
     </div>

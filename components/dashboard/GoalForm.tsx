@@ -1,284 +1,204 @@
 'use client';
 
 import Portal from '@/components/ui/Portal';
-import { useState } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Loader2, X } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { CATEGORY_COLORS, type Category, type Subtask, type Goal } from '@/lib/types';
+import { CATEGORY_COLORS, type Category, type Goal } from '@/lib/types';
 import { dayKey } from '@/lib/dates';
+import { planFromGoal, planToGoalFields, validatePlan, unrated, type EditablePlan } from '@/lib/planEdit';
+import { ratePlan } from '@/lib/planRating';
+import PlanEditor from '@/components/goals/PlanEditor';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import ErrorDialog from '@/components/ui/ErrorDialog';
 
 const CATEGORIES: Category[] = ['personal', 'health', 'career', 'finance', 'education', 'fitness'];
+const field = 'w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors';
 
-const TEMPLATES: Record<Category, { placeholder: string; unit: string; target: string }> = {
-  personal:  { placeholder: 'e.g., Read 12 books this year',        unit: 'books',    target: '12' },
-  health:    { placeholder: 'e.g., Drink 8 glasses of water daily', unit: 'glasses',  target: '8' },
-  career:    { placeholder: 'e.g., Complete 3 certifications',       unit: 'certs',    target: '3' },
-  finance:   { placeholder: 'e.g., Save $10,000',                    unit: '$',        target: '10000' },
-  education: { placeholder: 'e.g., Complete 5 online courses',       unit: 'courses',  target: '5' },
-  fitness:   { placeholder: 'e.g., Run 500 km this year',            unit: 'km',       target: '500' },
+/** A stored date as the YYYY-MM-DD a date input needs. */
+const asDay = (d?: string | null) => {
+  if (!d) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const x = new Date(d);
+  return Number.isNaN(x.getTime()) ? '' : dayKey(x);
 };
 
-interface Props {
-  onClose: () => void;
-  editGoal?: Goal;
-}
+/**
+ * Edit Goal. It used to edit a flat list of "AI sub-tasks" — a shape no goal
+ * has had since plans gained stages — so what it showed did not match the
+ * goal it was editing. It now edits the real plan: stages, the milestones in
+ * each, and each stage's recurring tasks, with the same editor as Manual
+ * Entry. XP is never edited; anything new or re-worded is rated on save.
+ */
+export default function GoalForm({ onClose, editGoal }: { onClose: () => void; editGoal: Goal }) {
+  const updateGoal = useGoalStore(s => s.updateGoal);
+  const coachName = useGoalStore(s => s.coachName);
 
-export default function GoalForm({ onClose, editGoal }: Props) {
-  const { addGoal, updateGoal } = useGoalStore();
-  const isEditing = !!editGoal;
+  const initial = useMemo(() => ({
+    title: editGoal.title,
+    description: editGoal.description ?? '',
+    category: editGoal.category as Category,
+    targetValue: editGoal.targetValue != null ? String(editGoal.targetValue) : '',
+    unit: editGoal.unit ?? '',
+    startDate: asDay(editGoal.startDate) || asDay(editGoal.createdAt) || dayKey(),
+    endDate: asDay(editGoal.endDate),
+  }), [editGoal]);
+  const [form, setForm] = useState(initial);
+  const initialPlan = useMemo(() => planFromGoal(editGoal), [editGoal]);
+  const [plan, setPlan] = useState<EditablePlan>(initialPlan);
 
-  const [form, setForm] = useState({
-    title:       editGoal?.title       ?? '',
-    description: editGoal?.description ?? '',
-    category:    (editGoal?.category   ?? 'personal') as Category,
-    targetValue: editGoal?.targetValue != null ? String(editGoal.targetValue) : '',
-    unit:        editGoal?.unit        ?? '',
-    startDate:   editGoal?.startDate   ?? dayKey(),
-    endDate:     editGoal?.endDate     ?? '',
-  });
-  const [subtasks, setSubtasks] = useState<Partial<Subtask>[]>(editGoal?.subtasks ?? []);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [saving, setSaving] = useState<'' | 'rating' | 'saving'>('');
   const [error, setError] = useState('');
+  const [invalid, setInvalid] = useState<Set<string>>(new Set());
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
-  const tpl = TEMPLATES[form.category];
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial) || JSON.stringify(plan) !== JSON.stringify(initialPlan);
+  const close = () => (dirty && !saving ? setConfirmDiscard(true) : onClose());
 
-  const generateSubtasks = async () => {
-    if (!form.title) return;
-    setIsGenerating(true);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !confirmDiscard && !error) close(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  const save = async () => {
+    if (saving) return;
+    const problems = validatePlan(plan);
+    if (!form.title.trim()) problems.unshift({ key: 'title', message: 'The goal needs a title.' });
+    setInvalid(new Set(problems.map(p => p.key)));
+    if (problems.length) {
+      setError(problems[0].message);
+      return;
+    }
+    const todo = unrated(plan);
+    setSaving(todo.milestones.length || todo.tasks.length ? 'rating' : 'saving');
     try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
+      const rated = await ratePlan(form.title, plan);
+      setSaving('saving');
+      const fields = planToGoalFields(rated, form.startDate, editGoal);
+      const target = parseFloat(form.targetValue);
+      const res = await fetch(`/api/goals/${editGoal.id}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [
-            { role: 'system', content: 'Generate 5-7 actionable sub-tasks for the goal. Respond with valid JSON only — an array of {title, daysFromStart} objects.' },
-            { role: 'user', content: `Goal: ${form.title}\nCategory: ${form.category}\nTarget: ${form.targetValue} ${form.unit}\nDeadline: ${form.endDate || 'none'}` },
-          ],
-          max_tokens: 600,
-          temperature: 0.7,
+          title: form.title.trim(),
+          description: form.description,
+          category: form.category,
+          ...(Number.isFinite(target) ? { targetValue: target } : {}),
+          unit: form.unit,
+          startDate: form.startDate,
+          endDate: form.endDate || editGoal.endDate,
+          color: CATEGORY_COLORS[form.category].hex,
+          ...fields,
         }),
       });
-      const data = await res.json();
-      let text = data.choices?.[0]?.message?.content?.trim() || '[]';
-      text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      const parsed = JSON.parse(text);
-      setSubtasks(parsed.map((s: { title: string; daysFromStart: number }, i: number) => ({
-        id: Date.now() + i, title: s.title, daysFromStart: s.daysFromStart, completed: false,
-      })));
-    } catch (err) {
-      console.error('Failed to generate subtasks:', err);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form.title || !form.targetValue) return;
-    setIsSaving(true);
-    setError('');
-    try {
-      if (isEditing && editGoal) {
-        const res = await fetch(`/api/goals/${editGoal.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: form.title,
-            description: form.description,
-            category: form.category,
-            targetValue: parseFloat(form.targetValue),
-            unit: form.unit,
-            startDate: form.startDate,
-            endDate: form.endDate,
-            color: CATEGORY_COLORS[form.category].hex,
-            subtasks,
-          }),
-        });
-        if (!res.ok) throw new Error('Failed to update goal');
-        const saved = await res.json();
-        updateGoal(saved);
-      } else {
-        const res = await fetch('/api/goals', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            ...form,
-            targetValue: parseFloat(form.targetValue),
-            currentValue: 0,
-            color: CATEGORY_COLORS[form.category].hex,
-            subtasks,
-            dailyTasks: [],
-            taskCompletions: {},
-            checkIns: [],
-            progressHistory: [{ date: new Date().toISOString(), value: 0 }],
-            milestones: [],
-          }),
-        });
-        if (!res.ok) throw new Error('Failed to create goal');
-        const created = await res.json();
-        addGoal(created);
-      }
+      if (!res.ok) throw new Error(String(res.status));
+      updateGoal(await res.json());
       onClose();
-    } catch (err) {
-      setError(isEditing ? 'Failed to update goal. Please try again.' : 'Failed to create goal. Please try again.');
-      console.error(err);
+    } catch {
+      setError('Your changes couldn’t be saved. Nothing was lost — please try again.');
     } finally {
-      setIsSaving(false);
+      setSaving('');
     }
   };
 
   return (
     <Portal>
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
-      <div className="bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto animate-pop-in">
-        {/* Header */}
-        <div className="sticky top-0 bg-card border-b border-line px-5 py-4 flex items-center justify-between z-10">
-          <h2 className="text-lg font-bold text-fg">{isEditing ? 'Edit Goal' : 'Create New Goal'}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-elevated rounded-lg">
+    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in">
+      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={close} />
+      <div role="dialog" aria-modal="true" aria-label="Edit goal"
+        className="relative bg-card border border-line w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl max-h-[92vh] flex flex-col animate-pop-in">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+          <h2 className="text-lg font-bold text-fg">Edit Goal</h2>
+          <button type="button" onClick={close} aria-label="Close" className="p-2 hover:bg-elevated rounded-lg">
             <X className="h-5 w-5 text-muted" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Category */}
-          <div className="grid grid-cols-3 gap-2">
+        <div className="flex-1 overflow-y-auto thin-scroll p-5 space-y-4">
+          <div>
+            <label htmlFor="goal-title" className="block text-sm font-medium text-fg mb-1">Goal title</label>
+            <input id="goal-title" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+              className={`${field} ${invalid.has('title') ? 'border-red-500/70' : ''}`} />
+          </div>
+
+          <div className="grid grid-cols-3 gap-2" role="group" aria-label="Category">
             {CATEGORIES.map(cat => {
               const c = CATEGORY_COLORS[cat];
+              const on = form.category === cat;
               return (
-                <button
-                  key={cat} type="button"
+                <button key={cat} type="button" aria-pressed={on}
                   onClick={() => setForm(f => ({ ...f, category: cat }))}
-                  className={`py-2 px-3 rounded-xl text-xs font-medium border-2 transition-all ${
-                    form.category === cat ? `${c.light} ${c.text} border-transparent` : 'bg-card border-line text-muted'
-                  }`}
-                >
-                  {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                  className={`py-2 px-3 rounded-xl text-xs font-medium border-2 capitalize transition-all ${
+                    on ? `${c.light} ${c.text} border-current` : 'bg-card border-line text-muted'
+                  }`}>
+                  {cat}
                 </button>
               );
             })}
           </div>
 
-          {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-fg mb-1">Goal Title *</label>
-            <input
-              value={form.title}
-              onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-              placeholder={tpl.placeholder}
-              className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
-              required
-            />
-          </div>
-
-          {/* Target + Unit */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-fg mb-1">Target *</label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={form.targetValue}
-                onChange={e => {
-                  const v = e.target.value;
-                  if (v === '' || /^\d*\.?\d*$/.test(v)) setForm(f => ({ ...f, targetValue: v }));
-                }}
-                placeholder={tpl.target}
-                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-fg mb-1">Unit</label>
-              <input
-                value={form.unit}
-                onChange={e => setForm(f => ({ ...f, unit: e.target.value }))}
-                placeholder={tpl.unit}
-                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-fg mb-1">Start Date</label>
-              <input
-                type="date" value={form.startDate ?? ''}
-                onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-fg mb-1">End Date</label>
-              <input
-                type="date" value={form.endDate ?? ''}
-                onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm transition-colors"
-              />
-            </div>
-          </div>
-
-          {/* Description */}
-          <div>
-            <label className="block text-sm font-medium text-fg mb-1">Description</label>
-            <textarea
-              value={form.description}
+            <label htmlFor="goal-why" className="block text-sm font-medium text-fg mb-1">Why it matters</label>
+            <textarea id="goal-why" value={form.description} rows={2}
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-              placeholder="Why is this goal important to you?"
-              rows={2}
-              className="w-full px-3 py-2.5 bg-elevated border border-line rounded-xl text-fg placeholder:text-muted-dim focus:outline-none focus:border-[var(--brand)] text-sm resize-none transition-colors"
-            />
+              className={`${field} resize-none`} />
           </div>
 
-          {/* AI Subtasks */}
-          <div className="bg-[var(--brand-light)] rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-[var(--brand)]" />
-                <span className="text-sm font-semibold text-[var(--brand)]">AI-Powered Sub-tasks</span>
-              </div>
-              <button
-                type="button" onClick={generateSubtasks} disabled={isGenerating || !form.title}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[var(--brand)] hover:bg-[var(--brand-dark)] disabled:bg-line text-black rounded-lg text-xs font-medium transition-colors"
-              >
-                <Sparkles className="h-3.5 w-3.5" />
-                {isGenerating ? 'Generating…' : subtasks.length > 0 ? 'Regenerate' : 'Generate'}
-              </button>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="goal-start" className="block text-sm font-medium text-fg mb-1">Start date</label>
+              <input id="goal-start" type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))} className={field} />
             </div>
-            {subtasks.length > 0 && (
-              <ul className="space-y-1.5 mt-3">
-                {subtasks.map((s, i) => (
-                  <li key={i} className="flex items-center justify-between gap-2 bg-card/70 rounded-lg px-3 py-2 text-xs text-fg">
-                    <span className="truncate">{s.title}</span>
-                    <button type="button" onClick={() => setSubtasks(prev => prev.filter((_, idx) => idx !== i))}>
-                      <X className="h-3.5 w-3.5 text-muted hover:text-red-400" />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <div>
+              <label htmlFor="goal-end" className="block text-sm font-medium text-fg mb-1">Target date</label>
+              <input id="goal-end" type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))} className={field} />
+            </div>
           </div>
 
-          {error && <p className="text-sm text-red-500 text-center">{error}</p>}
-
-          {/* Actions */}
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button" onClick={onClose}
-              className="flex-1 py-3 border border-line text-muted rounded-xl font-semibold hover:bg-elevated text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit" disabled={isSaving || !form.title || !form.targetValue}
-              className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] disabled:bg-line text-black rounded-xl font-semibold text-sm transition-colors"
-            >
-              {isSaving ? (isEditing ? 'Saving…' : 'Creating…') : (isEditing ? 'Save Changes' : 'Create Goal')}
-            </button>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="goal-target" className="block text-sm font-medium text-fg mb-1">Target</label>
+              <input id="goal-target" inputMode="decimal" value={form.targetValue}
+                onChange={e => { const v = e.target.value; if (v === '' || /^\d*\.?\d*$/.test(v)) setForm(f => ({ ...f, targetValue: v })); }}
+                className={field} />
+            </div>
+            <div>
+              <label htmlFor="goal-unit" className="block text-sm font-medium text-fg mb-1">Unit</label>
+              <input id="goal-unit" value={form.unit} onChange={e => setForm(f => ({ ...f, unit: e.target.value }))} className={field} />
+            </div>
           </div>
-        </form>
+
+          <div>
+            <h3 className="text-sm font-semibold text-fg mb-2">The plan</h3>
+            <PlanEditor plan={plan} onChange={setPlan} coachName={coachName} invalid={invalid} startDate={form.startDate} />
+          </div>
+        </div>
+
+        <div className="flex gap-3 border-t border-line px-5 py-4">
+          <button type="button" onClick={close}
+            className="flex-1 py-3 border border-line text-muted rounded-xl font-semibold hover:bg-elevated text-sm">
+            Cancel
+          </button>
+          <button type="button" onClick={save} disabled={!!saving}
+            className="flex-1 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] disabled:opacity-70 text-black rounded-xl font-semibold text-sm transition-colors inline-flex items-center justify-center gap-2">
+            {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+            {saving === 'rating' ? `${coachName} is setting XP…` : saving === 'saving' ? 'Saving…' : 'Save Changes'}
+          </button>
+        </div>
       </div>
+
+      {confirmDiscard && (
+        <ConfirmDialog
+          title="Discard your changes?"
+          body="Nothing you changed here has been saved yet."
+          confirmLabel="Discard"
+          cancelLabel="Keep editing"
+          onConfirm={() => { onClose(); return true; }}
+          onClose={() => setConfirmDiscard(false)}
+        />
+      )}
+      {error && <ErrorDialog title="Can’t save yet" message={error} onClose={() => setError('')} />}
     </div>
     </Portal>
   );
