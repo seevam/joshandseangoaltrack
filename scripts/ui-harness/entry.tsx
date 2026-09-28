@@ -22,7 +22,18 @@ import type { Goal } from '@/lib/types';
 import { SAMPLE_GOALS } from './fixtures';
 
 const flags = new URLSearchParams(location.search);
-let goals: Goal[] = flags.has('empty') ? [] : structuredClone(SAMPLE_GOALS);
+
+/*
+ * The fake server's data survives page loads within a browser session, like
+ * a real database: navigating reloads the harness, and a goal deleted on one
+ * page must still be gone on the next. `?reset` starts over; a different flag
+ * set (e.g. ?empty) is a different "account" with its own data.
+ */
+const STORE_KEY = `harness_goals_${Array.from(flags.keys()).filter(k => k !== 'reset').sort().join(',')}`;
+if (flags.has('reset')) sessionStorage.removeItem(STORE_KEY);
+const saved = sessionStorage.getItem(STORE_KEY);
+let goals: Goal[] = saved ? JSON.parse(saved) : flags.has('empty') ? [] : structuredClone(SAMPLE_GOALS);
+const persist = () => sessionStorage.setItem(STORE_KEY, JSON.stringify(goals));
 
 const at = (h: number) => { const d = new Date(); d.setHours(h, 0, 0, 0); return d.toISOString(); };
 if (flags.has('gcal')) sessionStorage.setItem('gq_gcal_token', JSON.stringify({ value: 'tok', expiresAt: Date.now() + 3600e3 }));
@@ -32,7 +43,10 @@ const json = (body: unknown, status = 200) =>
 
 type W = typeof window & { __calls: string[]; __ai: (body: unknown) => unknown };
 const w = window as W;
-w.__calls = [];
+// The request log survives reloads too, so a check can see what a click sent
+// before the navigation it caused.
+w.__calls = JSON.parse(sessionStorage.getItem('harness_calls') || '[]');
+const logCall = (c: string) => { w.__calls.push(c); sessionStorage.setItem('harness_calls', JSON.stringify(w.__calls)); };
 
 /** Default AI: answers whichever tool the request forces. Checks can override w.__ai. */
 w.__ai = (req: unknown) => {
@@ -60,24 +74,25 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return json({ calendars: { primary: { busy: [{ start: at(8), end: at(16) }, { start: at(18), end: at(19) }] } } });
   }
   if (url.startsWith('/api/ai/chat')) {
-    w.__calls.push(`AI ${init?.body}`);
+    logCall(`AI ${init?.body}`);
     return json(w.__ai ? w.__ai(JSON.parse(String(init?.body))) : { choices: [] });
   }
   if (method !== 'GET') {
-    w.__calls.push(`${method} ${url} ${init?.body ?? ''}`);
+    logCall(`${method} ${url} ${init?.body ?? ''}`);
     if (flags.has('fail')) return json({}, 500);
   }
   if (url === '/api/goals' && method === 'GET') return json(goals);
   if (url === '/api/goals' && method === 'POST') {
     const g = { ...JSON.parse(String(init?.body)), id: `new${goals.length}`, userId: 'u', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as Goal;
     goals = [g, ...goals];
+    persist();
     return json(g, 201);
   }
   const m = url.match(/^\/api\/goals\/([^/]+)$/);
   if (m) {
     const g = goals.find(x => x.id === m[1]);
     if (!g) return json({ error: 'Goal not found' }, 404);
-    if (method === 'DELETE') { goals = goals.filter(x => x.id !== g.id); return json({ success: true }); }
+    if (method === 'DELETE') { goals = goals.filter(x => x.id !== g.id); persist(); return json({ success: true }); }
     if (method === 'PUT') {
       const body = JSON.parse(String(init?.body));
       const next = { ...g };
@@ -94,6 +109,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         if (!next.checkIns.includes(body.checkIn)) next.checkIns = [...next.checkIns, body.checkIn];
       } else Object.assign(next, body);
       goals = goals.map(x => (x.id === g.id ? next : x));
+      persist();
       return json(next);
     }
     return json(g);

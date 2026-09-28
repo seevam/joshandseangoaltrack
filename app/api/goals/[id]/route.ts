@@ -13,12 +13,29 @@ function missingColumn(err: unknown): string | null {
 
 type Params = { params: { id: string } };
 
+/**
+ * The goal as saved, after a targeted update. Falls back to SELECT * when the
+ * database is a column behind the schema, so a write that succeeded is never
+ * reported as a failure just because reading it back through Prisma choked.
+ */
+async function readGoal(id: string, userId: string) {
+  try {
+    return await prisma.goal.findFirst({ where: { id, userId } });
+  } catch (err) {
+    if (!missingColumn(err)) throw err;
+    const rows = await prisma.$queryRaw<unknown[]>`SELECT * FROM goals WHERE id = ${id} AND "userId" = ${userId}`;
+    return rows[0] ?? null;
+  }
+}
+
 export async function PUT(req: Request, { params }: Params) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const existing = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+    // Ownership check reads the id only, so a column the database is missing
+    // cannot turn every save into a 500.
+    const existing = await prisma.goal.findFirst({ where: { id: params.id, userId }, select: { id: true } });
     if (!existing) return NextResponse.json({ error: 'Goal not found' }, { status: 404 });
 
     const body = await req.json();
@@ -52,7 +69,7 @@ export async function PUT(req: Request, { params }: Params) {
             "updatedAt" = NOW()
         WHERE id = ${params.id} AND "userId" = ${userId}
       `;
-      const updated = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+      const updated = await readGoal(params.id, userId);
       return NextResponse.json(updated);
     }
 
@@ -90,7 +107,7 @@ export async function PUT(req: Request, { params }: Params) {
             "updatedAt" = NOW()
         WHERE id = ${params.id} AND "userId" = ${userId}
       `;
-      const updated = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+      const updated = await readGoal(params.id, userId);
       return NextResponse.json(updated);
     }
 
@@ -133,7 +150,7 @@ export async function PUT(req: Request, { params }: Params) {
             "updatedAt" = NOW()
         WHERE id = ${params.id} AND "userId" = ${userId}
       `;
-      const updated = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+      const updated = await readGoal(params.id, userId);
       return NextResponse.json(updated);
     }
 
@@ -152,7 +169,7 @@ export async function PUT(req: Request, { params }: Params) {
             "updatedAt" = NOW()
         WHERE id = ${params.id} AND "userId" = ${userId}
       `;
-      const updated = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+      const updated = await readGoal(params.id, userId);
       return NextResponse.json(updated);
     }
 
@@ -194,10 +211,15 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const existing = await prisma.goal.findFirst({ where: { id: params.id, userId } });
-    if (!existing) return NextResponse.json({ error: 'Goal not found' }, { status: 404 });
-
-    await prisma.goal.delete({ where: { id: params.id } });
+    /*
+     * One statement, scoped to the owner, touching no columns. It used to load
+     * the whole goal first to check it existed — which fails outright whenever
+     * the database is a column behind the code (the P2022 outage), while the
+     * goals list keeps working through its fallback. Delete then looked like a
+     * button that did nothing.
+     */
+    const { count } = await prisma.goal.deleteMany({ where: { id: params.id, userId } });
+    if (count === 0) return NextResponse.json({ error: 'Goal not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error(`DELETE /api/goals/${params.id} error:`, err);

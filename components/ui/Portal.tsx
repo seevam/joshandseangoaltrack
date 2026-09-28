@@ -15,10 +15,15 @@ import { createPortal } from 'react-dom';
  * trapped in that section's stacking context and can end up beneath
  * unrelated content. Under <body>, neither can happen.
  *
- * Renders nothing until mounted, since there is no document on the server.
  */
 export default function Portal({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  return mounted ? createPortal(children, document.body) : null;
+  // Available on the very first client render, not one effect later: a dialog
+  // that focuses its safe button on mount must find that button already in
+  // the document, or focus is left behind on the page. Overlays only open
+  // after an interaction, so none is ever part of the server-rendered HTML.
+  const [target, setTarget] = useState<HTMLElement | null>(
+    () => (typeof document === 'undefined' ? null : document.body),
+  );
+  useEffect(() => { if (!target) setTarget(document.body); }, [target]);
+  return target ? createPortal(children, target) : null;
 }
