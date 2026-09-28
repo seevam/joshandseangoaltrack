@@ -25,6 +25,12 @@ export interface Subtask {
   description?: string;
   daysFromStart: number;
   completed: boolean;
+  /**
+   * When it was ticked, ISO. Absent on milestones ticked before this was
+   * recorded — those are treated as completed "now" by anything judging past
+   * days (see stageBreakdown), which is the forgiving reading.
+   */
+  completedAt?: string;
   /** Assigned by the AI from task difficulty — drives XP. Never user-editable. */
   difficulty?: 'easy' | 'medium' | 'hard' | 'epic';
 }

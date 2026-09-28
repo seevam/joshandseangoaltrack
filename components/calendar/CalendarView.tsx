@@ -8,7 +8,7 @@ import { Icon } from '@/components/ui/icons';
 import { AnimatedCheck } from '@/components/ui/motion';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
-import { activeTasks } from '@/lib/stages';
+import { activeTasks, visibleMilestones } from '@/lib/stages';
 import { dayKey } from '@/lib/dates';
 import { logCompletion } from '@/lib/completions';
 
@@ -82,7 +82,9 @@ export default function CalendarView() {
     for (const goal of goals) {
       if (!goal.startDate) continue;
       const start = new Date(goal.startDate).getTime();
-      for (const m of goal.subtasks || []) {
+      // Same rule as the goal page: a future stage's milestones stay hidden
+      // until it is reached, so they don't flag dates on the calendar either.
+      for (const { milestone: m } of visibleMilestones(goal)) {
         if (iso(new Date(start + m.daysFromStart * 86400000)) === key) count++;
       }
     }

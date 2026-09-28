@@ -107,7 +107,15 @@ export function toggleMilestone(goalId: string, index: number): Promise<boolean>
   const completed = !m.completed;
   return optimistic(
     goalId,
-    g => ({ ...g, subtasks: (g.subtasks || []).map((x, i) => (i === index ? { ...x, completed } : x)) }),
+    g => ({
+      ...g,
+      subtasks: (g.subtasks || []).map((x, i) => {
+        if (i !== index) return x;
+        if (completed) return { ...x, completed, completedAt: new Date().toISOString() };
+        const { completedAt: _drop, ...rest } = x;
+        return { ...rest, completed };
+      }),
+    }),
     { milestone: { index, id: m.id ?? null, completed } },
   );
 }

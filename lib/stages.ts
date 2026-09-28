@@ -24,11 +24,28 @@ export interface StageProgress {
  * simply "the next incomplete stage", because a user can complete a later
  * milestone early and that should not skip the phase they are actually in.
  */
-export function stageBreakdown(goal: Goal): StageProgress[] {
+export function stageBreakdown(goal: Goal, asOf?: number): StageProgress[] {
   const stages = goal.stages || [];
   if (!stages.length) return [];
 
-  const milestones = goal.subtasks || [];
+  /*
+   * `asOf` answers "which stage was the user in at that moment?", for anything
+   * judging a past day — goal health above all. Without it, opening stage 2
+   * made health re-judge the previous twenty days against stage 2's tasks,
+   * which did not exist for the user yet, and docked them for missing them.
+   * A milestone counts as done at `asOf` only if it was completed by then; one
+   * ticked before completedAt was recorded counts as completed "now", so past
+   * days are judged against the earlier stage the user was actually in.
+   */
+  const doneBy = (m: Subtask) => {
+    if (!m.completed) return false;
+    if (asOf === undefined) return true;
+    if (!m.completedAt) return false;
+    const t = new Date(m.completedAt).getTime();
+    return Number.isFinite(t) && t <= asOf;
+  };
+
+  const milestones = (goal.subtasks || []).map(m => (doneBy(m) === m.completed ? m : { ...m, completed: false }));
   const byStage = new Map<string, Subtask[]>();
   for (const s of stages) byStage.set(s.id, []);
   for (const m of milestones) {
@@ -61,8 +78,8 @@ export function stageBreakdown(goal: Goal): StageProgress[] {
 }
 
 /** The phase the user is actually in, or null when the goal has no stages. */
-export function currentStage(goal: Goal): StageProgress | null {
-  return stageBreakdown(goal).find(s => s.status === 'current') ?? null;
+export function currentStage(goal: Goal, asOf?: number): StageProgress | null {
+  return stageBreakdown(goal, asOf).find(s => s.status === 'current') ?? null;
 }
 
 /** Milestones with no stage — kept visible rather than silently dropped. */
@@ -84,13 +101,13 @@ export function unstagedMilestones(goal: Goal): Subtask[] {
  * phase of it, and silently hiding them would lose work the user can see in the
  * plan.
  */
-export function activeTasks(goal: Goal): Goal['dailyTasks'] {
+export function activeTasks(goal: Goal, asOf?: number): Goal['dailyTasks'] {
   const tasks = goal.dailyTasks || [];
   const stages = goal.stages || [];
   if (!stages.length) return tasks;
 
   const stageIds = new Set(stages.map(s => s.id));
-  const current = currentStage(goal);
+  const current = currentStage(goal, asOf);
 
   const live = tasks.filter(t => {
     // No stage, or a stage that no longer exists: belongs to the goal itself.
@@ -111,4 +128,29 @@ export function activeTasks(goal: Goal): Goal['dailyTasks'] {
 /** Recurring tasks belonging to one stage, for showing a phase's own plan. */
 export function tasksForStage(goal: Goal, stageId: string): Goal['dailyTasks'] {
   return (goal.dailyTasks || []).filter(t => t.stageId === stageId);
+}
+
+/**
+ * The milestones the user should see right now, each with its position in
+ * goal.subtasks (which is how milestones are ticked and deleted).
+ *
+ * Only the stage they are in. Future stages stay hidden until reached — a list
+ * of twelve milestones, nine of them locked, buried the three that mattered —
+ * and a finished stage's milestones drop away once the next one opens.
+ *
+ * Milestones with no stage belong to the goal itself and always show. A goal
+ * with no stages shows everything. A goal whose every stage is finished shows
+ * everything too: the plan is done, and the list becomes its record.
+ */
+export function visibleMilestones(goal: Goal): { milestone: Subtask; index: number }[] {
+  const all = (goal.subtasks || []).map((milestone, index) => ({ milestone, index }));
+  const stages = goal.stages || [];
+  if (!stages.length) return all;
+
+  const current = currentStage(goal);
+  if (!current) return all;
+
+  const stageIds = new Set(stages.map(s => s.id));
+  return all.filter(({ milestone: m }) =>
+    !m.stageId || !stageIds.has(m.stageId) || m.stageId === current.stage.id);
 }

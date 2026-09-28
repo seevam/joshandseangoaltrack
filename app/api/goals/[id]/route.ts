@@ -77,7 +77,12 @@ export async function PUT(req: Request, { params }: Params) {
               SELECT jsonb_agg(
                        CASE WHEN t.ord = ${index + 1}
                              AND (${id}::text IS NULL OR t.e ->> 'id' = ${id}::text)
-                            THEN jsonb_set(t.e, '{completed}', to_jsonb(${completed}::boolean))
+                            -- completedAt records when, so anything judging a past
+                            -- day can tell which stage the user was in on it.
+                            THEN CASE WHEN ${completed}::boolean
+                                   THEN t.e || jsonb_build_object('completed', true, 'completedAt', ${new Date().toISOString()}::text)
+                                   ELSE (t.e - 'completedAt') || jsonb_build_object('completed', false)
+                                 END
                             ELSE t.e END
                        ORDER BY t.ord)
               FROM jsonb_array_elements(COALESCE(subtasks, '[]'::jsonb)) WITH ORDINALITY AS t(e, ord)

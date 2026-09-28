@@ -15,7 +15,7 @@ import DurationPrompt from '@/components/dashboard/DurationPrompt';
 import { IconTile } from '@/components/ui/icons';
 import { AnimatedNumber, AnimatedCheck, Reveal } from '@/components/ui/motion';
 import { GoalHealthCard, RecoveryModeCard } from './AdaptiveTools';
-import { stageBreakdown, tasksForStage, activeTasks } from '@/lib/stages';
+import { stageBreakdown, activeTasks, visibleMilestones } from '@/lib/stages';
 import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
@@ -181,10 +181,10 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const daysLeft = goal.endDate ? Math.ceil((new Date(goal.endDate).getTime() - Date.now()) / 86400000) : null;
 
   const stages = useMemo(() => stageBreakdown(goal), [goal]);
-  /** Which phase's own plan is open, if any. */
-  const [openStage, setOpenStage] = useState<string | null>(null);
-  const stageTasks = (stageId: string) => tasksForStage(goal, stageId);
   const milestones = goal.subtasks || [];
+  /** Just the stage the user is in — see visibleMilestones. */
+  const shownMilestones = useMemo(() => visibleMilestones(goal), [goal]);
+  const liveStage = stages.find(st => st.status === 'current') ?? null;
   const doneCount = milestones.filter(s => s.completed).length;
   /*
    * Only the live stage's work is completable here, for the same reason it is
@@ -333,32 +333,26 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
               </p>
             </div>
 
-            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr))]">
+            {/*
+              * A map of the journey, not a window into it. Each stage says
+              * where it sits — done, now, locked — and nothing more: a future
+              * stage's milestones and tasks stay hidden until the user gets
+              * there, and a finished stage's work is not re-listed. The cards
+              * are deliberately not buttons; there is nothing behind them.
+              */}
+            <ol className="grid gap-2.5 items-start [grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr))]">
               {stages.map(st => (
-                /*
-                 * The whole card is the target. Only the inner rows reacted
-                 * before, so most of a large tile did nothing when tapped —
-                 * a button that looks pressable everywhere must be pressable
-                 * everywhere.
-                 */
-                <button
+                <li
                   key={st.stage.id}
-                  type="button"
-                  onClick={() => setOpenStage(openStage === st.stage.id ? null : st.stage.id)}
-                  aria-expanded={openStage === st.stage.id}
                   style={{ ['--i' as string]: st.index }}
-                  // flex-col + justify-start: a <button> centres its content
-                  // vertically by default, which floated the shorter locked
-                  // cards halfway down the row.
-                  className={`stagger-fast flex flex-col justify-start h-full w-full text-left rounded-xl border p-3.5 glow-hover ${
+                  aria-current={st.status === 'current' ? 'step' : undefined}
+                  className={`stagger-fast flex flex-col rounded-xl border p-3.5 ${
                     st.status === 'current'
                       ? 'border-brand/40 bg-[var(--brand-light)]'
                       : 'border-line bg-card'
-                  } ${st.status === 'upcoming' ? 'opacity-70' : ''} ${
-                    openStage === st.stage.id ? 'ring-1 ring-inset ring-brand/30' : ''
-                  }`}
+                  } ${st.status === 'upcoming' ? 'opacity-70' : ''}`}
                 >
-                  <span className="flex items-start gap-2.5 mb-2">
+                  <div className="flex items-start gap-2.5">
                     <span
                       className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 ${
                         st.status === 'complete'
@@ -367,73 +361,66 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             ? 'bg-brand text-black'
                             : 'bg-elevated border border-line text-muted'
                       }`}
+                      aria-hidden
                     >
                       {st.status === 'complete'
                         ? <Check className="h-3 w-3" strokeWidth={3} />
                         : st.locked ? <Lock className="h-3 w-3" /> : st.index + 1}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-fg break-words">{st.stage.title}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-fg break-words">{st.stage.title}</p>
                       {st.stage.subtitle && (
-                        <span className="block text-xs text-brand mt-0.5 break-words">{st.stage.subtitle}</span>
+                        <p className="text-xs text-brand mt-0.5 break-words">{st.stage.subtitle}</p>
                       )}
-                    </span>
+                    </div>
                     {/* Phase state never rests on colour alone. */}
                     <span className="text-[10px] uppercase tracking-[0.12em] text-muted flex-shrink-0">
                       {st.status === 'current' ? 'Now' : st.status === 'complete' ? 'Done' : 'Locked'}
                     </span>
-                  </span>
+                  </div>
 
-                  {st.locked ? (
-                    <span className="flex items-start gap-1.5 text-xs text-muted leading-relaxed mb-2.5">
+                  {st.status === 'current' && (
+                    <>
+                      {st.stage.purpose && (
+                        <p className="text-xs text-muted leading-relaxed break-words mt-2.5">{st.stage.purpose}</p>
+                      )}
+                      <div className="mt-2.5 h-1.5 bg-track rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-brand transition-[width] duration-700 ease-out"
+                          style={{ width: `${st.percent}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted mt-1.5">
+                        {st.done}/{st.total} milestone{st.total === 1 ? '' : 's'} in this stage
+                      </p>
+                      {st.stage.guidance && (
+                        <div className="mt-2.5 rounded-lg border border-line bg-card p-2.5">
+                          <p className="text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">Approach</p>
+                          <p className="text-xs text-fg leading-relaxed break-words">{st.stage.guidance}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {st.status === 'complete' && (
+                    <p className="flex items-center gap-1.5 text-xs text-brand mt-2.5">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                      {st.total} milestone{st.total === 1 ? '' : 's'} cleared
+                    </p>
+                  )}
+
+                  {st.status === 'upcoming' && (
+                    <p className="flex items-start gap-1.5 text-xs text-muted leading-relaxed mt-2.5">
                       <Lock className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                      <span>Unlocks when you finish the phase you&apos;re in.</span>
-                    </span>
-                  ) : st.stage.purpose ? (
-                    <span className="block text-xs text-muted leading-relaxed break-words mb-2.5">{st.stage.purpose}</span>
-                  ) : null}
-
-                  <span className="block h-1.5 bg-track rounded-full overflow-hidden">
-                    <span
-                      className="block h-full rounded-full bg-brand transition-[width] duration-700 ease-out"
-                      style={{ width: `${st.percent}%` }}
-                    />
-                  </span>
-                  <span className="flex items-center justify-between gap-2 text-[10px] text-muted mt-1.5">
-                    <span className="truncate">
-                      {st.total > 0 ? `${st.done}/${st.total} milestones` : 'No milestones in this phase'}
-                      {stageTasks(st.stage.id).length > 0
-                        && ` · ${stageTasks(st.stage.id).length} recurring`}
-                    </span>
-                    <ChevronDown
-                      aria-hidden
-                      className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${
-                        openStage === st.stage.id ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </span>
-
-                  {st.status === 'current' && st.stage.guidance && (
-                    <span className="mt-2.5 block rounded-lg border border-line bg-card p-2.5">
-                      <span className="block text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
-                        Approach
+                      <span>
+                        Opens after{' '}
+                        <span className="text-fg">{stages[st.index - 1]?.stage.title ?? 'the stage before'}</span>.
                       </span>
-                      <span className="block text-xs text-fg leading-relaxed break-words">{st.stage.guidance}</span>
-                    </span>
+                    </p>
                   )}
-
-                  {/* This phase's own plan. Stages carry different work — base
-                      building is not race week — so each one lists what it
-                      actually asks for. */}
-                  {openStage === st.stage.id && (
-                    <span className="mt-2.5 block rounded-lg border border-line bg-card p-2.5 space-y-2">
-                      <StageLine label="Milestones" items={st.milestones.map(m => m.title)} />
-                      <StageLine label="Recurring" items={stageTasks(st.stage.id).map(t => t.title)} />
-                    </span>
-                  )}
-                </button>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
         </Reveal>
       )}
@@ -516,26 +503,39 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
           {/* Milestones */}
           <div className="card-glow rounded-2xl p-4 sm:p-5">
-            <h2 className="flex items-center gap-2 font-semibold text-fg mb-3">
+            <h2 className="flex items-center gap-2 font-semibold text-fg">
               <Map className="h-4 w-4 text-brand" />
               <span className="section-title">Milestones</span>
-              {milestones.length > 0 && (
-                <span className="text-xs font-normal text-muted">{doneCount}/{milestones.length} done</span>
+              {shownMilestones.length > 0 && (
+                <span className="text-xs font-normal text-muted">
+                  {shownMilestones.filter(v => v.milestone.completed).length}/{shownMilestones.length} done
+                </span>
               )}
             </h2>
+            {/* Which stage this list belongs to, so it is clear that the rest
+                of the plan exists and simply isn't open yet. */}
+            {liveStage ? (
+              <p className="text-xs text-muted mt-1 mb-3">
+                Stage {liveStage.index + 1} of {stages.length} ·{' '}
+                <span className="text-brand">{liveStage.stage.title}</span>
+                {liveStage.index + 1 < stages.length && ' — the next stage opens when these are done.'}
+              </p>
+            ) : (
+              <div className="mb-3" />
+            )}
 
-            {milestones.length === 0 ? (
+            {shownMilestones.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
                 No milestones yet. Ask your coach to break this goal into checkpoints.
               </p>
             ) : (
               <ul className="space-y-2">
-                {milestones.map((s, i) => {
+                {shownMilestones.map(({ milestone: s, index: i }) => {
                   /*
-                   * Locking has to bite here, not only in the Stages panel. A
-                   * milestone belonging to a phase the user hasn't reached is
-                   * shown but not actionable — otherwise "locked" is decoration
-                   * and the whole point of staging a plan is lost.
+                   * Future stages are no longer listed at all, so nothing here
+                   * should be locked. The check stays as a guard: if a locked
+                   * milestone ever does reach this list, it must not be
+                   * tickable.
                    */
                   const owningStage = stages.find(st => st.stage.id === s.stageId);
                   const stageLocked = !!owningStage?.locked;
@@ -671,6 +671,11 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
               </span>
               {showTasks ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
             </button>
+            {liveStage && showTasks && (
+              <p className="text-xs text-muted mt-1 mb-3">
+                The habits for <span className="text-brand">{liveStage.stage.title}</span>. They change when the stage does.
+              </p>
+            )}
 
             {recurringTasks.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
@@ -899,27 +904,3 @@ function Sparkline({ history, target, color }: { history: { date: string; value:
   );
 }
 
-/**
- * One list inside a stage card. Rendered with spans because its parent is a
- * button, and a <ul> inside a <button> is invalid markup that React will
- * happily produce and the browser will happily reflow out of place.
- */
-function StageLine({ label, items }: { label: string; items: string[] }) {
-  return (
-    <span className="block">
-      <span className="block text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
-        {label}
-      </span>
-      {items.length === 0 ? (
-        <span className="block text-xs text-muted">Nothing assigned to this phase.</span>
-      ) : (
-        items.map((title, i) => (
-          <span key={`${title}-${i}`} className="flex gap-1.5 text-xs text-fg leading-relaxed">
-            <span className="text-muted flex-shrink-0">·</span>
-            <span className="min-w-0 break-words">{title}</span>
-          </span>
-        ))
-      )}
-    </span>
-  );
-}

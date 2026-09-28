@@ -125,10 +125,6 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
   // ── Days that have already ended ────────────────────────────────────────
   const today = startOfDay(now);
   const firstDay = startOfDay(Math.max(startTs, now - MAX_LOOKBACK_DAYS * DAY));
-  // Only the live stage's work counts. Penalising for tasks that belong to a
-  // phase the user has finished would mean the app docks you for missing
-  // something it stopped asking you to do.
-  const tasks = activeTasks(goal);
   const completions = goal.taskCompletions || {};
 
   let dayPenalty = 0;
@@ -138,6 +134,11 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
   let clearedDays = 0;
 
   for (const cursor = new Date(firstDay); cursor < today; cursor.setDate(cursor.getDate() + 1)) {
+    // Each day is judged against the stage the user was in ON that day — not
+    // today's. Otherwise opening a new stage retroactively docks every past
+    // day for tasks that did not exist yet, and never credits the old ones.
+    const endOfDay = new Date(cursor); endOfDay.setHours(23, 59, 59, 999);
+    const tasks = activeTasks(goal, endOfDay.getTime());
     const scheduled = tasks.filter(t => {
       const days = t.daysOfWeek;
       return !days || days.length === 0 || days.includes(cursor.getDay());

@@ -66,7 +66,11 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         const { date, taskId, value } = body.completion;
         next.taskCompletions = { ...next.taskCompletions, [date]: { ...(next.taskCompletions[date] || {}), [taskId]: value } };
       } else if (body.milestone) {
-        next.subtasks = next.subtasks.map((s, i) => (i === body.milestone.index ? { ...s, completed: body.milestone.completed } : s));
+        next.subtasks = next.subtasks.map((s, i) => {
+          if (i !== body.milestone.index) return s;
+          const { completedAt: _drop, ...rest } = s;
+          return body.milestone.completed ? { ...rest, completed: true, completedAt: new Date().toISOString() } : { ...rest, completed: false };
+        });
       } else if (body.checkIn) {
         if (!next.checkIns.includes(body.checkIn)) next.checkIns = [...next.checkIns, body.checkIn];
       } else Object.assign(next, body);
