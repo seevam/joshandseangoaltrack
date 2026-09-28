@@ -11,6 +11,13 @@ const MODEL = process.env.OPENAI_MODEL || 'gpt-4.1';
 /** Used only when the account cannot reach MODEL, so a rollout never hard-fails. */
 const FALLBACK_MODEL = 'gpt-4o';
 
+/*
+ * A whole plan takes the model a while to write. Serverless functions are cut
+ * off at 10–15 seconds by default, which returned an HTML 504 in place of the
+ * plan; 60 is allowed on every Vercel plan.
+ */
+export const maxDuration = 60;
+
 /** True when the upstream refusal is about the model itself, not the request. */
 function isModelUnavailable(status: number, data: unknown): boolean {
   if (status !== 404 && status !== 400) return false;

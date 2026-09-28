@@ -3,9 +3,8 @@ import type { Goal } from './types';
 /**
  * Which life domains a goal builds, and the eight domains themselves.
  *
- * Lives apart from lib/skills.ts because lib/xp.ts needs the same mapping —
- * the overall rank is weighted by how evenly XP is spread across these — and
- * skills.ts already depends on xp.ts.
+ * Kept free of scoring imports so both lib/skills.ts and lib/xp.ts can use it:
+ * the skills are built on these domains, and the overall rank on the skills.
  */
 
 export const GOAL_DOMAINS = [
@@ -30,37 +29,60 @@ export const SKILLS = [...GOAL_DOMAINS, DISCIPLINE] as const;
 export type GoalDomainId = (typeof GOAL_DOMAINS)[number]['id'];
 export type SkillId = GoalDomainId | 'discipline';
 
-/** Category alone is coarse, so the title and description are also scanned. */
+/*
+ * Whole words only, with the endings spelled out. These used to be bare
+ * prefixes matched against the title AND the AI-written description, so a
+ * marathon plan whose description said "get ready" or "learn your pace" or
+ * "of course" fed Intelligence: Josh did nothing but Health tasks and watched
+ * Intelligence climb.
+ */
 const KEYWORDS: [RegExp, GoalDomainId][] = [
-  [/\b(run|marathon|5k|10k|gym|lift|strength|weight|muscle|swim|cycl|sport|sleep|diet|nutrition|eat|water|smok|drink)/i, 'health'],
-  [/\b(read|book|learn|study|course|language|spanish|french|degree|exam|cod|research|maths?)/i, 'intelligence'],
-  [/\b(write|novel|paint|draw|music|guitar|piano|art|photo|design|craft|creat|compose|film)/i, 'creativity'],
-  [/\b(friend|family|social|communit|relationship|date|partner|speak|present|confidence|network|converse)/i, 'charisma'],
-  [/\b(career|promot|job|interview|portfolio|business|startup|salary|save|saving|invest|budget|debt|money|financ|retire)/i, 'vocation'],
-  [/\b(meditat|mindful|therapy|quit|stress|anxiety|recover|endur|consistenc|sober|resilien)/i, 'resilience'],
-  [/\b(lead|team|manage|mentor|organis|organiz|coach|volunteer|found|delegate)/i, 'leadership'],
-  [/\b(travel|explor|visit|countr|adventure|discover|hike|camp|abroad)/i, 'exploration'],
+  [/\b(run|runs|running|runner|marathon|half-marathon|5k|10k|jog|jogging|gym|lift|lifting|strength|weight|weights|muscle|swim|swimming|cycle|cycling|bike|sport|sports|sleep|diet|nutrition|eat|eating|healthy|fitness|fit|yoga|workout|workouts|exercise|smoking|drinking|alcohol|steps|pushups?|pull-ups?)\b/i, 'health'],
+  [/\b(read|reading|books?|learn|learning|study|studying|course|courses|language|spanish|french|german|japanese|mandarin|degree|exam|exams|coding|code|programming|research|maths?|certification)\b/i, 'intelligence'],
+  [/\b(write|writing|novel|poetry|paint|painting|draw|drawing|sketch|sketching|music|song|songs|guitar|piano|art|photography|design|craft|creative|compose|film|ceramics)\b/i, 'creativity'],
+  [/\b(friends?|family|social|community|relationships?|dating|partner|public speaking|speak|speaking|presentations?|confidence|network|networking|conversations?)\b/i, 'charisma'],
+  [/\b(career|promotion|job|interview|portfolio|business|startup|salary|save|saving|savings|invest|investing|budget|debt|money|finances?|financial|retire|retirement|side hustle)\b/i, 'vocation'],
+  [/\b(meditate|meditation|mindful|mindfulness|therapy|quit|stress|anxiety|recovery|endurance|sober|sobriety|resilience|cold showers?)\b/i, 'resilience'],
+  [/\b(lead|leader|leadership|team|manage|manager|mentor|mentoring|organise|organize|volunteer|volunteering|delegate)\b/i, 'leadership'],
+  [/\b(travel|travelling|traveling|explore|exploring|visit|countries|country|adventure|discover|hike|hiking|camp|camping|abroad|trip)\b/i, 'exploration'],
 ];
 
-/** Our goal categories mapped onto the domain set. */
+/**
+ * Our goal categories mapped onto the domain set. 'personal' is the catch-all,
+ * so it names no domain and the title decides.
+ */
 const CATEGORY_DOMAINS: Record<string, GoalDomainId[]> = {
   fitness:   ['health'],
-  health:    ['health', 'resilience'],
+  health:    ['health'],
   education: ['intelligence'],
   career:    ['vocation'],
   finance:   ['vocation'],
-  personal:  ['exploration'],
+  personal:  [],
 };
 
 /**
  * Which domains a goal feeds. Never includes discipline — that is derived from
  * behaviour, not from what the goal is about.
+ *
+ * The category the user picked comes first. The TITLE can add a domain it
+ * plainly names ("Learn guitar" is Intelligence and Creativity), but the
+ * description never does: it is long, AI-written, and mentions everything.
+ * Only when neither says anything — a "personal" goal with a vague title — is
+ * the description consulted, and then only for its single strongest match.
  */
 export function skillsForGoal(goal: Goal): GoalDomainId[] {
   const found = new Set<GoalDomainId>(CATEGORY_DOMAINS[goal.category] || []);
-  const text = `${goal.title} ${goal.description || ''}`;
-  for (const [re, domain] of KEYWORDS) if (re.test(text)) found.add(domain);
-  if (found.size === 0) found.add('exploration');
+  for (const [re, domain] of KEYWORDS) if (re.test(goal.title || '')) found.add(domain);
+  if (found.size === 0) {
+    const text = goal.description || '';
+    let best: GoalDomainId | null = null;
+    let bestHits = 0;
+    for (const [re, domain] of KEYWORDS) {
+      const hits = (text.match(new RegExp(re.source, 'gi')) || []).length;
+      if (hits > bestHits) { best = domain; bestHits = hits; }
+    }
+    found.add(best ?? 'exploration');
+  }
   return Array.from(found);
 }
 

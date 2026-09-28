@@ -3,7 +3,7 @@
 import { useGoalStore } from './store';
 import { getGoalProgress, type TaskCompletionValue } from './types';
 import { dayKey } from './dates';
-import { logCompletion } from './completions';
+import { logCompletion, toggleMilestone, checkIn } from './completions';
 
 async function apiCall(url: string, method: string, body?: unknown) {
   const opts: RequestInit = { method, headers: {} };
@@ -31,21 +31,20 @@ export function useGoalActions(hooks?: {
     if (selectedGoal?.id === saved.id) setSelectedGoal(saved);
   };
 
-  const onDelete = async (id: string) => {
+  // Destructive actions report whether they happened, so a confirmation can
+  // stay open on failure instead of navigating away from a goal that still
+  // exists.
+  const onDelete = async (id: string): Promise<boolean> => {
     try {
       await apiCall(`/api/goals/${id}`, 'DELETE');
       removeGoal(id);
-    } catch (err) { console.error('Failed to delete goal:', err); }
+      return true;
+    } catch (err) { console.error('Failed to delete goal:', err); return false; }
   };
 
   const onCheckIn = async (goalId: string) => {
-    const today = dayKey();
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal || (goal.checkIns || []).includes(today)) return;
-    try {
-      sync(await apiCall(`/api/goals/${goalId}`, 'PUT', { checkIns: [...(goal.checkIns || []), today] }));
-      hooks?.onXp?.(5);
-    } catch (err) { console.error('Failed to check in:', err); }
+    // One day appended server-side; a double tap cannot check in twice.
+    if (await checkIn(goalId, dayKey())) hooks?.onXp?.(5);
   };
 
   const onUpdateProgress = async (goalId: string, newValue: number) => {
@@ -60,16 +59,10 @@ export function useGoalActions(hooks?: {
     } catch (err) { console.error('Failed to update progress:', err); }
   };
 
+  // One milestone flipped in place — two quick ticks can no longer erase each
+  // other. Finishing a goal is celebrated app-wide by ProgressCelebrations.
   const onToggleSubtask = async (goalId: string, idx: number) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const wasComplete = getGoalProgress(goal) >= 100;
-    const subtasks = goal.subtasks.map((s, i) => i === idx ? { ...s, completed: !s.completed } : s);
-    try {
-      const saved = await apiCall(`/api/goals/${goalId}`, 'PUT', { subtasks });
-      sync(saved);
-      if (!wasComplete && getGoalProgress(saved) >= 100) hooks?.onGoalComplete?.(saved);
-    } catch (err) { console.error('Failed to toggle subtask:', err); }
+    await toggleMilestone(goalId, idx);
   };
 
   const onLogTask = async (goalId: string, taskId: number, value: TaskCompletionValue) => {
@@ -89,13 +82,26 @@ export function useGoalActions(hooks?: {
     } catch (err) { console.error('Failed to add task:', err); }
   };
 
-  const onRemoveMilestone = async (goalId: string, idx: number) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const subtasks = (goal.subtasks || []).filter((_, i) => i !== idx);
+  /*
+   * Identified by id, with the index as a cross-check. A bare index goes stale
+   * the moment another delete lands first, and removes the wrong milestone; a
+   * bare id is unsafe on old goals whose milestones may share or lack one —
+   * filtering on `undefined` would delete them all. So: exactly one milestone,
+   * the one at that index if its id still matches, else the first with the id.
+   */
+  const onRemoveMilestone = async (goalId: string, idx: number, milestoneId?: number): Promise<boolean> => {
+    const goal = useGoalStore.getState().goals.find(g => g.id === goalId);
+    if (!goal) return false;
+    const list = goal.subtasks || [];
+    const at = list[idx]?.id === milestoneId
+      ? idx
+      : milestoneId === undefined ? -1 : list.findIndex(m => m.id === milestoneId);
+    if (at < 0) return false;
+    const subtasks = list.filter((_, i) => i !== at);
     try {
       sync(await apiCall(`/api/goals/${goalId}`, 'PUT', { subtasks }));
-    } catch (err) { console.error('Failed to remove milestone:', err); }
+      return true;
+    } catch (err) { console.error('Failed to remove milestone:', err); return false; }
   };
 
   /**
@@ -136,13 +142,14 @@ export function useGoalActions(hooks?: {
     } catch (err) { console.error('Failed to correct estimate:', err); }
   };
 
-  const onRemoveDailyTask = async (goalId: string, taskId: number) => {
-    const goal = goals.find(g => g.id === goalId);
-    if (!goal) return;
-    const dailyTasks = goal.dailyTasks.filter(t => t.id !== taskId);
+  const onRemoveDailyTask = async (goalId: string, taskId: number): Promise<boolean> => {
+    const goal = useGoalStore.getState().goals.find(g => g.id === goalId);
+    if (!goal) return false;
+    const dailyTasks = (goal.dailyTasks || []).filter(t => t.id !== taskId);
     try {
       sync(await apiCall(`/api/goals/${goalId}`, 'PUT', { dailyTasks }));
-    } catch (err) { console.error('Failed to remove task:', err); }
+      return true;
+    } catch (err) { console.error('Failed to remove task:', err); return false; }
   };
 
   return {

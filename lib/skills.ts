@@ -1,5 +1,6 @@
 import type { Goal } from './types';
-import { taskXp, milestoneXp, completionXp, levelFromXp, xpForLevel, streaksFromCheckIns, rankFromXp } from './xp';
+import { milestoneXp, completionXp, streaksFromCheckIns, rankFromXp, skillLevel } from './xpCore';
+import { dayKey } from './dates';
 import { GOAL_DOMAINS, DISCIPLINE, skillsForGoal, domainGoalIdea, type GoalDomainId, type SkillId } from './domains';
 import { baselineXp, loadSkillBaseline, weakestDomains, type SkillBaseline } from './skillBaseline';
 
@@ -42,21 +43,22 @@ export interface SkillStat {
   baselineXp: number;
 }
 
-/** Domain levels use a gentler curve than the global one — 100 XP per step. */
-function skillLevel(xp: number) {
-  const level = Math.floor((-1 + Math.sqrt(1 + (8 * xp) / 100)) / 2) + 1;
-  const start = (100 * (level - 1) * level) / 2;
-  const end = (100 * level * (level + 1)) / 2;
-  return { level, levelXp: xp - start, levelSpan: end - start };
+/** What finishing a goal is worth, on top of the work that got it there. */
+export const GOAL_COMPLETE_XP = 500;
+
+interface Tally {
+  /** Earned XP per goal domain — work only, never the self-assessed head start. */
+  xp: Record<string, number>;
+  goalCount: Record<string, number>;
+  lastActive: Record<string, string>;
+  taskHits: Record<string, number>;
+  clearHits: Record<string, number>;
+  disciplineXp: number;
+  disciplineLast?: string;
+  tasksDone: number;
 }
 
-export function computeSkills(goals: Goal[], baseline?: SkillBaseline): SkillStat[] {
-  /*
-   * The self-assessment is a head start on the SKILL ladder only. It never
-   * reaches the overall rank: a number you type about yourself must not buy a
-   * rank, or the honest answer becomes the losing one.
-   */
-  const rated = baseline ?? loadSkillBaseline();
+function tally(goals: Goal[]): Tally {
   const xp: Record<string, number> = {};
   const goalCount: Record<string, number> = {};
   const lastActive: Record<string, string> = {};
@@ -95,15 +97,27 @@ export function computeSkills(goals: Goal[], baseline?: SkillBaseline): SkillSta
         }
       }
     }
-    for (const s of goal.subtasks || []) {
+    const subtasks = goal.subtasks || [];
+    for (const s of subtasks) {
       if (!s.completed) continue;
-      credit(milestoneXp(s.difficulty), goal.updatedAt?.split('T')[0]);
+      const when = s.completedAt ? new Date(s.completedAt) : goal.updatedAt ? new Date(goal.updatedAt) : null;
+      credit(milestoneXp(s.difficulty), when && !Number.isNaN(when.getTime()) ? dayKey(when) : undefined);
       for (const d of domains) clearHits[d] = (clearHits[d] || 0) + 1;
     }
     for (const date of goal.checkIns || []) {
       credit(5, date);
       checkInCount++;
     }
+
+    /*
+     * Finishing the goal pays its domains. This bonus used to go to the overall
+     * total only, which is one of the ways the overall rank ran ahead of every
+     * skill: 500 XP the skills never saw.
+     */
+    const done = subtasks.length > 0
+      ? subtasks.every(s => s.completed)
+      : goal.targetValue > 0 && goal.currentValue >= goal.targetValue;
+    if (done) credit(GOAL_COMPLETE_XP);
 
     // How many recurring completions the goal *could* have had since it began.
     const days = Object.keys(goal.taskCompletions || {}).length;
@@ -125,6 +139,31 @@ export function computeSkills(goals: Goal[], baseline?: SkillBaseline): SkillSta
     + followThrough * 250
     + Math.min(bestStreak, 30) * 12,
   );
+
+  return { xp, goalCount, lastActive, taskHits, clearHits, disciplineXp, disciplineLast, tasksDone };
+}
+
+/**
+ * XP each of the nine skills has EARNED — no self-assessed head start. The
+ * overall rank is read from this, so it is only ever as far along as the
+ * skills underneath it.
+ */
+export function earnedSkillXp(goals: Goal[]): Record<SkillId, number> {
+  const t = tally(goals);
+  const out = {} as Record<SkillId, number>;
+  for (const d of GOAL_DOMAINS) out[d.id] = t.xp[d.id] || 0;
+  out.discipline = t.disciplineXp;
+  return out;
+}
+
+export function computeSkills(goals: Goal[], baseline?: SkillBaseline): SkillStat[] {
+  /*
+   * The self-assessment is a head start on the SKILL ladder only. It never
+   * reaches the overall rank: a number you type about yourself must not buy a
+   * rank, or the honest answer becomes the losing one.
+   */
+  const rated = baseline ?? loadSkillBaseline();
+  const { xp, goalCount, lastActive, taskHits, clearHits, disciplineXp, disciplineLast, tasksDone } = tally(goals);
 
   const today = new Date();
   const daysSince = (iso?: string) =>
@@ -240,5 +279,3 @@ export function skillsContext(goals: Goal[]): string {
   }
   return out;
 }
-
-export { levelFromXp, xpForLevel };

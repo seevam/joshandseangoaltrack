@@ -1,0 +1,27 @@
+// #6 — a picked item is unmistakably picked: green border, green tint, tick.
+import { launch, BASE } from '../browser.mjs';
+const b = await launch();
+let fails = 0;
+const t = (name, ok, extra = '') => { if (!ok) fails++; console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${extra ? '  ' + extra : ''}`); };
+const GREEN = 'rgb(93, 188, 112)';
+const p = await b.newPage({ viewport: { width: 390, height: 844 } });
+await p.goto(`${BASE}#/onboarding`);
+await p.waitForTimeout(1200);
+await p.getByRole('button', { name: /Get Started/ }).click();
+await p.waitForTimeout(400);
+const fitness = p.getByRole('button', { name: /Fitness/ });
+const style = () => fitness.evaluate(el => { const cs = getComputedStyle(el); return { border: cs.borderTopColor, width: cs.borderTopWidth, bg: cs.backgroundColor, pressed: el.getAttribute('aria-pressed'), tick: !!el.querySelector('svg.absolute') }; });
+const before = await style();
+await fitness.click();
+await p.waitForTimeout(400);
+const after = await style();
+t('unselected has a visible border', before.border !== 'rgba(0, 0, 0, 0)' && before.width !== '0px', JSON.stringify(before));
+t('selected border is green, not transparent', after.border === GREEN, after.border);
+t('selected background changes', after.bg !== before.bg, `${before.bg} → ${after.bg}`);
+t('selected shows a tick and aria-pressed', after.tick && after.pressed === 'true');
+await p.screenshot({ path: new URL('../.out/onboarding-select.png', import.meta.url).pathname });
+await fitness.click(); await p.waitForTimeout(300);
+t('tapping again unselects it', (await style()).pressed === 'false' && (await style()).border !== GREEN);
+await b.close();
+console.log(fails ? `\n${fails} FAILING` : '\nall pass');
+process.exit(fails ? 1 : 0);

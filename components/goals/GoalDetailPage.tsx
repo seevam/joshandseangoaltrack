@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Trash2, Pencil, CheckCircle, Flame, ChevronDown, ChevronUp, TrendingUp,
   Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon, CalendarDays, Map, Check, Undo2,
-  Target, X, Loader2,
+  Target, X, Loader2, Play,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
@@ -15,11 +15,16 @@ import DurationPrompt from '@/components/dashboard/DurationPrompt';
 import { IconTile } from '@/components/ui/icons';
 import { AnimatedNumber, AnimatedCheck, Reveal } from '@/components/ui/motion';
 import { GoalHealthCard, RecoveryModeCard } from './AdaptiveTools';
-import { stageBreakdown, tasksForStage, activeTasks } from '@/lib/stages';
+import { stageBreakdown, activeTasks, visibleMilestones } from '@/lib/stages';
 import { Lock } from 'lucide-react';
 import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
 import MissionCard from '@/components/dashboard/MissionCard';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import FocusMode from '@/components/dashboard/FocusMode';
+import { milestoneKind, hasProtocol } from '@/lib/milestones';
+import { ensureMilestoneProtocol } from '@/lib/milestoneSteps';
+import { milestoneXp } from '@/lib/xp';
 import { dayKey } from '@/lib/dates';
 
 const MILESTONE_BADGES = [
@@ -30,6 +35,11 @@ const MILESTONE_BADGES = [
 ];
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** "1 check-in", "2 check-ins", "no check-ins" — never "all 1 check-in". */
+function plural(n: number, word: string) {
+  return n === 0 ? `no ${word}s` : `${n} ${word}${n === 1 ? '' : 's'}`;
+}
 
 function formatSchedule(daysOfWeek?: number[]): string {
   if (!daysOfWeek || daysOfWeek.length === 0) return 'Every day';
@@ -86,6 +96,7 @@ export default function GoalDetailPage({ goalId }: { goalId: string }) {
 function GoalDetailContent({ goal }: { goal: Goal }) {
   const router = useRouter();
   const actions = useGoalActions();
+  const updateGoal = useGoalStore(s => s.updateGoal);
   /** The completion currently being asked about, if any. */
   const [askDuration, setAskDuration] = useState<
     { taskId: number; title: string; planned?: number } | null
@@ -108,9 +119,14 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [showShare, setShowShare] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  /** The destructive action awaiting confirmation, if any. One dialog serves all three. */
+  const [pendingDelete, setPendingDelete] = useState<
+    | { kind: 'goal' }
+    | { kind: 'milestone'; index: number; id?: number; title: string }
+    | { kind: 'task'; id: number; title: string }
+    | null
+  >(null);
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(null);
-  const [confirmMilestone, setConfirmMilestone] = useState<number | null>(null);
   const [shareEmail, setShareEmail] = useState('');
   const [shareLoading, setShareLoading] = useState(false);
   const [shareError, setShareError] = useState('');
@@ -129,6 +145,9 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
         body: JSON.stringify({ sharedWith: [...partners, email] }),
       });
       if (!res.ok) throw new Error();
+      // The saved goal goes back into the store, or the new partner never
+      // appears until a reload — the request succeeded and the list didn't move.
+      updateGoal(await res.json());
       setShareEmail('');
     } catch {
       setShareError('Could not add that partner. Make sure you own this goal.');
@@ -139,14 +158,17 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
   const removePartner = async (email: string) => {
     setShareLoading(true);
+    setShareError('');
     try {
-      await fetch(`/api/goals/${goal.id}`, {
+      const res = await fetch(`/api/goals/${goal.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sharedWith: partners.filter(e => e !== email) }),
       });
+      if (!res.ok) throw new Error();
+      updateGoal(await res.json());
     } catch {
-      // best effort
+      setShareError('Could not remove that partner. Try again.');
     } finally {
       setShareLoading(false);
     }
@@ -163,10 +185,10 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const daysLeft = goal.endDate ? Math.ceil((new Date(goal.endDate).getTime() - Date.now()) / 86400000) : null;
 
   const stages = useMemo(() => stageBreakdown(goal), [goal]);
-  /** Which phase's own plan is open, if any. */
-  const [openStage, setOpenStage] = useState<string | null>(null);
-  const stageTasks = (stageId: string) => tasksForStage(goal, stageId);
   const milestones = goal.subtasks || [];
+  /** Just the stage the user is in — see visibleMilestones. */
+  const shownMilestones = useMemo(() => visibleMilestones(goal), [goal]);
+  const liveStage = stages.find(st => st.status === 'current') ?? null;
   const doneCount = milestones.filter(s => s.completed).length;
   /*
    * Only the live stage's work is completable here, for the same reason it is
@@ -199,12 +221,41 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
     return { index: idx, milestone: m, date };
   }, [milestones, stages, goal.startDate]);
 
+  /*
+   * Start, for action milestones: the same step-by-step session daily tasks
+   * get. Milestones from older plans have no steps yet; the first Start writes
+   * them (once, saved to the milestone) before the session opens.
+   */
+  const [focusMilestone, setFocusMilestone] = useState<number | null>(null);
+  const [preparing, setPreparing] = useState<number | null>(null);
+  const [startError, setStartError] = useState<{ index: number; message: string } | null>(null);
+
+  const startMilestone = async (index: number) => {
+    const m = milestones[index];
+    if (!m) return;
+    if (hasProtocol(m)) { setFocusMilestone(index); return; }
+    setPreparing(index);
+    setStartError(null);
+    try {
+      const ready = await ensureMilestoneProtocol(goal.id, index);
+      if (ready && hasProtocol(ready)) setFocusMilestone(index);
+      // Otherwise the model judged it a running total: kind is now
+      // 'cumulative', the Start button goes, and the row explains why.
+    } catch {
+      setStartError({ index, message: 'Couldn\u2019t prepare the steps for this one. Try again in a moment.' });
+    } finally {
+      setPreparing(null);
+    }
+  };
+
   const statusLabel = status === 'completed' ? 'Completed' : status === 'overdue' ? 'Overdue' : 'Active';
   const statusColor = status === 'completed' ? '#5DBC70' : status === 'overdue' ? '#F87171' : '#A1A1A1';
 
+  // Only leaves the page once the goal is actually gone.
   const handleDelete = async () => {
-    await actions.onDelete(goal.id);
-    router.push('/goals');
+    const ok = await actions.onDelete(goal.id);
+    if (ok) router.push('/goals');
+    return ok;
   };
 
   return (
@@ -254,7 +305,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
             <Pencil className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setConfirmDelete(true)}
+            onClick={() => setPendingDelete({ kind: 'goal' })}
             aria-label="Delete goal"
             title="Delete goal"
             className="p-2 bg-elevated hover:bg-line rounded-lg text-muted hover:text-red-400 transition-colors"
@@ -313,32 +364,26 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
               </p>
             </div>
 
-            <div className="grid gap-2.5 [grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr))]">
+            {/*
+              * A map of the journey, not a window into it. Each stage says
+              * where it sits — done, now, locked — and nothing more: a future
+              * stage's milestones and tasks stay hidden until the user gets
+              * there, and a finished stage's work is not re-listed. The cards
+              * are deliberately not buttons; there is nothing behind them.
+              */}
+            <ol className="grid gap-2.5 items-start [grid-template-columns:repeat(auto-fill,minmax(min(15rem,100%),1fr))]">
               {stages.map(st => (
-                /*
-                 * The whole card is the target. Only the inner rows reacted
-                 * before, so most of a large tile did nothing when tapped —
-                 * a button that looks pressable everywhere must be pressable
-                 * everywhere.
-                 */
-                <button
+                <li
                   key={st.stage.id}
-                  type="button"
-                  onClick={() => setOpenStage(openStage === st.stage.id ? null : st.stage.id)}
-                  aria-expanded={openStage === st.stage.id}
                   style={{ ['--i' as string]: st.index }}
-                  // flex-col + justify-start: a <button> centres its content
-                  // vertically by default, which floated the shorter locked
-                  // cards halfway down the row.
-                  className={`stagger-fast flex flex-col justify-start h-full w-full text-left rounded-xl border p-3.5 glow-hover ${
+                  aria-current={st.status === 'current' ? 'step' : undefined}
+                  className={`stagger-fast flex flex-col rounded-xl border p-3.5 ${
                     st.status === 'current'
                       ? 'border-brand/40 bg-[var(--brand-light)]'
                       : 'border-line bg-card'
-                  } ${st.status === 'upcoming' ? 'opacity-70' : ''} ${
-                    openStage === st.stage.id ? 'ring-1 ring-inset ring-brand/30' : ''
-                  }`}
+                  } ${st.status === 'upcoming' ? 'opacity-70' : ''}`}
                 >
-                  <span className="flex items-start gap-2.5 mb-2">
+                  <div className="flex items-start gap-2.5">
                     <span
                       className={`h-6 w-6 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 ${
                         st.status === 'complete'
@@ -347,73 +392,66 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             ? 'bg-brand text-black'
                             : 'bg-elevated border border-line text-muted'
                       }`}
+                      aria-hidden
                     >
                       {st.status === 'complete'
                         ? <Check className="h-3 w-3" strokeWidth={3} />
                         : st.locked ? <Lock className="h-3 w-3" /> : st.index + 1}
                     </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-semibold text-fg break-words">{st.stage.title}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-fg break-words">{st.stage.title}</p>
                       {st.stage.subtitle && (
-                        <span className="block text-xs text-brand mt-0.5 break-words">{st.stage.subtitle}</span>
+                        <p className="text-xs text-brand mt-0.5 break-words">{st.stage.subtitle}</p>
                       )}
-                    </span>
+                    </div>
                     {/* Phase state never rests on colour alone. */}
                     <span className="text-[10px] uppercase tracking-[0.12em] text-muted flex-shrink-0">
                       {st.status === 'current' ? 'Now' : st.status === 'complete' ? 'Done' : 'Locked'}
                     </span>
-                  </span>
+                  </div>
 
-                  {st.locked ? (
-                    <span className="flex items-start gap-1.5 text-xs text-muted leading-relaxed mb-2.5">
+                  {st.status === 'current' && (
+                    <>
+                      {st.stage.purpose && (
+                        <p className="text-xs text-muted leading-relaxed break-words mt-2.5">{st.stage.purpose}</p>
+                      )}
+                      <div className="mt-2.5 h-1.5 bg-track rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-brand transition-[width] duration-700 ease-out"
+                          style={{ width: `${st.percent}%` }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-muted mt-1.5">
+                        {st.done}/{st.total} milestone{st.total === 1 ? '' : 's'} in this stage
+                      </p>
+                      {st.stage.guidance && (
+                        <div className="mt-2.5 rounded-lg border border-line bg-card p-2.5">
+                          <p className="text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">Approach</p>
+                          <p className="text-xs text-fg leading-relaxed break-words">{st.stage.guidance}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {st.status === 'complete' && (
+                    <p className="flex items-center gap-1.5 text-xs text-brand mt-2.5">
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                      {st.total} milestone{st.total === 1 ? '' : 's'} cleared
+                    </p>
+                  )}
+
+                  {st.status === 'upcoming' && (
+                    <p className="flex items-start gap-1.5 text-xs text-muted leading-relaxed mt-2.5">
                       <Lock className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                      <span>Unlocks when you finish the phase you&apos;re in.</span>
-                    </span>
-                  ) : st.stage.purpose ? (
-                    <span className="block text-xs text-muted leading-relaxed break-words mb-2.5">{st.stage.purpose}</span>
-                  ) : null}
-
-                  <span className="block h-1.5 bg-track rounded-full overflow-hidden">
-                    <span
-                      className="block h-full rounded-full bg-brand transition-[width] duration-700 ease-out"
-                      style={{ width: `${st.percent}%` }}
-                    />
-                  </span>
-                  <span className="flex items-center justify-between gap-2 text-[10px] text-muted mt-1.5">
-                    <span className="truncate">
-                      {st.total > 0 ? `${st.done}/${st.total} milestones` : 'No milestones in this phase'}
-                      {stageTasks(st.stage.id).length > 0
-                        && ` · ${stageTasks(st.stage.id).length} recurring`}
-                    </span>
-                    <ChevronDown
-                      aria-hidden
-                      className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${
-                        openStage === st.stage.id ? 'rotate-180' : ''
-                      }`}
-                    />
-                  </span>
-
-                  {st.status === 'current' && st.stage.guidance && (
-                    <span className="mt-2.5 block rounded-lg border border-line bg-card p-2.5">
-                      <span className="block text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
-                        Approach
+                      <span>
+                        Opens after{' '}
+                        <span className="text-fg">{stages[st.index - 1]?.stage.title ?? 'the stage before'}</span>.
                       </span>
-                      <span className="block text-xs text-fg leading-relaxed break-words">{st.stage.guidance}</span>
-                    </span>
+                    </p>
                   )}
-
-                  {/* This phase's own plan. Stages carry different work — base
-                      building is not race week — so each one lists what it
-                      actually asks for. */}
-                  {openStage === st.stage.id && (
-                    <span className="mt-2.5 block rounded-lg border border-line bg-card p-2.5 space-y-2">
-                      <StageLine label="Milestones" items={st.milestones.map(m => m.title)} />
-                      <StageLine label="Recurring" items={stageTasks(st.stage.id).map(t => t.title)} />
-                    </span>
-                  )}
-                </button>
+                </li>
               ))}
-            </div>
+            </ol>
           </div>
         </Reveal>
       )}
@@ -446,6 +484,13 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                     <span className="text-muted-dim">· Day {nextMilestone.milestone.daysFromStart}</span>
                   </p>
                 )}
+                <MilestoneAction
+                  milestone={nextMilestone.milestone}
+                  preparing={preparing === nextMilestone.index}
+                  error={startError?.index === nextMilestone.index ? startError.message : null}
+                  onStart={() => startMilestone(nextMilestone.index)}
+                  className="mt-3"
+                />
               </div>
             </div>
           </div>
@@ -496,26 +541,39 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
           {/* Milestones */}
           <div className="card-glow rounded-2xl p-4 sm:p-5">
-            <h2 className="flex items-center gap-2 font-semibold text-fg mb-3">
+            <h2 className="flex items-center gap-2 font-semibold text-fg">
               <Map className="h-4 w-4 text-brand" />
               <span className="section-title">Milestones</span>
-              {milestones.length > 0 && (
-                <span className="text-xs font-normal text-muted">{doneCount}/{milestones.length} done</span>
+              {shownMilestones.length > 0 && (
+                <span className="text-xs font-normal text-muted">
+                  {shownMilestones.filter(v => v.milestone.completed).length}/{shownMilestones.length} done
+                </span>
               )}
             </h2>
+            {/* Which stage this list belongs to, so it is clear that the rest
+                of the plan exists and simply isn't open yet. */}
+            {liveStage ? (
+              <p className="text-xs text-muted mt-1 mb-3">
+                Stage {liveStage.index + 1} of {stages.length} ·{' '}
+                <span className="text-brand">{liveStage.stage.title}</span>
+                {liveStage.index + 1 < stages.length && ' — the next stage opens when these are done.'}
+              </p>
+            ) : (
+              <div className="mb-3" />
+            )}
 
-            {milestones.length === 0 ? (
+            {shownMilestones.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
                 No milestones yet. Ask your coach to break this goal into checkpoints.
               </p>
             ) : (
               <ul className="space-y-2">
-                {milestones.map((s, i) => {
+                {shownMilestones.map(({ milestone: s, index: i }) => {
                   /*
-                   * Locking has to bite here, not only in the Stages panel. A
-                   * milestone belonging to a phase the user hasn't reached is
-                   * shown but not actionable — otherwise "locked" is decoration
-                   * and the whole point of staging a plan is lost.
+                   * Future stages are no longer listed at all, so nothing here
+                   * should be locked. The check stays as a guard: if a locked
+                   * milestone ever does reach this list, it must not be
+                   * tickable.
                    */
                   const owningStage = stages.find(st => st.stage.id === s.stageId);
                   const stageLocked = !!owningStage?.locked;
@@ -553,11 +611,11 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             />
                           </div>
                         )}
-                        <button
-                          onClick={() => setExpandedMilestone(isExpanded ? null : i)}
-                          aria-expanded={isExpanded}
-                          className="flex-1 min-w-0 flex items-center gap-2 text-left"
-                        >
+                        {/* The title is text, not a button. The whole row used
+                            to be the expand toggle, so any tap on a milestone —
+                            aiming for nothing in particular — opened it. Only
+                            the chevron opens it now. */}
+                        <span className="flex-1 min-w-0 flex items-center gap-2">
                           <span className={`text-sm flex-1 font-medium break-words ${s.completed ? 'line-through text-muted' : 'text-fg'}`}>
                             {s.title}
                           </span>
@@ -566,9 +624,28 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                               <CalendarDays className="h-3 w-3" />{dateStr}
                             </span>
                           )}
-                          {isExpanded
-                            ? <ChevronUp className="h-4 w-4 text-muted flex-shrink-0" />
-                            : <ChevronDown className="h-4 w-4 text-muted flex-shrink-0" />}
+                        </span>
+                        {!s.completed && !stageLocked && milestoneKind(s) === 'action' && (
+                          <button
+                            onClick={() => startMilestone(i)}
+                            disabled={preparing !== null}
+                            aria-label={`Start ${s.title}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-brand/40 text-brand text-xs font-semibold glow-hover flex-shrink-0 disabled:opacity-60"
+                          >
+                            {preparing === i
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Play className="h-3.5 w-3.5" />}
+                            <span className="hidden sm:inline">{preparing === i ? 'Preparing' : 'Start'}</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setExpandedMilestone(isExpanded ? null : i)}
+                          aria-expanded={isExpanded}
+                          aria-label={isExpanded ? `Hide details for ${s.title}` : `Show details for ${s.title}`}
+                          title={isExpanded ? 'Hide details' : 'Show details'}
+                          className="h-9 w-9 -my-1.5 flex items-center justify-center rounded-lg text-muted hover:text-fg hover:bg-card transition-colors flex-shrink-0"
+                        >
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </button>
 
                         {/* Destructive control is separated from the expand
@@ -576,7 +653,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             mistake or read as one target. */}
                         <span className="flex items-center gap-1 flex-shrink-0 pl-2 ml-1 border-l border-line">
                           <button
-                            onClick={() => setConfirmMilestone(confirmMilestone === i ? null : i)}
+                            onClick={() => setPendingDelete({ kind: 'milestone', index: i, id: s.id, title: s.title })}
                             aria-label={`Delete milestone ${s.title}`}
                             title="Delete milestone"
                             className="p-1.5 rounded-lg text-muted hover:text-red-400 transition-colors"
@@ -585,30 +662,6 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                           </button>
                         </span>
                       </div>
-
-                      {confirmMilestone === i && (
-                        <div className="px-3 pb-3 -mt-1">
-                          <div className="rounded-lg border border-red-500/30 bg-card p-2.5 flex items-center justify-between gap-2 flex-wrap">
-                            <span className="text-xs text-muted min-w-0 break-words">
-                              Delete &ldquo;{s.title}&rdquo;?
-                            </span>
-                            <span className="flex gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => { actions.onRemoveMilestone(goal.id, i); setConfirmMilestone(null); }}
-                                className="px-2.5 py-1 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold"
-                              >
-                                Delete
-                              </button>
-                              <button
-                                onClick={() => setConfirmMilestone(null)}
-                                className="px-2.5 py-1 rounded-lg border border-line text-fg text-xs font-semibold"
-                              >
-                                Keep
-                              </button>
-                            </span>
-                          </div>
-                        </div>
-                      )}
 
                       {isExpanded && (
                         <div className="px-4 pb-3 space-y-2">
@@ -622,6 +675,24 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             <p className="text-xs text-muted leading-relaxed bg-card rounded-lg p-2.5 border border-line break-words">
                               {s.description}
                             </p>
+                          )}
+                          {startError?.index === i && (
+                            <p className="text-xs text-red-400" role="alert">{startError.message}</p>
+                          )}
+                          {milestoneKind(s) === 'cumulative' ? (
+                            <p className="text-xs text-muted leading-relaxed">
+                              A running total, built up across your sessions — there&apos;s no single
+                              session to start. Tick it when you reach it.
+                            </p>
+                          ) : hasProtocol(s) && (
+                            <ol className="text-xs text-muted leading-relaxed space-y-1 bg-card rounded-lg p-2.5 border border-line">
+                              {s.executionSteps!.map((step, n) => (
+                                <li key={n} className="flex gap-2">
+                                  <span className="text-brand font-semibold flex-shrink-0">{n + 1}.</span>
+                                  <span className="min-w-0 break-words">{step}</span>
+                                </li>
+                              ))}
+                            </ol>
                           )}
                           <button
                             onClick={() => actions.onToggleSubtask(goal.id, i)}
@@ -669,6 +740,11 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
               </span>
               {showTasks ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
             </button>
+            {liveStage && showTasks && (
+              <p className="text-xs text-muted mt-1 mb-3">
+                The habits for <span className="text-brand">{liveStage.stage.title}</span>. They change when the stage does.
+              </p>
+            )}
 
             {recurringTasks.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
@@ -688,7 +764,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                       onComplete={() => completeTask(task)}
                       onUndo={() => actions.onLogTask(goal.id, task.id, false)}
                       onRecover={() => actions.onLogTask(goal.id, task.id, 'fallback')}
-                      onRemove={() => actions.onRemoveDailyTask(goal.id, task.id)}
+                      onRemove={() => setPendingDelete({ kind: 'task', id: task.id, title: task.title })}
                     />
                   );
                 })}
@@ -816,41 +892,65 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
       {/* ── 8. Management ───────────────────────────────────────────────── */}
       <div className="pt-1">
-        {confirmDelete ? (
-          <div className="rounded-2xl border border-red-500/30 bg-card p-4">
-            <p className="text-sm font-semibold text-fg">Delete &ldquo;{goal.title}&rdquo;?</p>
-            <p className="text-xs text-muted mt-1">
-              This removes the goal, its {milestones.length} milestone{milestones.length === 1 ? '' : 's'},
-              {' '}{recurringTasks.length} recurring task{recurringTasks.length === 1 ? '' : 's'}, and all
-              {' '}{(goal.checkIns || []).length} check-in{(goal.checkIns || []).length === 1 ? '' : 's'}. This cannot be undone.
-            </p>
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-semibold transition-colors"
-              >
-                Delete goal
-              </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="px-4 py-2 rounded-xl border border-line text-fg text-sm font-medium hover:bg-elevated transition-colors"
-              >
-                Keep it
-              </button>
-            </div>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            className="w-full flex items-center justify-center gap-2 py-2.5 border border-line text-red-400 rounded-xl text-sm font-medium hover:border-red-500/50 transition-colors"
-          >
-            <Trash2 className="h-4 w-4" /> Delete Goal
-          </button>
-        )}
+        <button
+          onClick={() => setPendingDelete({ kind: 'goal' })}
+          className="w-full flex items-center justify-center gap-2 py-2.5 border border-line text-red-400 rounded-xl text-sm font-medium hover:border-red-500/50 transition-colors"
+        >
+          <Trash2 className="h-4 w-4" /> Delete Goal
+        </button>
       </div>
 
       {showEdit && <GoalForm editGoal={goal} onClose={() => setShowEdit(false)} />}
       {showChat && <GoalChatPanel goal={goal} onClose={() => setShowChat(false)} />}
+
+      {/* Centred, so it appears wherever the user pressed delete — the goal's
+          own confirmation used to open at the foot of the page, out of sight
+          of the trash icon in the header that triggered it. */}
+      {pendingDelete?.kind === 'goal' && (
+        <ConfirmDialog
+          title={`Delete \u201c${goal.title}\u201d?`}
+          body={<>This removes the goal with {plural(milestones.length, 'milestone')},{' '}
+            {plural((goal.dailyTasks || []).length, 'recurring task')} and{' '}
+            {plural((goal.checkIns || []).length, 'check-in')}. It can&apos;t be undone.</>}
+          confirmLabel="Delete goal"
+          onConfirm={handleDelete}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
+      {pendingDelete?.kind === 'milestone' && (
+        <ConfirmDialog
+          title="Delete this milestone?"
+          body={<><span className="text-fg">{pendingDelete.title}</span> will be removed from the plan.</>}
+          confirmLabel="Delete milestone"
+          onConfirm={() => actions.onRemoveMilestone(goal.id, pendingDelete.index, pendingDelete.id)}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
+      {pendingDelete?.kind === 'task' && (
+        <ConfirmDialog
+          title="Delete this recurring task?"
+          body={<><span className="text-fg">{pendingDelete.title}</span> stops appearing on your schedule. Days you already logged are kept.</>}
+          confirmLabel="Delete task"
+          onConfirm={() => actions.onRemoveDailyTask(goal.id, pendingDelete.id)}
+          onClose={() => setPendingDelete(null)}
+        />
+      )}
+
+      {focusMilestone !== null && milestones[focusMilestone] && (
+        <FocusMode
+          missions={[{
+            goal,
+            task: milestoneAsTask(milestones[focusMilestone], focusMilestone),
+            value: milestones[focusMilestone].completed || undefined,
+          }]}
+          kicker="Milestone"
+          completeLabel="Complete milestone"
+          xp={milestoneXp(milestones[focusMilestone].difficulty)}
+          roundMinutes={milestones[focusMilestone].estimatedMinutes}
+          onComplete={() => { actions.onToggleSubtask(goal.id, focusMilestone); setFocusMilestone(null); }}
+          onClose={() => setFocusMilestone(null)}
+        />
+      )}
 
       {askDuration && (
         <DurationPrompt
@@ -889,27 +989,50 @@ function Sparkline({ history, target, color }: { history: { date: string; value:
   );
 }
 
-/**
- * One list inside a stage card. Rendered with spans because its parent is a
- * button, and a <ul> inside a <button> is invalid markup that React will
- * happily produce and the browser will happily reflow out of place.
- */
-function StageLine({ label, items }: { label: string; items: string[] }) {
+/** A milestone in the shape Focus Mode runs — it already knows how to walk steps. */
+function milestoneAsTask(m: Goal['subtasks'][number], index: number): Goal['dailyTasks'][number] {
+  return {
+    id: m.id ?? index,
+    title: m.title,
+    description: m.description,
+    setup: m.setup,
+    executionSteps: m.executionSteps,
+    successCriteria: m.successCriteria,
+    estimatedMinutes: m.estimatedMinutes,
+    difficulty: m.difficulty,
+    targetValue: null,
+    unit: '',
+    type: 'checkbox',
+  };
+}
+
+/** Start for an action milestone; a one-line explanation for a running total. */
+function MilestoneAction({ milestone, preparing, error, onStart, className = '' }: {
+  milestone: Goal['subtasks'][number];
+  preparing: boolean;
+  error: string | null;
+  onStart: () => void;
+  className?: string;
+}) {
+  if (milestone.completed) return null;
+  if (milestoneKind(milestone) === 'cumulative') {
+    return (
+      <p className={`text-xs text-muted leading-relaxed ${className}`}>
+        A running total — it builds up across your sessions. Tick it when you reach it.
+      </p>
+    );
+  }
   return (
-    <span className="block">
-      <span className="block text-[10px] font-semibold text-brand uppercase tracking-[0.14em] mb-1">
-        {label}
-      </span>
-      {items.length === 0 ? (
-        <span className="block text-xs text-muted">Nothing assigned to this phase.</span>
-      ) : (
-        items.map((title, i) => (
-          <span key={`${title}-${i}`} className="flex gap-1.5 text-xs text-fg leading-relaxed">
-            <span className="text-muted flex-shrink-0">·</span>
-            <span className="min-w-0 break-words">{title}</span>
-          </span>
-        ))
-      )}
-    </span>
+    <div className={className}>
+      <button
+        onClick={onStart}
+        disabled={preparing}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black text-sm font-semibold transition-colors disabled:opacity-70"
+      >
+        {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+        {preparing ? 'Preparing your steps…' : hasProtocol(milestone) ? 'Start' : 'Start — get the steps'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-2" role="alert">{error}</p>}
+    </div>
   );
 }

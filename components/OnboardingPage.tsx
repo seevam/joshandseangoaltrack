@@ -103,17 +103,28 @@ export default function OnboardingPage() {
             const c = CATEGORY_COLORS[cat];
             const isSelected = selected.includes(cat);
             return (
+              /*
+               * Selected = a green border, a green tint and a tick. It used to
+               * switch to `border-transparent`, so picking an area made its
+               * border vanish — which read as un-picking it.
+               */
               <button
                 key={cat}
                 onClick={() => toggleCat(cat)}
-                className={`flex flex-col items-start gap-1 p-3 rounded-xl border-2 text-left transition-all ${
-                  isSelected ? `${c.light} border-transparent` : 'bg-card border-line'
+                aria-pressed={isSelected}
+                className={`relative flex flex-col items-start gap-1 p-3 rounded-xl border-2 text-left transition-colors ${
+                  isSelected
+                    ? 'border-[var(--brand)] bg-[var(--brand-light)] shadow-[0_0_14px_-4px_var(--brand)]'
+                    : 'bg-card border-line hover:border-line-strong'
                 }`}
               >
-                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${isSelected ? 'bg-card/60' : 'bg-elevated'}`}>
-                  <Icon className={`h-4 w-4 ${isSelected ? c.text : 'text-muted'}`} />
+                {isSelected && (
+                  <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-[var(--brand)]" aria-hidden />
+                )}
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${isSelected ? 'bg-[var(--brand)]/15' : 'bg-elevated'}`}>
+                  <Icon className={`h-4 w-4 ${isSelected ? 'text-[var(--brand)]' : c.text}`} />
                 </div>
-                <span className={`text-sm font-semibold ${isSelected ? c.text : 'text-fg'}`}>{label}</span>
+                <span className={`text-sm font-semibold ${isSelected ? 'text-[var(--brand)]' : 'text-fg'}`}>{label}</span>
                 <span className="text-xs text-muted leading-tight">{desc}</span>
               </button>
             );
@@ -130,8 +141,9 @@ export default function OnboardingPage() {
             <button
               key={value}
               onClick={() => setMotivation(value)}
+              aria-pressed={motivation === value}
               className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                motivation === value ? 'border-[var(--brand)] bg-[var(--brand-light)]/30' : 'border-line bg-card'
+                motivation === value ? 'border-[var(--brand)] bg-[var(--brand-light)]' : 'border-line bg-card hover:border-line-strong'
               }`}
             >
               <IconTile name={icon} color={color} size="md" />
@@ -200,8 +212,9 @@ export default function OnboardingPage() {
             <button
               key={value}
               onClick={() => choosePersona(value)}
+              aria-pressed={persona === value}
               className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 text-left transition-all ${
-                persona === value ? 'border-[var(--brand)] bg-[var(--brand-light)]/30' : 'border-line bg-card'
+                persona === value ? 'border-[var(--brand)] bg-[var(--brand-light)]' : 'border-line bg-card hover:border-line-strong'
               }`}
             >
               <IconTile name={icon} color={color} size="md" />

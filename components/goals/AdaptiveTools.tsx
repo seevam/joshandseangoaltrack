@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Portal from '@/components/ui/Portal';
 import { BrainCircuit, RefreshCcw, Flame, X } from 'lucide-react';
 import { computeGoalHealth } from '@/lib/goalHealth';
 import type { Goal } from '@/lib/types';
@@ -108,6 +109,7 @@ export function RecoveryModeCard({ goal }: { goal: Goal }) {
       </div>
 
       {open && (
+        <Portal>
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div onClick={() => setOpen(false)} className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-fade-in" />
           <div
@@ -143,6 +145,7 @@ export function RecoveryModeCard({ goal }: { goal: Goal }) {
             </button>
           </div>
         </div>
+        </Portal>
       )}
 
       {seed && <GoalChatPanel goal={goal} seed={seed} onClose={() => { setSeed(null); setReason(''); }} />}

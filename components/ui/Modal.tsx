@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useState, useCallback } from 'react';
 import { X } from 'lucide-react';
 
@@ -44,6 +45,7 @@ export default function Modal({
   }, []);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div
         onClick={dismiss}
@@ -68,6 +70,7 @@ export default function Modal({
         <div className={padded ? 'p-5 pt-14' : ''}>{children}</div>
       </div>
     </div>
+    </Portal>
   );
 }
 

@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Check, CheckCircle2, X, ChevronRight } from 'lucide-react';
@@ -100,16 +101,15 @@ export default function ProgressionPage() {
                   Lv. {stats.level}
                 </span>
               </h2>
-              {/* The claim used to be decorative. It is now literally true, so
-                  it says what it costs and what it is worth. */}
+              {/* Says exactly how the number is made, so it can be trusted:
+                  it is read from the skills below and can never pass them. */}
               <p className="text-sm text-muted mt-2 leading-relaxed">
-                The composite rank rewards balanced growth. You&apos;ve earned{' '}
-                <span className="text-fg">{stats.earnedXp.toLocaleString()} XP</span> across your
-                goals, weighted to{' '}
-                <span className="text-fg">{stats.totalXp.toLocaleString()}</span> by how evenly it
-                is spread over the eight domains
-                {stats.balance < 0.98 && (
-                  <> — pushing a quiet domain is worth more than another win in your strongest one</>
+                Your player rank is built from your nine skills below — their average, weighted by
+                how evenly they&apos;re developed — so it can never get ahead of them. You&apos;ve
+                earned <span className="text-fg">{stats.earnedXp.toLocaleString()} XP</span>, worth{' '}
+                <span className="text-fg">{stats.totalXp.toLocaleString()}</span> here
+                {stats.balance < 0.9 && (
+                  <> — lifting a quiet skill moves this further than another win in your strongest one</>
                 )}.
               </p>
 
@@ -395,6 +395,7 @@ export default function ProgressionPage() {
 function DomainDialog({ skill, onClose }: { skill: SkillStat; onClose: () => void }) {
   const pct = skill.levelSpan > 0 ? Math.min((skill.levelXp / skill.levelSpan) * 100, 100) : 0;
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-fade-in" />
       <div
@@ -458,5 +459,6 @@ function DomainDialog({ skill, onClose }: { skill: SkillStat; onClose: () => voi
         </p>
       </div>
     </div>
+    </Portal>
   );
 }
