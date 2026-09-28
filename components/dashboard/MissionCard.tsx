@@ -120,7 +120,10 @@ export default function MissionCard({
             onClick={() => setOpen(o => !o)}
             aria-expanded={open}
             aria-label={open ? `Hide protocol for ${task.title}` : `Show protocol for ${task.title}`}
-            className="p-1.5 rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors flex-shrink-0"
+            title={open ? 'Hide steps' : 'Show steps'}
+            // The only control that opens the card — the rest of the card is
+            // deliberately inert, so it gets a full-size target.
+            className="h-9 w-9 -my-1.5 flex items-center justify-center rounded-lg text-muted hover:text-fg hover:bg-elevated transition-colors flex-shrink-0"
           >
             {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </button>

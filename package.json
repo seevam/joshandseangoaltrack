@@ -4,11 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && (prisma db push --skip-generate || echo '::warning:: prisma db push failed \u2014 schema drift may exist') && next build",
+    "build": "prisma generate && (prisma db push --skip-generate || echo '::warning:: prisma db push failed — schema drift may exist') && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "prisma generate",
-    "db:push": "prisma db push"
+    "db:push": "prisma db push",
+    "test": "tsx --test tests/*.test.ts",
+    "ui:build": "bash scripts/ui-harness/build.sh",
+    "ui:serve": "bash scripts/ui-harness/serve.sh"
   },
   "dependencies": {
     "@ai-sdk/openai": "^0.0.66",
@@ -26,11 +29,15 @@
     "zustand": "^4.5.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "esbuild": "^0.23.1",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
+    "playwright": "1.62",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

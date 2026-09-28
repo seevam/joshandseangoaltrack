@@ -573,11 +573,11 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             />
                           </div>
                         )}
-                        <button
-                          onClick={() => setExpandedMilestone(isExpanded ? null : i)}
-                          aria-expanded={isExpanded}
-                          className="flex-1 min-w-0 flex items-center gap-2 text-left"
-                        >
+                        {/* The title is text, not a button. The whole row used
+                            to be the expand toggle, so any tap on a milestone —
+                            aiming for nothing in particular — opened it. Only
+                            the chevron opens it now. */}
+                        <span className="flex-1 min-w-0 flex items-center gap-2">
                           <span className={`text-sm flex-1 font-medium break-words ${s.completed ? 'line-through text-muted' : 'text-fg'}`}>
                             {s.title}
                           </span>
@@ -586,9 +586,15 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                               <CalendarDays className="h-3 w-3" />{dateStr}
                             </span>
                           )}
-                          {isExpanded
-                            ? <ChevronUp className="h-4 w-4 text-muted flex-shrink-0" />
-                            : <ChevronDown className="h-4 w-4 text-muted flex-shrink-0" />}
+                        </span>
+                        <button
+                          onClick={() => setExpandedMilestone(isExpanded ? null : i)}
+                          aria-expanded={isExpanded}
+                          aria-label={isExpanded ? `Hide details for ${s.title}` : `Show details for ${s.title}`}
+                          title={isExpanded ? 'Hide details' : 'Show details'}
+                          className="h-9 w-9 -my-1.5 flex items-center justify-center rounded-lg text-muted hover:text-fg hover:bg-card transition-colors flex-shrink-0"
+                        >
+                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </button>
 
                         {/* Destructive control is separated from the expand
