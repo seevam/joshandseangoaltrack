@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect } from 'react';
 import { AlertTriangle, RotateCw } from 'lucide-react';
 
@@ -37,6 +38,7 @@ export default function ErrorDialog({
   }, [onClose]);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-fade-in" />
       <div
@@ -69,5 +71,6 @@ export default function ErrorDialog({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

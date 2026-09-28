@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useState } from 'react';
 import { Timer } from 'lucide-react';
 
@@ -41,6 +42,7 @@ export default function DurationPrompt({
   )).slice(0, 4);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[88] flex items-center justify-center p-4">
       <div onClick={onSkip} className="absolute inset-0 bg-black/75 backdrop-blur-sm animate-fade-in" />
       <div
@@ -112,5 +114,6 @@ export default function DurationPrompt({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

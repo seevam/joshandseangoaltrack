@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useState, useEffect } from 'react';
 import { Zap, Flame, Lock, Check } from 'lucide-react';
 import { CATEGORY_COLORS, type Category } from '@/lib/types';
@@ -164,6 +165,7 @@ export function Confetti() {
   const pieces = Array.from({ length: 40 }, (_, i) => i);
   const colors = ['#5DBC70', '#FBBF24', '#3B82F6', '#F87171', '#8FE3A3'];
   return (
+    <Portal>
     <div className="pointer-events-none fixed inset-0 z-[90] overflow-hidden">
       {pieces.map(i => (
         <span
@@ -180,5 +182,6 @@ export function Confetti() {
         />
       ))}
     </div>
+    </Portal>
   );
 }

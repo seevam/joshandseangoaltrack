@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Check, CheckCircle2, X, ChevronRight } from 'lucide-react';
@@ -395,6 +396,7 @@ export default function ProgressionPage() {
 function DomainDialog({ skill, onClose }: { skill: SkillStat; onClose: () => void }) {
   const pct = skill.levelSpan > 0 ? Math.min((skill.levelXp / skill.levelSpan) * 100, 100) : 0;
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-fade-in" />
       <div
@@ -458,5 +460,6 @@ function DomainDialog({ skill, onClose }: { skill: SkillStat; onClose: () => voi
         </p>
       </div>
     </div>
+    </Portal>
   );
 }

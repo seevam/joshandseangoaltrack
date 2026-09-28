@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useRef, useState } from 'react';
 import { Check } from 'lucide-react';
 
@@ -181,6 +182,7 @@ export function LevelUpOverlay({ level, rankName, rankColor, onDone }: {
   }, [onDone]);
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[95] flex items-center justify-center pointer-events-none animate-fade-in">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div className="relative text-center animate-scale-in">
@@ -204,6 +206,7 @@ export function LevelUpOverlay({ level, rankName, rankColor, onDone }: {
         <p className="text-sm font-semibold mt-1" style={{ color: rankColor }}>{rankName}</p>
       </div>
     </div>
+    </Portal>
   );
 }
 

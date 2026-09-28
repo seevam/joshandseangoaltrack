@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useState } from 'react';
 import { RankEmblem } from '@/components/ui/icons';
 
@@ -51,6 +52,7 @@ export default function RankUpOverlay({
   const size = 132;
 
   return (
+    <Portal>
     <div
       role="dialog"
       aria-modal="true"
@@ -132,5 +134,6 @@ export default function RankUpOverlay({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

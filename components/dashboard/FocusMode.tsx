@@ -1,21 +1,36 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useState } from 'react';
 import { Crosshair, X, Play, Pause, RotateCcw, Check, Target } from 'lucide-react';
 import type { Mission } from './MissionCard';
 import { taskXp } from '@/lib/xp';
 
-const ROUND_SECONDS = 25 * 60;
+const DEFAULT_ROUND_MINUTES = 25;
 
 /**
  * A full-page execution state, not a dialog stretched to the viewport. The
  * active mission and its current step stay dominant; the timer supports them.
  */
-export default function FocusMode({ missions, onComplete, onClose }: {
+export default function FocusMode({
+  missions, onComplete, onClose,
+  kicker = 'Active mission', xp, completeLabel = 'Complete mission', roundMinutes,
+}: {
   missions: Mission[];
   onComplete: (m: Mission) => void;
   onClose: () => void;
+  /** The small label over the title — "Milestone" when started from a milestone. */
+  kicker?: string;
+  /** XP shown on the complete button; defaults to the task rate. */
+  xp?: number;
+  completeLabel?: string;
+  /**
+   * Length of the timer. A milestone like "Complete a 2.5 hour run" times the
+   * whole session, not a 25-minute round of it.
+   */
+  roundMinutes?: number;
 }) {
+  const ROUND_SECONDS = Math.round((roundMinutes && roundMinutes > 0 ? roundMinutes : DEFAULT_ROUND_MINUTES) * 60);
   const [seconds, setSeconds] = useState(ROUND_SECONDS);
   const [running, setRunning] = useState(true);
   const [confirmingExit, setConfirmingExit] = useState(false);
@@ -42,10 +57,15 @@ export default function FocusMode({ missions, onComplete, onClose }: {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const mmss = `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  // h:mm:ss once a session runs past the hour — "2:30:00", never "150:00".
+  const hh = Math.floor(seconds / 3600);
+  const mm = Math.floor((seconds % 3600) / 60);
+  const ss = String(seconds % 60).padStart(2, '0');
+  const mmss = hh > 0 ? `${hh}:${String(mm).padStart(2, '0')}:${ss}` : `${String(mm).padStart(2, '0')}:${ss}`;
   const elapsedPct = ((ROUND_SECONDS - seconds) / ROUND_SECONDS) * 100;
 
   return (
+    <Portal>
     <div
       role="dialog"
       aria-modal="true"
@@ -110,12 +130,19 @@ export default function FocusMode({ missions, onComplete, onClose }: {
           ) : (
             <>
               {/* Active mission leads — the timer supports it, not the reverse. */}
-              <p className="text-[11px] uppercase tracking-[0.18em] text-brand mb-2">Active mission</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-brand mb-2">{kicker}</p>
               <h2 className="text-2xl sm:text-3xl font-bold text-fg break-words">{active.task.title}</h2>
               <p className="text-sm text-muted mt-1.5 break-words">{active.goal.title}</p>
 
-              {steps.length > 0 && (
+              {active.task.setup && (
                 <div className="mt-6 rounded-2xl border border-line bg-card p-4">
+                  <p className="text-[11px] uppercase tracking-[0.16em] text-brand mb-1.5">Before you start</p>
+                  <p className="text-sm text-muted leading-relaxed break-words">{active.task.setup}</p>
+                </div>
+              )}
+
+              {steps.length > 0 && (
+                <div className={`${active.task.setup ? 'mt-3' : 'mt-6'} rounded-2xl border border-line bg-card p-4`}>
                   <div className="flex items-center justify-between gap-3 mb-3">
                     <p className="text-[11px] uppercase tracking-[0.16em] text-brand">
                       Step {step + 1} of {steps.length}
@@ -159,7 +186,9 @@ export default function FocusMode({ missions, onComplete, onClose }: {
 
               {/* Timer */}
               <div className="mt-3 rounded-2xl border border-line bg-card p-5 text-center">
-                <p className="text-[11px] uppercase tracking-[0.2em] text-muted">Focus round</p>
+                <p className="text-[11px] uppercase tracking-[0.2em] text-muted">
+                  {roundMinutes ? 'Session timer' : 'Focus round'}
+                </p>
                 <p className="font-mono text-5xl sm:text-6xl font-bold text-brand mt-2 tabular-nums">{mmss}</p>
                 <div className="h-1.5 bg-track rounded-full overflow-hidden mt-4">
                   <div className="xp-bar-fill h-full rounded-full" style={{ width: `${elapsedPct}%` }} />
@@ -192,12 +221,13 @@ export default function FocusMode({ missions, onComplete, onClose }: {
                 className="mt-3 w-full inline-flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-brand hover:bg-[var(--brand-dark)] disabled:bg-elevated disabled:text-muted text-black font-semibold transition-colors"
               >
                 <Check className="h-4 w-4" strokeWidth={3} />
-                {active.value ? 'Already complete' : `Complete mission · +${taskXp(active.task.difficulty)} XP`}
+                {active.value ? 'Already complete' : `${completeLabel} · +${xp ?? taskXp(active.task.difficulty)} XP`}
               </button>
             </>
           )}
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

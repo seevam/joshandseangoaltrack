@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useState } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
@@ -128,6 +129,7 @@ export default function GoalForm({ onClose, editGoal }: Props) {
   };
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fade-in">
       <div className="bg-card border border-line w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto animate-pop-in">
         {/* Header */}
@@ -278,5 +280,6 @@ export default function GoalForm({ onClose, editGoal }: Props) {
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

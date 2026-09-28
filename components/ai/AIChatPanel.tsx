@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { X, Bot, User as UserIcon, Send, Target, Pencil } from 'lucide-react';
@@ -172,6 +173,7 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
 
   // ── Full overlay panel ────────────────────────────────────────────────────
   return (
+    <Portal>
     <>
       {showGoalCreated && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80] bg-brand text-black px-5 py-2.5 rounded-lg shadow-xl flex items-center gap-2 text-sm font-semibold animate-pop-in">
@@ -334,5 +336,6 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
       </div>
       </div>
     </>
+    </Portal>
   );
 }

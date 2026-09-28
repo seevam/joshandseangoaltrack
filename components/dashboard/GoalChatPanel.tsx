@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useState, useEffect, useRef } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Bot, User as UserIcon, Send, X, Sparkles, ChevronRight } from 'lucide-react';
@@ -186,7 +187,8 @@ export default function GoalChatPanel({ goal, onClose, seed }: {
   }, [seed]);
 
   return (
-    // Full-screen modal on mobile, side sheet on larger screens
+    <Portal>
+    {/* Full-screen modal on mobile, side sheet on larger screens */}
     <div className="fixed inset-0 z-50 flex flex-col sm:items-center sm:justify-center sm:p-4">
       <div onClick={dismiss} className={`absolute inset-0 bg-black/80 backdrop-blur-sm ${closing ? 'animate-fade-out' : 'animate-fade-in'}`} />
       <div className={`relative flex flex-col w-full h-full sm:max-w-lg sm:h-[85vh] sm:rounded-2xl overflow-hidden bg-card sm:border sm:border-line ${closing ? 'animate-pop-out' : 'animate-pop-in'}`}>
@@ -300,5 +302,6 @@ export default function GoalChatPanel({ goal, onClose, seed }: {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

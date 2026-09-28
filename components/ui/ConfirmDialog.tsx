@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 
@@ -56,6 +57,7 @@ export default function ConfirmDialog({
   };
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
       <div onClick={() => !busy && onClose()} className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-fade-in" />
       <div
@@ -95,5 +97,6 @@ export default function ConfirmDialog({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

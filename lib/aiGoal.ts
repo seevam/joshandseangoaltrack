@@ -1,5 +1,5 @@
 import type { CoachPersona } from './store';
-import type { Goal } from './types';
+import type { Goal, Subtask } from './types';
 import { dayKey } from './dates';
 
 /** Shared between the chat coach and Quick Create so both build the same shape of plan. */
@@ -140,6 +140,15 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
 - Weekly load is per stage, not cumulative: the 2-4 tasks in ANY ONE stage must
   fit inside the user's weekly hours on their own.
 - Every milestone also carries the stageId of the phase it belongs to.
+- Every milestone has a "kind":
+    "action" — one sitting the user starts and finishes ("Complete a 2.5 hour
+      run", "Give a 5-minute talk", "Pass a full practice exam"). Give it the
+      same protocol as a task: setup, 2-5 ordered executionSteps,
+      successCriteria and a realistic estimatedMinutes. The user presses
+      Start and follows these steps, so write them for that one session.
+    "cumulative" — a total or threshold that builds up across many sessions
+      ("Reach 30km in a week", "Read 5 books", "Save $1,000", "10 days in a
+      row"). There is no single session to start, so give it NO steps.
 - Every task needs protocol detail so the user never has to invent the missing steps:
   a one-sentence first instruction, realistic estimatedMinutes, 2-5 ordered
   executionSteps, and successCriteria. Add setup when anything must be prepared.
@@ -464,8 +473,17 @@ export function buildGoalTools() {
                   description:   { type: 'string', description: '2-3 sentence action guide for this phase' },
                   daysFromStart: { type: 'number', description: 'Day from today; must be ≤ days until deadline' },
                   difficulty:    { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
+                  kind: {
+                    type: 'string',
+                    enum: ['action', 'cumulative'],
+                    description: '"action" = one sitting the user starts and finishes; "cumulative" = a total built across sessions.',
+                  },
+                  setup:            { type: 'string', description: 'Action only: what to have ready.' },
+                  executionSteps:   { type: 'array', items: { type: 'string' }, description: 'Action only: 2-5 ordered steps for that one session. Omit for cumulative.' },
+                  successCriteria:  { type: 'string', description: 'Action only: how they know it is done.' },
+                  estimatedMinutes: { type: 'number', description: 'Action only: realistic minutes for the session.' },
                 },
-                required: ['title', 'stageId', 'description', 'daysFromStart', 'difficulty'],
+                required: ['title', 'stageId', 'description', 'daysFromStart', 'difficulty', 'kind'],
               },
             },
             dailyTasks: {
@@ -518,6 +536,8 @@ export function buildGoalTools() {
 interface RawSubtask {
   title: string; stageId?: string; description?: string;
   daysFromStart: number; difficulty?: string;
+  kind?: string; setup?: string; executionSteps?: string[];
+  successCriteria?: string; estimatedMinutes?: number;
 }
 interface RawStage { id?: string; title?: string; subtitle?: string; purpose?: string; guidance?: string }
 interface RawTask {
@@ -530,6 +550,26 @@ export interface CreateGoalArgs {
   title: string; category: string; targetValue: number; unit: string;
   deadline: string; why: string;
   stages?: RawStage[]; subtasks?: RawSubtask[]; dailyTasks?: RawTask[];
+}
+
+/**
+ * The Start-button protocol for a milestone, cleaned. A cumulative milestone
+ * keeps no steps even if the model wrote some — a total built over weeks has
+ * no single session to walk through.
+ */
+export function milestoneProtocol(s: RawSubtask): Partial<Subtask> {
+  const kind = s.kind === 'cumulative' || s.kind === 'action' ? s.kind : undefined;
+  if (kind === 'cumulative') return { kind };
+  const steps = Array.isArray(s.executionSteps) ? s.executionSteps.map(x => String(x).trim()).filter(Boolean) : [];
+  return {
+    ...(kind ? { kind } : {}),
+    ...(s.setup ? { setup: s.setup } : {}),
+    ...(steps.length ? { executionSteps: steps } : {}),
+    ...(s.successCriteria ? { successCriteria: s.successCriteria } : {}),
+    ...(typeof s.estimatedMinutes === 'number' && Number.isFinite(s.estimatedMinutes)
+      ? { estimatedMinutes: Math.min(Math.max(Math.round(s.estimatedMinutes), 5), 480) }
+      : {}),
+  };
 }
 
 /** Turns raw tool-call arguments into a persisted Goal. Returns null on failure. */
@@ -560,6 +600,7 @@ export async function materialiseGoal(args: CreateGoalArgs): Promise<Goal | null
     daysFromStart: s.daysFromStart ?? (i + 1) * 14,
     completed: false,
     difficulty: (s.difficulty as 'easy' | 'medium' | 'hard' | 'epic') || 'medium',
+    ...milestoneProtocol(s),
   }));
   const dailyTasks = (args.dailyTasks || []).map((t, i) => ({
     id: now + 1000 + i,

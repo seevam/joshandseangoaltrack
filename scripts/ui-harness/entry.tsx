@@ -34,6 +34,25 @@ type W = typeof window & { __calls: string[]; __ai: (body: unknown) => unknown }
 const w = window as W;
 w.__calls = [];
 
+/** Default AI: answers whichever tool the request forces. Checks can override w.__ai. */
+w.__ai = (req: unknown) => {
+  const r = req as { tool_choice?: { function?: { name?: string } } };
+  const tool = r.tool_choice?.function?.name;
+  const call = (name: string, args: unknown) => ({
+    choices: [{ finish_reason: 'stop', message: { tool_calls: [{ function: { name, arguments: JSON.stringify(args) } }] } }],
+  });
+  if (tool === 'milestone_protocol') {
+    return call(tool, {
+      kind: 'action',
+      setup: 'Water, a gel, and a loop you know.',
+      executionSteps: ['Warm up with 10 minutes of walking', 'Run the distance at an easy pace', 'Walk 5 minutes to cool down'],
+      successCriteria: 'The whole distance, no stops longer than a minute.',
+      estimatedMinutes: 150,
+    });
+  }
+  return { choices: [] };
+};
+
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
   const method = init?.method ?? 'GET';

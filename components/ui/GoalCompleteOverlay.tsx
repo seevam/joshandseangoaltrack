@@ -1,5 +1,6 @@
 'use client';
 
+import Portal from '@/components/ui/Portal';
 import { useEffect } from 'react';
 import { Zap } from 'lucide-react';
 import { Confetti } from '@/components/ui/GameUI';
@@ -14,6 +15,7 @@ export default function GoalCompleteOverlay({ title, onDone }: { title: string; 
   }, [onDone]);
 
   return (
+    <Portal>
     <>
       <Confetti />
       <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[92] p-4 animate-fade-in">
@@ -34,5 +36,6 @@ export default function GoalCompleteOverlay({ title, onDone }: { title: string; 
         </div>
       </div>
     </>
+    </Portal>
   );
 }

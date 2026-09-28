@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Trash2, Pencil, CheckCircle, Flame, ChevronDown, ChevronUp, TrendingUp,
   Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon, CalendarDays, Map, Check, Undo2,
-  Target, X, Loader2,
+  Target, X, Loader2, Play,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
@@ -21,6 +21,10 @@ import GoalChatPanel from '@/components/dashboard/GoalChatPanel';
 import GoalForm from '@/components/dashboard/GoalForm';
 import MissionCard from '@/components/dashboard/MissionCard';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import FocusMode from '@/components/dashboard/FocusMode';
+import { milestoneKind, hasProtocol } from '@/lib/milestones';
+import { ensureMilestoneProtocol } from '@/lib/milestoneSteps';
+import { milestoneXp } from '@/lib/xp';
 import { dayKey } from '@/lib/dates';
 
 const MILESTONE_BADGES = [
@@ -216,6 +220,33 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
       : null;
     return { index: idx, milestone: m, date };
   }, [milestones, stages, goal.startDate]);
+
+  /*
+   * Start, for action milestones: the same step-by-step session daily tasks
+   * get. Milestones from older plans have no steps yet; the first Start writes
+   * them (once, saved to the milestone) before the session opens.
+   */
+  const [focusMilestone, setFocusMilestone] = useState<number | null>(null);
+  const [preparing, setPreparing] = useState<number | null>(null);
+  const [startError, setStartError] = useState<{ index: number; message: string } | null>(null);
+
+  const startMilestone = async (index: number) => {
+    const m = milestones[index];
+    if (!m) return;
+    if (hasProtocol(m)) { setFocusMilestone(index); return; }
+    setPreparing(index);
+    setStartError(null);
+    try {
+      const ready = await ensureMilestoneProtocol(goal.id, index);
+      if (ready && hasProtocol(ready)) setFocusMilestone(index);
+      // Otherwise the model judged it a running total: kind is now
+      // 'cumulative', the Start button goes, and the row explains why.
+    } catch {
+      setStartError({ index, message: 'Couldn\u2019t prepare the steps for this one. Try again in a moment.' });
+    } finally {
+      setPreparing(null);
+    }
+  };
 
   const statusLabel = status === 'completed' ? 'Completed' : status === 'overdue' ? 'Overdue' : 'Active';
   const statusColor = status === 'completed' ? '#5DBC70' : status === 'overdue' ? '#F87171' : '#A1A1A1';
@@ -453,6 +484,13 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                     <span className="text-muted-dim">· Day {nextMilestone.milestone.daysFromStart}</span>
                   </p>
                 )}
+                <MilestoneAction
+                  milestone={nextMilestone.milestone}
+                  preparing={preparing === nextMilestone.index}
+                  error={startError?.index === nextMilestone.index ? startError.message : null}
+                  onStart={() => startMilestone(nextMilestone.index)}
+                  className="mt-3"
+                />
               </div>
             </div>
           </div>
@@ -587,6 +625,19 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             </span>
                           )}
                         </span>
+                        {!s.completed && !stageLocked && milestoneKind(s) === 'action' && (
+                          <button
+                            onClick={() => startMilestone(i)}
+                            disabled={preparing !== null}
+                            aria-label={`Start ${s.title}`}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-brand/40 text-brand text-xs font-semibold glow-hover flex-shrink-0 disabled:opacity-60"
+                          >
+                            {preparing === i
+                              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              : <Play className="h-3.5 w-3.5" />}
+                            <span className="hidden sm:inline">{preparing === i ? 'Preparing' : 'Start'}</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => setExpandedMilestone(isExpanded ? null : i)}
                           aria-expanded={isExpanded}
@@ -624,6 +675,24 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
                             <p className="text-xs text-muted leading-relaxed bg-card rounded-lg p-2.5 border border-line break-words">
                               {s.description}
                             </p>
+                          )}
+                          {startError?.index === i && (
+                            <p className="text-xs text-red-400" role="alert">{startError.message}</p>
+                          )}
+                          {milestoneKind(s) === 'cumulative' ? (
+                            <p className="text-xs text-muted leading-relaxed">
+                              A running total, built up across your sessions — there&apos;s no single
+                              session to start. Tick it when you reach it.
+                            </p>
+                          ) : hasProtocol(s) && (
+                            <ol className="text-xs text-muted leading-relaxed space-y-1 bg-card rounded-lg p-2.5 border border-line">
+                              {s.executionSteps!.map((step, n) => (
+                                <li key={n} className="flex gap-2">
+                                  <span className="text-brand font-semibold flex-shrink-0">{n + 1}.</span>
+                                  <span className="min-w-0 break-words">{step}</span>
+                                </li>
+                              ))}
+                            </ol>
                           )}
                           <button
                             onClick={() => actions.onToggleSubtask(goal.id, i)}
@@ -867,6 +936,22 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
         />
       )}
 
+      {focusMilestone !== null && milestones[focusMilestone] && (
+        <FocusMode
+          missions={[{
+            goal,
+            task: milestoneAsTask(milestones[focusMilestone], focusMilestone),
+            value: milestones[focusMilestone].completed || undefined,
+          }]}
+          kicker="Milestone"
+          completeLabel="Complete milestone"
+          xp={milestoneXp(milestones[focusMilestone].difficulty)}
+          roundMinutes={milestones[focusMilestone].estimatedMinutes}
+          onComplete={() => { actions.onToggleSubtask(goal.id, focusMilestone); setFocusMilestone(null); }}
+          onClose={() => setFocusMilestone(null)}
+        />
+      )}
+
       {askDuration && (
         <DurationPrompt
           taskTitle={askDuration.title}
@@ -904,3 +989,50 @@ function Sparkline({ history, target, color }: { history: { date: string; value:
   );
 }
 
+/** A milestone in the shape Focus Mode runs — it already knows how to walk steps. */
+function milestoneAsTask(m: Goal['subtasks'][number], index: number): Goal['dailyTasks'][number] {
+  return {
+    id: m.id ?? index,
+    title: m.title,
+    description: m.description,
+    setup: m.setup,
+    executionSteps: m.executionSteps,
+    successCriteria: m.successCriteria,
+    estimatedMinutes: m.estimatedMinutes,
+    difficulty: m.difficulty,
+    targetValue: null,
+    unit: '',
+    type: 'checkbox',
+  };
+}
+
+/** Start for an action milestone; a one-line explanation for a running total. */
+function MilestoneAction({ milestone, preparing, error, onStart, className = '' }: {
+  milestone: Goal['subtasks'][number];
+  preparing: boolean;
+  error: string | null;
+  onStart: () => void;
+  className?: string;
+}) {
+  if (milestone.completed) return null;
+  if (milestoneKind(milestone) === 'cumulative') {
+    return (
+      <p className={`text-xs text-muted leading-relaxed ${className}`}>
+        A running total — it builds up across your sessions. Tick it when you reach it.
+      </p>
+    );
+  }
+  return (
+    <div className={className}>
+      <button
+        onClick={onStart}
+        disabled={preparing}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black text-sm font-semibold transition-colors disabled:opacity-70"
+      >
+        {preparing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />}
+        {preparing ? 'Preparing your steps…' : hasProtocol(milestone) ? 'Start' : 'Start — get the steps'}
+      </button>
+      {error && <p className="text-xs text-red-400 mt-2" role="alert">{error}</p>}
+    </div>
+  );
+}

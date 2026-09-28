@@ -94,6 +94,49 @@ export async function PUT(req: Request, { params }: Params) {
       return NextResponse.json(updated);
     }
 
+    /*
+     * Protocol fields on one milestone — the steps behind its Start button,
+     * filled in on first use for milestones created before plans carried them.
+     * Merged into that one element only, same position+id guard as a tick, and
+     * limited to these fields so this cannot rewrite a milestone's title,
+     * dates or completion.
+     */
+    const mf = body.milestoneFields as { index?: unknown; id?: unknown; fields?: Record<string, unknown> } | undefined;
+    if (mf !== undefined) {
+      const index = Number(mf.index);
+      const id = mf.id === undefined || mf.id === null ? null : String(mf.id);
+      const f = mf.fields ?? {};
+      const clean: Record<string, unknown> = {};
+      if (f.kind === 'action' || f.kind === 'cumulative') clean.kind = f.kind;
+      if (typeof f.setup === 'string') clean.setup = f.setup.slice(0, 500);
+      if (Array.isArray(f.executionSteps)) {
+        clean.executionSteps = f.executionSteps.filter(x => typeof x === 'string' && x.trim()).slice(0, 8).map(x => String(x).slice(0, 400));
+      }
+      if (typeof f.successCriteria === 'string') clean.successCriteria = f.successCriteria.slice(0, 400);
+      if (typeof f.estimatedMinutes === 'number' && Number.isFinite(f.estimatedMinutes)) {
+        clean.estimatedMinutes = Math.min(Math.max(Math.round(f.estimatedMinutes), 5), 480);
+      }
+      if (!Number.isInteger(index) || index < 0 || !Object.keys(clean).length) {
+        return NextResponse.json({ error: 'Invalid milestone fields' }, { status: 400 });
+      }
+      await prisma.$executeRaw`
+        UPDATE goals
+        SET subtasks = COALESCE((
+              SELECT jsonb_agg(
+                       CASE WHEN t.ord = ${index + 1}
+                             AND (${id}::text IS NULL OR t.e ->> 'id' = ${id}::text)
+                            THEN t.e || ${JSON.stringify(clean)}::jsonb
+                            ELSE t.e END
+                       ORDER BY t.ord)
+              FROM jsonb_array_elements(COALESCE(subtasks, '[]'::jsonb)) WITH ORDINALITY AS t(e, ord)
+            ), '[]'::jsonb),
+            "updatedAt" = NOW()
+        WHERE id = ${params.id} AND "userId" = ${userId}
+      `;
+      const updated = await prisma.goal.findFirst({ where: { id: params.id, userId } });
+      return NextResponse.json(updated);
+    }
+
     /* A check-in for one day, appended only if that day isn't there already. */
     if (typeof body.checkIn === 'string') {
       const day = body.checkIn;

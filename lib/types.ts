@@ -33,6 +33,19 @@ export interface Subtask {
   completedAt?: string;
   /** Assigned by the AI from task difficulty — drives XP. Never user-editable. */
   difficulty?: 'easy' | 'medium' | 'hard' | 'epic';
+  /**
+   * 'action': one thing the user sits down and does ("Complete a 2.5 hour
+   * run"), so it gets a Start button and step-by-step instructions.
+   * 'cumulative': a total or threshold that builds up across sessions
+   * ("Reach 30km in a week", "Read 5 books") — there is no single session to
+   * start, so it gets no steps. Absent on older goals; see milestoneKind().
+   */
+  kind?: 'action' | 'cumulative';
+  /** Action milestones only — same protocol shape as a daily task. */
+  setup?: string;
+  executionSteps?: string[];
+  successCriteria?: string;
+  estimatedMinutes?: number;
 }
 
 export interface DailyTask {
