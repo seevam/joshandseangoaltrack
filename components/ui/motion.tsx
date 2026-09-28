@@ -173,37 +173,64 @@ export function Sparks({ x, y, color = '#5DBC70' }: { x: number; y: number; colo
 }
 
 /** Full-screen celebration when the user gains a level. */
-export function LevelUpOverlay({ level, rankName, rankColor, onDone }: {
-  level: number; rankName: string; rankColor: string; onDone: () => void;
+export function LevelUpOverlay({ level, rankName, rankColor, scope, onDone }: {
+  level: number; rankName: string; rankColor: string;
+  /** A skill's name when a skill levelled; omitted for the player level. */
+  scope?: string;
+  onDone: () => void;
 }) {
+  /*
+   * It used to be 3.2 seconds, untouchable and silent to screen readers —
+   * easy to miss if you were looking at the task you had just ticked. Now it
+   * stays long enough to read, and a tap or Escape moves on sooner.
+   */
+  // A tap in the first moment is more likely the end of the tick that
+  // earned this than a wish to skip it.
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    const t = setTimeout(onDone, 3200);
-    return () => clearTimeout(t);
+    const t = setTimeout(onDone, 5000);
+    const r = setTimeout(() => setReady(true), 700);
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' || e.key === 'Enter') onDone(); };
+    window.addEventListener('keydown', onKey);
+    return () => { clearTimeout(t); clearTimeout(r); window.removeEventListener('keydown', onKey); };
   }, [onDone]);
 
+  const title = scope ? `${scope} Level ${level}` : `Level ${level}`;
   return (
     <Portal>
-    <div className="fixed inset-0 z-[95] flex items-center justify-center pointer-events-none animate-fade-in">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Level up: ${title}`}
+      onClick={() => ready && onDone()}
+      className="fixed inset-0 z-[95] flex items-center justify-center p-6 animate-fade-in cursor-pointer"
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
       <div className="relative text-center animate-scale-in">
-        <div className="relative mx-auto mb-5 h-28 w-28 flex items-center justify-center">
+        <div className="relative mx-auto mb-5 h-32 w-32 flex items-center justify-center">
+          <span className="rankup-burst absolute -inset-6 rounded-full" style={{ ['--rank' as string]: rankColor, animationDelay: '0.1s' }} aria-hidden />
           {[0, 0.35, 0.7].map(d => (
             <span
               key={d}
+              aria-hidden
               className="level-ring absolute inset-0 rounded-full border-2"
               style={{ borderColor: rankColor, animationDelay: `${d}s` }}
             />
           ))}
           <div
-            className="h-24 w-24 rounded-full flex items-center justify-center text-4xl font-black float-y"
-            style={{ backgroundColor: `${rankColor}22`, border: `2px solid ${rankColor}`, color: rankColor }}
+            className="h-28 w-28 rounded-full flex items-center justify-center text-5xl font-black float-y"
+            style={{ backgroundColor: `${rankColor}22`, border: `2px solid ${rankColor}`, color: rankColor, boxShadow: `0 0 40px -6px ${rankColor}` }}
           >
             {level}
           </div>
         </div>
-        <p className="text-xs uppercase tracking-[0.3em] text-muted mb-1">Level Up</p>
-        <h2 className="text-3xl font-black text-fg">Level {level}</h2>
-        <p className="text-sm font-semibold mt-1" style={{ color: rankColor }}>{rankName}</p>
+        {/* Positioned, so the expanding rings pass behind the words, not over them. */}
+        <div className="relative">
+          <p className="text-xs uppercase tracking-[0.3em] text-muted mb-1">{scope ? `${scope} Level Up` : 'Level Up'}</p>
+          <h2 className="font-display text-4xl tracking-wide text-fg">{title.toUpperCase()}</h2>
+          <p className="text-sm font-semibold mt-1" style={{ color: rankColor }}>{rankName}</p>
+          <p className="text-xs text-muted-dim mt-6">Tap anywhere to continue</p>
+        </div>
       </div>
     </div>
     </Portal>

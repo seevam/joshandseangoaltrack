@@ -28,7 +28,7 @@ const SHARDS = [
 ];
 
 export default function RankUpOverlay({
-  fromSlug, fromName, toSlug, toName, toColor, level, onDone,
+  fromSlug, fromName, toSlug, toName, toColor, level, scope, onDone,
 }: {
   fromSlug: string;
   fromName: string;
@@ -36,6 +36,8 @@ export default function RankUpOverlay({
   toName: string;
   toColor: string;
   level: number;
+  /** A skill's name when a skill ranked up; omitted for the player rank. */
+  scope?: string;
   onDone: () => void;
 }) {
   // Holds the dismiss until the reveal has actually played, so a stray tap in
@@ -56,7 +58,7 @@ export default function RankUpOverlay({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={`Rank up: ${fromName} to ${toName}`}
+      aria-label={`${scope ? `${scope} rank up` : 'Rank up'}: ${fromName} to ${toName}`}
       onClick={() => ready && onDone()}
       className="fixed inset-0 z-[96] flex items-center justify-center p-6 animate-fade-in cursor-pointer"
       style={{ ['--rank' as string]: toColor }}
@@ -64,7 +66,9 @@ export default function RankUpOverlay({
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
 
       <div className="relative flex flex-col items-center text-center">
-        <p className="rankup-label text-[11px] uppercase tracking-[0.4em] text-muted mb-5">Rank Up</p>
+        <p className="rankup-label relative text-[11px] uppercase tracking-[0.4em] text-muted mb-5">
+          {scope ? `${scope} Rank Up` : 'Rank Up'}
+        </p>
 
         <div className="relative" style={{ width: size, height: size }}>
           {/* Light burst behind the reveal. */}
@@ -119,7 +123,7 @@ export default function RankUpOverlay({
           </div>
         </div>
 
-        <div className="rankup-text mt-7">
+        <div className="rankup-text relative mt-7">
           <p className="text-sm text-muted">
             <span className="line-through decoration-muted/60">{fromName}</span>
             <span className="mx-2 text-muted-dim">→</span>
@@ -127,7 +131,7 @@ export default function RankUpOverlay({
           <h2 className="font-display text-4xl tracking-wide mt-1" style={{ color: toColor }}>
             {toName.toUpperCase()}
           </h2>
-          <p className="text-sm text-muted mt-2">Level {level}</p>
+          <p className="text-sm text-muted mt-2">{scope ? `${scope} · Level ${level}` : `Player Level ${level}`}</p>
           <p className={`text-xs text-muted-dim mt-6 transition-opacity duration-500 ${ready ? 'opacity-100' : 'opacity-0'}`}>
             Tap anywhere to continue
           </p>

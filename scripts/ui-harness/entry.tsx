@@ -18,6 +18,8 @@ import GoalDetailPage from '@/components/goals/GoalDetailPage';
 import ProfilePage from '@/components/profile/ProfilePage';
 import OnboardingPage from '@/components/OnboardingPage';
 import { useGoalStore } from '@/lib/store';
+import { computeSkills } from '@/lib/skills';
+import { computeStats } from '@/lib/xp';
 import type { Goal } from '@/lib/types';
 import { SAMPLE_GOALS } from './fixtures';
 
@@ -118,6 +120,9 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 }) as typeof fetch;
 
 useGoalStore.getState().setGoals(goals);
+// Checks can reach the live store and the scoring, e.g. to set XP up just
+// short of a rank boundary and then cross it through the real UI.
+Object.assign(window, { __store: useGoalStore, __lib: { computeSkills, computeStats }, __storeKey: STORE_KEY });
 
 const route = location.hash.slice(1) || '/home';
 const page = () => {
