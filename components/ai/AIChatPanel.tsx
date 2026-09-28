@@ -8,7 +8,10 @@ import { useGoalStore } from '@/lib/store';
 import { getGoalProgress } from '@/lib/types';
 import MarkdownText from '@/components/ui/MarkdownText';
 import { Icon } from '@/components/ui/icons';
-import { splitInlineOptions, buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal } from '@/lib/aiGoal';
+import {
+  splitInlineOptions, buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal,
+  requestPlan, PlanError, PLAN_MAX_TOKENS, type CreateGoalArgs,
+} from '@/lib/aiGoal';
 import { skillsContext } from '@/lib/skills';
 import { useDismiss } from '@/components/ui/Modal';
 
@@ -106,44 +109,35 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
     const updatedHistory = [...history, { role: 'user', content }];
 
     try {
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: chatCoachPrompt(assistantName, personaStyle(persona), buildGoalsContext() + '\n' + skillsContext(goals)) },
-            ...updatedHistory,
-          ],
-          tools: buildGoalTools(),
-          tool_choice: 'required',
-          max_tokens: 2000,
-          temperature: 0.4,
-        }),
+      const { name, args } = await requestPlan({
+        messages: [
+          { role: 'system', content: chatCoachPrompt(assistantName, personaStyle(persona), buildGoalsContext() + '\n' + skillsContext(goals)) },
+          ...updatedHistory,
+        ],
+        tools: buildGoalTools(),
+        tool_choice: 'required',
+        // Any turn may answer with a whole plan; 2,000 cut plans off mid-way.
+        max_tokens: PLAN_MAX_TOKENS,
+        temperature: 0.4,
       });
 
-      if (!res.ok) throw new Error('AI request failed');
-      const data = await res.json();
-      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-
-      if (toolCall?.function.name === 'create_goal') {
-        const args = JSON.parse(toolCall.function.arguments);
-        const saved = await materialiseGoal(args);
-        if (saved) {
-          addGoal(saved);
-          setShowGoalCreated(true);
-          setTimeout(() => setShowGoalCreated(false), 4000);
-        }
+      if (name === 'create_goal') {
+        const saved = await materialiseGoal(args as unknown as CreateGoalArgs);
+        // Never announce a goal that was not actually saved.
+        if (!saved) throw new PlanError('The plan was built but couldn\u2019t be saved, so nothing was created. Please try again.');
+        addGoal(saved);
+        setShowGoalCreated(true);
+        setTimeout(() => setShowGoalCreated(false), 4000);
         setHistory([]);
         setMessages(prev => [...prev, {
           id: Date.now() + 1, type: 'ai', timestamp: new Date(),
-          content: `Done! Created your goal: **${args.title}** 🎯\n\nTarget: ${args.targetValue} ${args.unit} by ${args.deadline}\n\nYou can track it on your dashboard.`,
+          content: `Done! Created your goal: **${saved.title}** 🎯\n\nYou'll find its first stage's tasks on your dashboard.`,
         }]);
-      } else if (toolCall?.function.name === 'respond') {
-        const args = JSON.parse(toolCall.function.arguments);
+      } else if (name === 'respond') {
         // Anything the model wrote as an inline A)/B)/C) list is lifted out of
         // the text and re-offered as chips, where choices belong.
         const { text, options } = splitInlineOptions(String(args.message ?? ''));
-        setHistory([...updatedHistory, { role: 'assistant', content: args.message }]);
+        setHistory([...updatedHistory, { role: 'assistant', content: String(args.message ?? '') }]);
         setMessages(prev => [...prev, {
           id: Date.now() + 1, type: 'ai', content: text, timestamp: new Date(),
         }]);
@@ -157,10 +151,10 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
           content: 'What goal would you like to work on?',
         }]);
       }
-    } catch {
+    } catch (err) {
       setMessages(prev => [...prev, {
         id: Date.now() + 1, type: 'ai', isError: true, timestamp: new Date(),
-        content: "I'm having trouble connecting right now. Please try again.",
+        content: err instanceof PlanError ? err.message : "I'm having trouble connecting right now. Please try again.",
       }]);
     } finally {
       setIsLoading(false);

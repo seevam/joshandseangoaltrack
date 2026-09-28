@@ -120,12 +120,11 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
   the stageId of the phase it belongs to, so a long plan reads as a journey rather
   than one flat list. If you showed the user draft chapters, save those same ones.
 - 10-12 milestones spaced every 2-3 weeks — highly specific and measurable, never generic
-- Each milestone MUST include a 2-3 sentence description that says what actually
+- Each milestone MUST include a 1-2 sentence description that says what actually
   happens in this phase. Specific and explanatory, never a vague gesture:
     ✗ "Explore advanced topics"
-    ✓ "With the fundamentals behind you, you move to the backend: how a server
-       handles a request, how data is stored, and how the two connect. By the end
-       you'll have a small API of your own running locally."
+    ✓ "You move to the backend: how a server handles a request and stores data.
+       By the end you have a small API of your own running locally."
 - NEVER distribute work uniformly. One task every single day is what a spreadsheet
   produces, not what a coach prescribes. Real plans have heavy days, light days and
   rest days: a long session on a free day, something short on a busy one, and at
@@ -142,19 +141,16 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
 - Every milestone also carries the stageId of the phase it belongs to.
 - Every milestone has a "kind":
     "action" — one sitting the user starts and finishes ("Complete a 2.5 hour
-      run", "Give a 5-minute talk", "Pass a full practice exam"). Give it the
-      same protocol as a task: setup, 2-5 ordered executionSteps,
-      successCriteria and a realistic estimatedMinutes. The user presses
-      Start and follows these steps, so write them for that one session.
+      run", "Give a 5-minute talk", "Pass a full practice exam").
     "cumulative" — a total or threshold that builds up across many sessions
       ("Reach 30km in a week", "Read 5 books", "Save $1,000", "10 days in a
-      row"). There is no single session to start, so give it NO steps.
-- Every task needs protocol detail so the user never has to invent the missing steps:
-  a one-sentence first instruction, realistic estimatedMinutes, 2-5 ordered
-  executionSteps, and successCriteria. Add setup when anything must be prepared.
-- Add a "fallback" — a real ~10-minute version — ONLY where an honest reduction
-  exists. Omit it when the task cannot be shrunk; a fabricated fallback is worse
-  than none, because the user is offered a recovery that does not help.
+      row").
+- Every task gets a one-sentence first instruction (description) and realistic
+  estimatedMinutes.
+- KEEP create_goal COMPACT. Do NOT write setup, executionSteps, successCriteria or
+  fallbacks for tasks or milestones: the step-by-step protocols are written
+  separately, straight after the plan is saved. A long create_goal call is cut off
+  and the whole plan is lost.
 - ALL tasks type="checkbox". Schedule logically (physical goals 3-5x/week, not daily)
 - daysFromStart MUST be ≤ total days from today to the deadline. Space them evenly.
 - DIFFICULTY: assign every milestone and task a difficulty ("easy" | "medium" | "hard" | "epic")
@@ -470,7 +466,7 @@ export function buildGoalTools() {
                 properties: {
                   title:         { type: 'string', description: 'Specific, measurable milestone title' },
                   stageId:       { type: 'string', description: 'id of the stage this milestone belongs to. Required.' },
-                  description:   { type: 'string', description: '2-3 sentence action guide for this phase' },
+                  description:   { type: 'string', description: '1-2 sentences on what actually happens in this phase' },
                   daysFromStart: { type: 'number', description: 'Day from today; must be ≤ days until deadline' },
                   difficulty:    { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
                   kind: {
@@ -478,10 +474,6 @@ export function buildGoalTools() {
                     enum: ['action', 'cumulative'],
                     description: '"action" = one sitting the user starts and finishes; "cumulative" = a total built across sessions.',
                   },
-                  setup:            { type: 'string', description: 'Action only: what to have ready.' },
-                  executionSteps:   { type: 'array', items: { type: 'string' }, description: 'Action only: 2-5 ordered steps for that one session. Omit for cumulative.' },
-                  successCriteria:  { type: 'string', description: 'Action only: how they know it is done.' },
-                  estimatedMinutes: { type: 'number', description: 'Action only: realistic minutes for the session.' },
                 },
                 required: ['title', 'stageId', 'description', 'daysFromStart', 'difficulty', 'kind'],
               },
@@ -503,26 +495,8 @@ export function buildGoalTools() {
                   difficulty: { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
                   description: { type: 'string', description: 'The first concrete instruction, one sentence.' },
                   estimatedMinutes: { type: 'number', description: 'Realistic minutes for this task.' },
-                  setup: { type: 'string', description: 'What to have ready before starting.' },
-                  executionSteps: {
-                    type: 'array',
-                    description: '2-5 ordered actions that make up the task.',
-                    items: { type: 'string' },
-                  },
-                  successCriteria: { type: 'string', description: 'How they know it is done.' },
-                  fallback: {
-                    type: 'string',
-                    description:
-                      'A genuinely smaller ~10-minute version of this task, when an honest '
-                      + 'one exists (e.g. "Run 10 minutes easy" for a 45-minute run). OMIT '
-                      + 'entirely when the task cannot be meaningfully reduced — never '
-                      + 'invent one, the UI hides the recovery action when it is absent.',
-                  },
                 },
-                required: [
-                  'title', 'stageId', 'daysOfWeek', 'type', 'difficulty',
-                  'description', 'estimatedMinutes', 'executionSteps', 'successCriteria',
-                ],
+                required: ['title', 'stageId', 'daysOfWeek', 'type', 'difficulty', 'description', 'estimatedMinutes'],
               },
             },
           },
@@ -570,6 +544,58 @@ export function milestoneProtocol(s: RawSubtask): Partial<Subtask> {
       ? { estimatedMinutes: Math.min(Math.max(Math.round(s.estimatedMinutes), 5), 480) }
       : {}),
   };
+}
+
+/**
+ * A plan request that failed, with a message that says what actually went
+ * wrong. The old catch-all — "couldn't build a plan from this yet, say a
+ * little more" — blamed the user for what was really the reply being cut off
+ * mid-plan, and sent Josh off to type more when more was never the fix.
+ */
+export class PlanError extends Error {}
+
+/**
+ * Room for a full plan. The compact create_goal (no protocols) is roughly
+ * 1.5–2.5k tokens; the old limit of 2,000 cut plans off mid-JSON, which is
+ * what made both Quick Create and "Build Tailored Plan" fail.
+ */
+export const PLAN_MAX_TOKENS = 6000;
+
+/**
+ * Sends a chat request that may answer with create_goal and reads back the
+ * tool call, turning every way it can fail into a PlanError the UI can show
+ * as it is.
+ */
+export async function requestPlan(body: Record<string, unknown>): Promise<{ name: string; args: Record<string, unknown> }> {
+  let res: Response;
+  try {
+    res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  } catch {
+    throw new PlanError('Couldn\u2019t reach the planner. Check your connection and try again.');
+  }
+  const data = await res.json().catch(() => null) as
+    | { error?: string | { message?: string }; choices?: { finish_reason?: string; message?: { tool_calls?: { function: { name: string; arguments: string } }[] } }[] }
+    | null;
+  if (res.status === 503) throw new PlanError('The AI planner isn\u2019t set up on this server yet.');
+  if (res.status === 504 || (!res.ok && data === null)) {
+    throw new PlanError('The planner took too long to answer. Please try again — nothing was lost.');
+  }
+  if (!res.ok) throw new PlanError('The planner hit an error. Please try again in a moment.');
+
+  const choice = data?.choices?.[0];
+  const call = choice?.message?.tool_calls?.[0];
+  if (!call) throw new PlanError('The planner replied without a plan. Please try again.');
+  try {
+    return { name: call.function.name, args: JSON.parse(call.function.arguments) };
+  } catch {
+    throw new PlanError(choice?.finish_reason === 'length'
+      ? 'That plan came out too long to finish. Please try again.'
+      : 'The plan came back garbled. Please try again.');
+  }
 }
 
 /** Turns raw tool-call arguments into a persisted Goal. Returns null on failure. */

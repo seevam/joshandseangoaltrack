@@ -50,13 +50,39 @@ const w = window as W;
 w.__calls = JSON.parse(sessionStorage.getItem('harness_calls') || '[]');
 const logCall = (c: string) => { w.__calls.push(c); sessionStorage.setItem('harness_calls', JSON.stringify(w.__calls)); };
 
-/** Default AI: answers whichever tool the request forces. Checks can override w.__ai. */
+/** A compact plan, as create_goal now returns it: no protocols. */
+function samplePlan(title: string) {
+  const stages = ['base', 'build', 'peak'].map((id, i) => ({ id, title: ['Base Building', 'Building Distance', 'Race Ready'][i], subtitle: 'Steady, sustainable progress' }));
+  return {
+    title, category: 'fitness', targetValue: 42, unit: 'km',
+    deadline: new Date(Date.now() + 200 * 864e5).toISOString().slice(0, 10),
+    why: 'Finish a first marathon feeling strong.',
+    stages,
+    subtasks: Array.from({ length: 9 }, (_, i) => ({
+      title: i % 3 === 2 ? `Reach ${20 + i * 5}km in a week` : `Complete a continuous ${5 + i * 2}km run`,
+      stageId: stages[Math.floor(i / 3)].id, description: 'What happens in this part of the plan.',
+      daysFromStart: 14 * (i + 1), difficulty: i < 3 ? 'easy' : 'hard', kind: i % 3 === 2 ? 'cumulative' : 'action',
+    })),
+    dailyTasks: Array.from({ length: 6 }, (_, i) => ({
+      title: `Run ${3 + i}km easy`, stageId: stages[Math.floor(i / 2)].id, daysOfWeek: [1, 3, 6],
+      type: 'checkbox', difficulty: 'medium', description: 'Head out before you think about it.', estimatedMinutes: 30 + i * 5,
+    })),
+  };
+}
+
+/**
+ * Default AI: answers whichever tool the request forces, or the chat turn.
+ * Checks can override w.__ai, or set w.__aiMode to 'truncate' (the reply is
+ * cut off mid-plan) or 'timeout' (an HTML 504, as from a serverless timeout).
+ */
 w.__ai = (req: unknown) => {
-  const r = req as { tool_choice?: { function?: { name?: string } } };
-  const tool = r.tool_choice?.function?.name;
+  const r = req as { tool_choice?: { function?: { name?: string } } | string; messages: { role: string; content: string }[] };
+  const tool = typeof r.tool_choice === 'object' ? r.tool_choice?.function?.name : undefined;
   const call = (name: string, args: unknown) => ({
     choices: [{ finish_reason: 'stop', message: { tool_calls: [{ function: { name, arguments: JSON.stringify(args) } }] } }],
   });
+  const users = r.messages.filter(m => m.role === 'user').map(m => m.content);
+  const firstUser = users[0] ?? 'My goal';
   if (tool === 'milestone_protocol') {
     return call(tool, {
       kind: 'action',
@@ -66,7 +92,30 @@ w.__ai = (req: unknown) => {
       estimatedMinutes: 150,
     });
   }
-  return { choices: [] };
+  if (tool === 'task_protocols') {
+    const ids = Array.from(users[0].matchAll(/- id (\d+):/g)).map(m => Number(m[1]));
+    return call(tool, { tasks: ids.map(id => ({ id, setup: 'Shoes and water.', executionSteps: ['Warm up', 'Run it easy', 'Stretch'], successCriteria: 'Distance covered.' })) });
+  }
+  const wantsPlan = tool === 'create_goal' || /\bbuild\b/i.test(users[users.length - 1] ?? '');
+  if (wantsPlan) {
+    const title = (firstUser.match(/^Goal: (.+)$/m)?.[1] ?? firstUser).slice(0, 60);
+    const mode = (w as unknown as { __aiMode?: string }).__aiMode;
+    if (mode === 'truncate') {
+      const json = JSON.stringify(samplePlan(title));
+      return { choices: [{ finish_reason: 'length', message: { tool_calls: [{ function: { name: 'create_goal', arguments: json.slice(0, json.length / 2) } }] } }] };
+    }
+    if (mode === 'timeout') return { __status: 504, __html: '<html>An error occurred with your deployment. FUNCTION_INVOCATION_TIMEOUT</html>' };
+    return call('create_goal', samplePlan(title));
+  }
+  return call('respond', {
+    message: 'Can you currently run 30 minutes without walking?',
+    options: [{ label: 'Not yet', value: 'Not yet' }, { label: 'Yes, easily', value: 'Yes, easily' }],
+    draft: { suggestedTitle: firstUser, suggestedDomain: 'health', chapters: [
+      { title: 'Base Building', subtitle: 'Run without stopping' },
+      { title: 'Building Distance', subtitle: 'Long runs grow weekly' },
+      { title: 'Race Ready', subtitle: 'Taper and race' },
+    ] },
+  });
 };
 
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -77,7 +126,9 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.startsWith('/api/ai/chat')) {
     logCall(`AI ${init?.body}`);
-    return json(w.__ai ? w.__ai(JSON.parse(String(init?.body))) : { choices: [] });
+    const out = (w.__ai ? w.__ai(JSON.parse(String(init?.body))) : { choices: [] }) as { __status?: number; __html?: string };
+    if (out.__status) return new Response(out.__html ?? '', { status: out.__status, headers: { 'Content-Type': 'text/html' } });
+    return json(out);
   }
   if (method !== 'GET') {
     logCall(`${method} ${url} ${init?.body ?? ''}`);
@@ -98,7 +149,9 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (method === 'PUT') {
       const body = JSON.parse(String(init?.body));
       const next = { ...g };
-      if (body.completion) {
+      if (body.taskFields) {
+        next.dailyTasks = next.dailyTasks.map(t => ({ ...t, ...(body.taskFields[String(t.id)] || {}) }));
+      } else if (body.completion) {
         const { date, taskId, value } = body.completion;
         next.taskCompletions = { ...next.taskCompletions, [date]: { ...(next.taskCompletions[date] || {}), [taskId]: value } };
       } else if (body.milestone) {

@@ -6,6 +6,7 @@ import Sidebar from '@/components/navigation/Sidebar';
 import BottomNav from '@/components/navigation/BottomNav';
 import CoachFab from '@/components/navigation/CoachFab';
 import ProgressCelebrations from '@/components/ui/ProgressCelebrations';
+import ProtocolFiller from '@/components/ui/ProtocolFiller';
 import AIChatPanel from '@/components/ai/AIChatPanel';
 import CreateGoalModal from '@/components/goals/CreateGoalModal';
 import { useGoalStore } from '@/lib/store';
@@ -56,6 +57,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Level and rank celebrations, watched here so a gain on any page is seen. */}
       <ProgressCelebrations />
+
+      {/* Step-by-step protocols for live tasks that don't have them yet. */}
+      <ProtocolFiller />
     </div>
   );
 }

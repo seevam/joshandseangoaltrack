@@ -154,6 +154,49 @@ export async function PUT(req: Request, { params }: Params) {
       return NextResponse.json(updated);
     }
 
+    /*
+     * Protocol fields on recurring tasks, keyed by task id — the steps behind
+     * "Open full protocol" and Focus Mode, written just after a plan is saved
+     * (the plan itself is kept compact so it is never cut off). One statement
+     * for any number of tasks, and only these fields: never a title, schedule
+     * or difficulty.
+     */
+    const tf = body.taskFields as Record<string, Record<string, unknown>> | undefined;
+    if (tf !== undefined) {
+      const byId: Record<string, Record<string, unknown>> = {};
+      for (const [taskId, f] of Object.entries(tf && typeof tf === 'object' ? tf : {}).slice(0, 60)) {
+        if (!f || typeof f !== 'object') continue;
+        const clean: Record<string, unknown> = {};
+        const text = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : undefined);
+        if (text(f.description, 300)) clean.description = text(f.description, 300);
+        if (text(f.setup, 500)) clean.setup = text(f.setup, 500);
+        if (text(f.successCriteria, 400)) clean.successCriteria = text(f.successCriteria, 400);
+        if (text(f.fallback, 200)) clean.fallback = text(f.fallback, 200);
+        if (Array.isArray(f.executionSteps)) {
+          const steps = f.executionSteps.filter(x => typeof x === 'string' && x.trim()).slice(0, 8).map(x => String(x).trim().slice(0, 400));
+          if (steps.length) clean.executionSteps = steps;
+        }
+        if (typeof f.estimatedMinutes === 'number' && Number.isFinite(f.estimatedMinutes)) {
+          clean.estimatedMinutes = Math.min(Math.max(Math.round(f.estimatedMinutes), 5), 240);
+        }
+        if (Object.keys(clean).length) byId[String(taskId)] = clean;
+      }
+      if (!Object.keys(byId).length) {
+        return NextResponse.json({ error: 'Invalid task fields' }, { status: 400 });
+      }
+      await prisma.$executeRaw`
+        UPDATE goals
+        SET "dailyTasks" = COALESCE((
+              SELECT jsonb_agg(t.e || COALESCE(${JSON.stringify(byId)}::jsonb -> (t.e ->> 'id'), '{}'::jsonb) ORDER BY t.ord)
+              FROM jsonb_array_elements(COALESCE("dailyTasks", '[]'::jsonb)) WITH ORDINALITY AS t(e, ord)
+            ), '[]'::jsonb),
+            "updatedAt" = NOW()
+        WHERE id = ${params.id} AND "userId" = ${userId}
+      `;
+      const updated = await readGoal(params.id, userId);
+      return NextResponse.json(updated);
+    }
+
     /* A check-in for one day, appended only if that day isn't there already. */
     if (typeof body.checkIn === 'string') {
       const day = body.checkIn;

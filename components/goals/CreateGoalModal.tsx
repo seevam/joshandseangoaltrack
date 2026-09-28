@@ -3,7 +3,11 @@
 import { useState, useRef, useEffect } from 'react';
 import { Zap, MessageSquare, ChevronRight, ChevronDown, ArrowLeft, Loader2, Send, Sparkles, ListChecks } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, splitInlineOptions, CATEGORY_HEX, type Availability, type PlanDraft } from '@/lib/aiGoal';
+import {
+  buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, splitInlineOptions,
+  requestPlan, PlanError, PLAN_MAX_TOKENS, CATEGORY_HEX,
+  type Availability, type PlanDraft, type CreateGoalArgs,
+} from '@/lib/aiGoal';
 import { GOAL_DOMAINS } from '@/lib/skills';
 import { type Category } from '@/lib/types';
 import Modal from '@/components/ui/Modal';
@@ -179,32 +183,25 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
     try {
       const deadline = new Date();
       deadline.setMonth(deadline.getMonth() + months);
-      const res = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            { role: 'system', content: quickCreatePrompt(coachName, personaStyle(persona), availability, otherTaskCount) },
-            {
-              role: 'user',
-              content: `Goal: ${ambition.trim()}\nCategory: ${category}\nTimeframe: ${months} month${months === 1 ? '' : 's'} `
-                + `(deadline ${dayKey(deadline)}). Use exactly this category and deadline.`,
-            },
-          ],
-          tools: buildGoalTools().filter(t => t.function.name === 'create_goal'),
-          tool_choice: { type: 'function', function: { name: 'create_goal' } },
-          max_tokens: 2000,
-          temperature: 0.4,
-        }),
+      const { args } = await requestPlan({
+        messages: [
+          { role: 'system', content: quickCreatePrompt(coachName, personaStyle(persona), availability, otherTaskCount) },
+          {
+            role: 'user',
+            content: `Goal: ${ambition.trim()}\nCategory: ${category}\nTimeframe: ${months} month${months === 1 ? '' : 's'} `
+              + `(deadline ${dayKey(deadline)}). Use exactly this category and deadline.`,
+          },
+        ],
+        tools: buildGoalTools().filter(t => t.function.name === 'create_goal'),
+        tool_choice: { type: 'function', function: { name: 'create_goal' } },
+        max_tokens: PLAN_MAX_TOKENS,
+        temperature: 0.4,
       });
-      if (!res.ok) throw new Error();
-      const toolCall = (await res.json()).choices?.[0]?.message?.tool_calls?.[0];
-      if (!toolCall) throw new Error();
-      const saved = await materialiseGoal(JSON.parse(toolCall.function.arguments));
-      if (!saved) throw new Error();
+      const saved = await materialiseGoal(args as unknown as CreateGoalArgs);
+      if (!saved) throw new PlanError('The plan was built but couldn\u2019t be saved, so nothing was created. Please try again.');
       onCreated(saved);
-    } catch {
-      setError("Couldn't build that plan. Try rephrasing, or use Manual Entry.");
+    } catch (err) {
+      setError(err instanceof PlanError ? err.message : 'Couldn\u2019t build that plan. Please try again.');
     } finally { setIsLoading(false); }
   };
 
@@ -367,6 +364,11 @@ function QuickCreate({ onBack, onCreated, coachName, persona, otherTaskCount, se
             ? <><Loader2 className="h-4 w-4 animate-spin" /> Building…</>
             : mode === 'ai' ? <><Sparkles className="h-4 w-4" /> Generate AI Plan</> : 'Create Goal'}
         </button>
+        {isLoading && mode === 'ai' && (
+          <p className="text-xs text-muted text-center" role="status">
+            {coachName} is writing your stages, milestones and tasks — this takes about half a minute.
+          </p>
+        )}
       </div>
 
       {error && (
@@ -400,26 +402,29 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
   const [replies, setReplies] = useState<{ label: string; value: string }[]>([]);
   const [draft, setDraft] = useState<PlanDraft | null>(null);
   const [openChapter, setOpenChapter] = useState(0);
+  /** True while a whole plan is being written, as opposed to a chat reply. */
+  const [building, setBuilding] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
 
-  const call = async (msgs: { role: string; content: string }[], force: boolean) => {
-    const res = await fetch('/api/ai/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [{ role: 'system', content: chatCoachPrompt(coachName, personaStyle(persona), 'Creating a new goal.') }, ...msgs],
-        tools: force
-          ? buildGoalTools().filter(t => t.function.name === 'create_goal')
-          : buildGoalTools(),
-        tool_choice: force ? { type: 'function', function: { name: 'create_goal' } } : 'required',
-        max_tokens: 2000,
-        temperature: 0.4,
-      }),
-    });
-    if (!res.ok) throw new Error();
-    return (await res.json()).choices?.[0]?.message?.tool_calls?.[0];
+  const call = (msgs: { role: string; content: string }[], force: boolean) => requestPlan({
+    messages: [{ role: 'system', content: chatCoachPrompt(coachName, personaStyle(persona), 'Creating a new goal.') }, ...msgs],
+    tools: force
+      ? buildGoalTools().filter(t => t.function.name === 'create_goal')
+      : buildGoalTools(),
+    tool_choice: force ? { type: 'function', function: { name: 'create_goal' } } : 'required',
+    // Any turn may be the one where the user says "build it", and that turn
+    // answers with the whole plan — so every turn has room for one.
+    max_tokens: PLAN_MAX_TOKENS,
+    temperature: 0.4,
+  });
+
+  /** Saves a plan the model produced; a failure to save is its own error. */
+  const save = async (args: Record<string, unknown>) => {
+    const saved = await materialiseGoal(args as unknown as CreateGoalArgs);
+    if (!saved) throw new PlanError('The plan was built but couldn\u2019t be saved, so nothing was created. Please try again.');
+    onCreated(saved);
   };
 
   /** Carry the draft forward — a turn that omits a field must not erase it. */
@@ -446,13 +451,8 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
     // transcript, so nothing they typed is asked for twice.
     const again = () => { setMessages(m => m.slice(0, -1)); send(text); };
     try {
-      const toolCall = await call(next, false);
-      if (toolCall?.function.name === 'create_goal') {
-        const saved = await materialiseGoal(JSON.parse(toolCall.function.arguments));
-        if (saved) { onCreated(saved); return; }
-        throw new Error();
-      }
-      const args = JSON.parse(toolCall.function.arguments);
+      const { name, args } = await call(next, false);
+      if (name === 'create_goal') { setBuilding(true); await save(args); return; }
       /*
        * The prompt forbids option lists inside the message, but a model that
        * slips one in must not put it in front of the user: lettered choices in
@@ -461,35 +461,50 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
        */
       const { text, options } = splitInlineOptions(String(args.message ?? ''));
       const chips = Array.isArray(args.options) && args.options.length
-        ? args.options.slice(0, 4)
+        ? (args.options as { label: string; value: string }[]).slice(0, 4)
         : options;
-      setHistory([...next, { role: 'assistant', content: args.message }]);
+      setHistory([...next, { role: 'assistant', content: String(args.message ?? '') }]);
       setMessages(m => [...m, { id: Date.now() + 1, role: 'ai', text }]);
       setReplies(chips);
-      mergeDraft(args.draft);
-    } catch {
+      mergeDraft(args.draft as PlanDraft | undefined);
+    } catch (err) {
       // The message stays in the transcript so nothing the user typed is lost.
       setRetry(() => again);
-      setError(`${coachName} is unavailable right now. Your conversation is still here.`);
-    } finally { setIsLoading(false); }
+      setError(err instanceof PlanError ? err.message : `${coachName} is unavailable right now. Your conversation is still here.`);
+    } finally { setIsLoading(false); setBuilding(false); }
   };
 
+  /*
+   * What the user has said so far, taken from the transcript rather than the
+   * model's history: a message whose reply failed is still something they
+   * told us, and "Run my first marathon" alone is enough to build from.
+   */
+  const userSaid = messages.filter(m => m.role === 'user').length > 0;
+
   const buildNow = async () => {
-    if (isLoading) return;
+    if (isLoading || !userSaid) return;
     setError('');
     setIsLoading(true);
+    setBuilding(true);
     setRetry(() => buildNow);
+    const transcript = messages.slice(1).map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.text }));
+    const chaptersShown = draft?.chapters?.length
+      ? ` Save the chapters I was shown, in order: ${draft.chapters.map(c => c.title).join(' / ')}.`
+      : '';
     try {
-      const toolCall = await call(
-        history.length ? history : [{ role: 'user', content: 'Build the best plan you can from what you know so far.' }],
-        true,
-      );
-      const saved = await materialiseGoal(JSON.parse(toolCall.function.arguments));
-      if (saved) onCreated(saved);
-      else setError('The plan was built but could not be saved. Nothing was created.');
-    } catch {
-      setError(`${coachName} couldn't build a plan from this yet. Say a little more about the goal, then try again.`);
-    } finally { setIsLoading(false); }
+      const { args } = await call([
+        ...transcript,
+        {
+          role: 'user',
+          content: 'Build my plan now from what you know so far. Wherever I haven\u2019t said something, '
+            + 'use sensible defaults for this kind of goal (as for a motivated beginner with a normal '
+            + `schedule) — do not ask anything.${chaptersShown}`,
+        },
+      ], true);
+      await save(args);
+    } catch (err) {
+      setError(err instanceof PlanError ? err.message : `${coachName} couldn\u2019t build the plan. Please try again.`);
+    } finally { setIsLoading(false); setBuilding(false); }
   };
 
   const chapters = draft?.chapters || [];
@@ -510,11 +525,13 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
         }
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] gap-4 items-start">
+      {/* Stretch, so the conversation runs as tall as the journey map beside it
+          instead of stopping at a fixed height over a band of empty space. */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)] gap-4 lg:items-stretch">
 
         {/* ── Conversation ──────────────────────────────────────────────── */}
-        <div className="min-w-0">
-          <div className="rounded-xl border border-line bg-elevated p-3 h-72 overflow-y-auto thin-scroll space-y-3">
+        <div className="min-w-0 flex flex-col">
+          <div className="rounded-xl border border-line bg-elevated p-3 h-[45vh] min-h-[16rem] lg:h-auto lg:min-h-[max(18rem,calc(92vh_-_26rem))] lg:flex-1 lg:basis-0 overflow-y-auto thin-scroll space-y-3">
             {messages.map(m => (
               <div key={m.id} className={m.role === 'user' ? 'flex justify-end' : ''}>
                 <div className={`max-w-[85%] rounded-xl px-3 py-2 text-sm ${
@@ -525,10 +542,19 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
               </div>
             ))}
             {isLoading && (
-              <div className="flex gap-1 px-3" role="status" aria-label={`${coachName} is thinking`}>
-                {[0, 0.15, 0.3].map(d => (
-                  <span key={d} className="w-1.5 h-1.5 bg-brand rounded-full animate-bounce" style={{ animationDelay: `${d}s` }} />
-                ))}
+              <div className="flex items-center gap-2 px-3" role="status" aria-label={building ? `${coachName} is building your plan` : `${coachName} is thinking`}>
+                <span className="flex gap-1">
+                  {[0, 0.15, 0.3].map(d => (
+                    <span key={d} className="w-1.5 h-1.5 bg-brand rounded-full animate-bounce" style={{ animationDelay: `${d}s` }} />
+                  ))}
+                </span>
+                {/* A plan takes half a minute; bouncing dots alone for that
+                    long look like nothing is happening. */}
+                {building && (
+                  <span className="text-xs text-muted">
+                    Building your plan — stages, milestones and tasks. About half a minute.
+                  </span>
+                )}
               </div>
             )}
             <div ref={endRef} />
@@ -603,20 +629,25 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
             <button
               onClick={buildNow}
-              disabled={isLoading}
+              disabled={isLoading || !userSaid}
               className="py-2.5 rounded-xl border border-line bg-card text-sm font-semibold text-fg glow-hover disabled:opacity-40"
             >
               Skip &amp; Build Now
             </button>
             <button
               onClick={buildNow}
-              disabled={isLoading}
+              disabled={isLoading || !userSaid}
               className="py-2.5 rounded-xl bg-brand hover:bg-brand-dark disabled:bg-elevated disabled:text-muted-dim text-black text-sm font-semibold transition-colors flex items-center justify-center gap-1.5"
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {building ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
               Build Tailored Plan
             </button>
           </div>
+          {/* The one thing a plan can't be built without. Anything else missing
+              is filled with sensible defaults, so this is the only gate. */}
+          {!userSaid && (
+            <p className="text-xs text-muted mt-2 text-center">Name your goal to build a plan — you can build any time after that.</p>
+          )}
         </div>
 
         {/* ── Live journey map ──────────────────────────────────────────── */}
