@@ -102,6 +102,11 @@ export function unstagedMilestones(goal: Goal): Subtask[] {
  * plan.
  */
 export function activeTasks(goal: Goal, asOf?: number): Goal['dailyTasks'] {
+  // A finished goal asks nothing more of anyone: its recurring tasks leave the
+  // dashboard, the calendar and reminders the moment the last milestone is
+  // ticked. They stay in the goal's data so the XP already earned from them is
+  // still scored at the right difficulty.
+  if (isGoalFinished(goal, asOf)) return [];
   const tasks = goal.dailyTasks || [];
   const stages = goal.stages || [];
   if (!stages.length) return tasks;
@@ -123,6 +128,24 @@ export function activeTasks(goal: Goal, asOf?: number): Goal['dailyTasks'] {
    * showing nothing.
    */
   return live.length ? live : tasks;
+}
+
+/**
+ * Whether the goal was finished at `asOf` (now when omitted). A milestone with
+ * no completedAt counts as finished "now", the same forgiving reading
+ * stageBreakdown uses, so a past day is never judged finished retroactively.
+ */
+export function isGoalFinished(goal: Goal, asOf?: number): boolean {
+  const subtasks = goal.subtasks || [];
+  if (subtasks.length > 0) {
+    return subtasks.every(m => {
+      if (!m.completed) return false;
+      if (asOf === undefined) return true;
+      const t = m.completedAt ? new Date(m.completedAt).getTime() : NaN;
+      return Number.isFinite(t) && t <= asOf;
+    });
+  }
+  return asOf === undefined && goal.targetValue > 0 && goal.currentValue >= goal.targetValue;
 }
 
 /** Recurring tasks belonging to one stage, for showing a phase's own plan. */

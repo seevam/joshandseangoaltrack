@@ -2,6 +2,23 @@
 
 import { useGoalStore } from './store';
 import type { Goal, TaskCompletionValue } from './types';
+import { activeTasks } from './stages';
+import { dayKey } from './dates';
+
+/**
+ * True when every task the goal has scheduled for `date` is done. Only today
+ * can be checked in, so this is only ever asked about today.
+ */
+export function allTasksDoneOn(goal: Goal, date: string): boolean {
+  const d = new Date(`${date}T12:00:00`);
+  const end = new Date(d); end.setHours(23, 59, 59, 999);
+  const scheduled = activeTasks(goal, date === dayKey() ? undefined : end.getTime()).filter(t => {
+    const days = t.daysOfWeek;
+    return !days || days.length === 0 || days.includes(d.getDay());
+  });
+  const done = goal.taskCompletions?.[date] || {};
+  return scheduled.length > 0 && scheduled.every(t => !!done[t.id]);
+}
 
 /**
  * Log one task completion — shared by the dashboard, the goal page and the
@@ -45,6 +62,15 @@ export async function logCompletion(
       body: JSON.stringify({ completion: { date, taskId, value } }),
     });
     if (!res.ok) throw new Error(String(res.status));
+    /*
+     * Ticking the day's last task IS the check-in. Asking for a separate tap
+     * after the work was done was a second chore that people forgot, and lost
+     * their streak over. Unticking never un-checks-in: the day was shown up for.
+     */
+    if (value && date === dayKey()) {
+      const latest = useGoalStore.getState().goals.find(g => g.id === goalId);
+      if (latest && allTasksDoneOn(latest, date)) await checkIn(goalId, date);
+    }
     return before;
   } catch (err) {
     console.error('Failed to log task:', err);

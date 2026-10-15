@@ -16,7 +16,7 @@ import PageHeader, { PanelHeading } from '@/components/ui/PageHeader';
 export default function ProgressionPage() {
   const goals = useGoalStore(s => s.goals);
   const setGoals = useGoalStore(s => s.setGoals);
-  const setShowCreate = useGoalStore(s => s.setShowCreateGoal);
+  const openChatWith = useGoalStore(s => s.openChatWith);
   const router = useRouter();
 
   /*
@@ -54,7 +54,7 @@ export default function ProgressionPage() {
   const gaps = useMemo(() => findSkillGaps(skills), [skills]);
 
   const levelPct = stats.levelSpan > 0 ? Math.min((stats.levelXp / stats.levelSpan) * 100, 100) : 0;
-  const toNext = stats.nextRank ? stats.nextRank.minXp - stats.totalXp : 0;
+  const levelsToRank = stats.nextRank ? stats.nextRank.minLevel - stats.level : 0;
   const rankPct = stats.nextRank
     ? Math.min(((stats.totalXp - stats.rank.minXp) / (stats.nextRank.minXp - stats.rank.minXp)) * 100, 100)
     : 100;
@@ -134,22 +134,36 @@ export default function ProgressionPage() {
             </div>
           </div>
 
+          {/*
+            * The main bar is the LEVEL bar, the same one the sidebar and the
+            * dashboard show: it empties exactly when the level number goes up.
+            * It used to track progress to the next rank while the line under
+            * it named the level, so the bar reset at moments the level didn't
+            * move, and filled while the level did.
+            */}
           <div className="mt-6 pt-5 border-t border-line">
             <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.16em] mb-2 gap-3">
-              <span className="text-muted truncate">
-                {stats.nextRank ? `Progress to ${stats.nextRank.name}` : 'Highest rank reached'}
-              </span>
+              <span className="text-muted truncate">Level {stats.level} → {stats.level + 1}</span>
               <span className="text-brand flex-shrink-0">
-                {stats.nextRank ? `${toNext.toLocaleString()} XP remaining` : `${stats.totalXp.toLocaleString()} XP`}
+                {stats.levelXp.toLocaleString()} / {stats.levelSpan.toLocaleString()} XP
               </span>
             </div>
             <div className="h-2 bg-track rounded-full overflow-hidden">
-              <div className="xp-bar-fill h-full rounded-full" style={{ width: `${rankPct}%` }} />
+              <div className="xp-bar-fill h-full rounded-full" style={{ width: `${levelPct}%` }} />
             </div>
-            <p className="text-[11px] text-muted mt-2">
-              Level {stats.level} · {stats.levelXp} / {stats.levelSpan} XP to level {stats.level + 1}
-              <span className="sr-only"> ({Math.round(levelPct)} percent)</span>
-            </p>
+            <div className="flex items-center justify-between gap-3 mt-3 text-[11px] text-muted">
+              <span className="truncate">
+                {stats.nextRank
+                  ? `Next emblem: ${stats.nextRank.name} at level ${stats.nextRank.minLevel}`
+                  : 'Highest rank reached'}
+              </span>
+              {stats.nextRank && (
+                <span className="flex-shrink-0">{levelsToRank} level{levelsToRank === 1 ? '' : 's'} to go</span>
+              )}
+            </div>
+            <div className="h-1 bg-track rounded-full overflow-hidden mt-1.5">
+              <div className="h-full rounded-full bg-brand/50 transition-[width] duration-1000 ease-out" style={{ width: `${rankPct}%` }} />
+            </div>
           </div>
         </div>
 
@@ -171,7 +185,7 @@ export default function ProgressionPage() {
               return (
                 <div
                   key={tier.name}
-                  title={`${tier.name} · ${tier.minXp.toLocaleString()} XP`}
+                  title={`${tier.name} · from level ${tier.minLevel}`}
                   style={current ? { borderColor: `${tier.color}66` } : undefined}
                   className={`relative rounded-xl border p-2 text-center glow-hover ${
                     current ? 'bg-elevated' : 'border-line bg-card'
@@ -262,7 +276,7 @@ export default function ProgressionPage() {
                     <span className="truncate" style={{ color: sk.xp > 0 ? sk.rank.color : 'var(--muted)' }}>
                       {sk.rank.name}
                     </span>
-                    <span className="text-muted flex-shrink-0">{Math.round(pct)}%</span>
+                    <span className="text-muted flex-shrink-0">Lv. {sk.level} · {Math.round(pct)}%</span>
                   </div>
                   <div className="h-1.5 bg-track rounded-full overflow-hidden">
                     <div
@@ -277,14 +291,19 @@ export default function ProgressionPage() {
 
           {gaps.length > 0 && (
             <div className="mt-4 pt-4 border-t border-line">
-              <p className="text-[10px] font-semibold text-muted uppercase tracking-[0.16em] mb-2.5">
+              <p className="text-[10px] font-semibold text-muted uppercase tracking-[0.16em] mb-1">
                 Worth starting next
               </p>
+              <p className="text-xs text-muted mb-2.5">Tap a skill and your coach will suggest goals to build it.</p>
               <div className="space-y-2">
                 {gaps.map(g => (
                   <button
                     key={g.skill.id}
-                    onClick={() => setShowCreate(true, g.suggestion)}
+                    onClick={() => openChatWith(
+                      `My ${g.skill.name} skill is one of my weakest (${g.reason.toLowerCase()}). `
+                      + `Suggest 3 concrete goal ideas that would build ${g.skill.name}, tailored to me and my current goals — `
+                      + `for example something like "${g.suggestion}". Offer them as options I can pick to start one.`,
+                    )}
                     className="w-full glow-hover flex items-center gap-3 p-3 rounded-xl border border-line text-left"
                   >
                     <Icon name={g.skill.icon} className="h-4 w-4 flex-shrink-0" style={{ color: g.skill.color }} />

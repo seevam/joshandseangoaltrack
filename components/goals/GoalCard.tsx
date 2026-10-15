@@ -67,12 +67,15 @@ export default function GoalCard({ goal, onClick, preview = false, index = 0 }: 
         <span className="text-[10px] uppercase tracking-[0.14em] text-muted flex-shrink-0">Health</span>
         <span className="h-1 flex-1 rounded-full bg-track overflow-hidden">
           <span
-            className="block h-full rounded-full transition-[width] duration-700 ease-out"
+            className="block h-full rounded-full transition-[width] duration-1000 ease-out"
             style={{ width: `${health.score}%`, backgroundColor: health.color }}
           />
         </span>
-        <span className="text-[11px] font-semibold flex-shrink-0" style={{ color: health.color }}>
-          {health.status}
+        {/* A balance out of 100, not a percentage of anything — so it is
+            written as one, with the tier beside it. */}
+        <span className="text-[11px] font-semibold flex-shrink-0 tabular-nums" style={{ color: health.color }}>
+          {health.score}/100
+          <span className="font-normal text-muted"> · {health.status}</span>
         </span>
       </div>
 

@@ -12,7 +12,8 @@ import {
   splitInlineOptions, buildGoalTools, chatCoachPrompt, personaStyle, materialiseGoal,
   requestPlan, PlanError, PLAN_MAX_TOKENS, type CreateGoalArgs,
 } from '@/lib/aiGoal';
-import { skillsContext } from '@/lib/skills';
+import { skillsContext, skillBoostRules } from '@/lib/skills';
+import { patternsContext } from '@/lib/patterns';
 import { useDismiss } from '@/components/ui/Modal';
 
 interface Message {
@@ -41,6 +42,9 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
   const assistantName = useGoalStore(s => s.coachName);
   const persona = useGoalStore(s => s.coachPersona);
   const hydrateCoachSettings = useGoalStore(s => s.hydrateCoachSettings);
+  const chatSeed = useGoalStore(s => s.chatSeed);
+  const clearChatSeed = useGoalStore(s => s.clearChatSeed);
+  const calendarContext = useGoalStore(s => s.calendarContext);
 
   const [messages, setMessages] = useState<Message[]>([]);
   /*
@@ -78,6 +82,19 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
     }
   }, [chatSessionId, user]);
 
+  /*
+   * A seeded opening — sent once, on the fresh session the seed opened. It
+   * runs after the reset above in the same commit, so it starts from an empty
+   * history rather than whatever the reset's state update has not applied yet.
+   */
+  useEffect(() => {
+    if (!isOpen || !user || !chatSeed) return;
+    const seed = chatSeed;
+    clearChatSeed();
+    send(seed, true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, user, chatSeed, chatSessionId]);
+
   useEffect(() => {
     if (isOpen && user && messages.length === 0 && chatSessionId === 0) {
       setMessages([{ id: Date.now(), type: 'ai', timestamp: new Date(), content: greeting(user.firstName) }]);
@@ -98,20 +115,29 @@ export default function AIChatPanel({ isOpen, onClose }: { isOpen: boolean; onCl
     }).join('\n')}`;
   };
 
-  const send = async (content: string) => {
-    if (!content.trim() || isLoading) return;
+  const send = async (content: string, fresh = false) => {
+    if (!content.trim() || (isLoading && !fresh)) return;
     setMessages(prev => [...prev, { id: Date.now(), type: 'user', content, timestamp: new Date() }]);
     setReplies([]);
     setInput('');
     setOpenGroup(null);
     setIsLoading(true);
 
-    const updatedHistory = [...history, { role: 'user', content }];
+    const updatedHistory = [...(fresh ? [] : history), { role: 'user', content }];
 
     try {
       const { name, args } = await requestPlan({
         messages: [
-          { role: 'system', content: chatCoachPrompt(assistantName, personaStyle(persona), buildGoalsContext() + '\n' + skillsContext(goals)) },
+          {
+            role: 'system',
+            content: chatCoachPrompt(
+              assistantName,
+              personaStyle(persona),
+              [buildGoalsContext(), skillsContext(goals), patternsContext(goals), calendarContext ?? '']
+                .filter(Boolean).join('\n'),
+              skillBoostRules(goals),
+            ),
+          },
           ...updatedHistory,
         ],
         tools: buildGoalTools(),

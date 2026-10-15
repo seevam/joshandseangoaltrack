@@ -220,7 +220,7 @@ export async function PUT(req: Request, { params }: Params) {
     const fields = [
       'title', 'description', 'category', 'unit', 'startDate', 'endDate', 'color',
       'stages', 'subtasks', 'dailyTasks', 'taskCompletions', 'checkIns',
-      'progressHistory', 'milestones', 'sharedWith',
+      'progressHistory', 'milestones',
     ];
     for (const f of fields) {
       if (body[f] !== undefined) data[f] = body[f];

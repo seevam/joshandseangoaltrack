@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import {
   Target, Plus, CheckCircle, Zap, Trophy, Flame, ListChecks, Activity,
-  Clock, ArrowUpRight, CalendarClock, Crosshair,
+  Clock, ArrowUpRight, CalendarClock, Crosshair, GraduationCap, BrainCircuit,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { getGoalStatus, type TaskCompletionValue } from '@/lib/types';
@@ -31,6 +31,28 @@ import { noteCompletionAndMaybeAsk } from '@/lib/estimatePrompt';
 import { currentStage, activeTasks } from '@/lib/stages';
 import FocusMode from './FocusMode';
 import { dayKey } from '@/lib/dates';
+import Tour, { type TourStep } from '@/components/ui/Tour';
+import { findMissPatterns, rescheduledDays, WEEKDAYS, type MissPattern } from '@/lib/patterns';
+
+/**
+ * The tutorial's stops, in reading order. Each names a `data-tour` target; a
+ * stop that isn't on screen (the sidebar on a phone, the schedule on a day
+ * with no goals) is skipped by the tour itself.
+ */
+const TOUR_STEPS: TourStep[] = [
+  { target: 'stats', title: 'Your scoreboard', body: 'Rank, XP, streak and how much of today is done. Every task you tick moves these.' },
+  { target: 'next-action', title: 'Next Action', body: 'The single thing to start right now — the first open task due today. Open its protocol for step-by-step instructions.' },
+  { target: 'calendar', title: 'Sync your calendar', body: 'Connect Google Calendar and each task is fitted into a real free gap in your day. The AI coach sees the same gaps when you ask it to plan.' },
+  { target: 'schedule', title: "Today's Schedule", body: 'The order to work through today, with a suggested time for each block. Say "I\'m busy then" and the day re-plans.' },
+  { target: 'insights', title: 'Patterns the coach has learned', body: 'If a task keeps slipping on the same weekday, it shows up here with a one-tap fix to move it.' },
+  { target: 'missions', title: "Today's Missions", body: 'Tick tasks off here. Finishing all of a goal\'s tasks for the day checks you in automatically — no separate button.' },
+  { target: 'activity', title: 'Activity', body: 'Everything you have done recently, and the XP it earned.' },
+  { target: 'nav-goals', title: 'Goals', body: 'Every goal, its stages, milestones and health score out of 100.' },
+  { target: 'nav-calendar', title: 'Calendar', body: 'Your work laid out by day, and any milestones that have slipped past their date.' },
+  { target: 'nav-progress', title: 'Progression', body: 'Your rank and the nine skills behind it. Tap a weaker skill and the coach will suggest goals to build it.' },
+  { target: 'coach', title: 'Your AI coach', body: 'Ask about progress or priorities, plan your day, or build a new goal by conversation.' },
+  { target: 'new-goal', title: 'Start a goal', body: 'Describe an ambition and the coach builds the plan.', action: 'Click New Goal to try it — or Finish to end the tour.' },
+];
 
 
 export default function Dashboard() {
@@ -48,6 +70,11 @@ export default function Dashboard() {
   >(null);
   const [sparks, setSparks] = useState<{ id: number; x: number; y: number } | null>(null);
   const [focusOpen, setFocusOpen] = useState(false);
+  const [tourOpen, setTourOpen] = useState(false);
+  const closeTour = useCallback(() => setTourOpen(false), []);
+  const openChatWith = useGoalStore(s => s.openChatWith);
+  /** Patterns the user has dismissed this session, by goal-task-weekday. */
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!user || !isLoaded) return;
@@ -176,10 +203,33 @@ export default function Dashboard() {
     () => todaysTasks.filter(t => !t.value).map(t => ({
       key: `${t.goal.id}-${t.task.id}`,
       minutes: t.task.estimatedMinutes,
+      title: t.task.title,
     })),
     [todaysTasks],
   );
   const dayPlan = useDayPlan(planTasks);
+
+  /** Weekdays the user reliably misses a task on, learned from their history. */
+  const insights = useMemo(
+    () => findMissPatterns(goals).filter(p => !dismissed.has(`${p.goalId}-${p.taskId}-${p.weekday}`)),
+    [goals, dismissed],
+  );
+
+  /** Acts on a pattern: the task moves off its weak weekday. */
+  const applyPattern = async (p: MissPattern) => {
+    const goal = goals.find(g => g.id === p.goalId);
+    const task = goal?.dailyTasks.find(t => t.id === p.taskId);
+    if (!goal || !task) return;
+    const dailyTasks = goal.dailyTasks.map(t => (t.id === p.taskId ? { ...t, daysOfWeek: rescheduledDays(t, p) } : t));
+    try {
+      updateGoal(await apiCall(`/api/goals/${goal.id}`, 'PUT', { dailyTasks }));
+    } catch (err) { console.error('Failed to reschedule task:', err); }
+  };
+
+  const askCoachAbout = (p: MissPattern) => openChatWith(
+    `I keep missing "${p.taskTitle}" (${p.goalTitle}) on ${WEEKDAYS[p.weekday]}s — ${p.missed} of the last ${p.scheduled}. `
+    + 'Look at my patterns and suggest how to restructure this goal so it fits the way I actually work.',
+  );
 
   /** The single task to start next: the first one due today that isn't done. */
   const nextAction = useMemo(() => todaysTasks.find(t => !t.value) ?? null, [todaysTasks]);
@@ -251,14 +301,35 @@ export default function Dashboard() {
             accent="COMMAND"
             subtitle={`Welcome back${user?.firstName ? `, ${user.firstName}` : ''}. Everything due today, and the plan behind it.`}
             right={
-              <button
-                onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black font-semibold text-sm transition-colors"
-              >
-                <Plus className="h-4 w-4" /> New Goal
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setTourOpen(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-line text-fg font-semibold text-sm glow-hover"
+                >
+                  <GraduationCap className="h-4 w-4 text-brand" /> Tutorial
+                </button>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand hover:bg-[var(--brand-dark)] text-black font-semibold text-sm transition-colors"
+                >
+                  <Plus className="h-4 w-4" /> New Goal
+                </button>
+              </div>
             }
           />
+        </div>
+
+        {/* The phone has no masthead, so the tutorial gets its own small row. */}
+        <div className="lg:hidden flex items-center justify-between gap-3">
+          <h1 className="font-display text-[1.75rem] leading-[0.95] tracking-wide">
+            <span className="text-brand-gradient">COMMAND</span><span className="text-fg"> CENTER</span>
+          </h1>
+          <button
+            onClick={() => setTourOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line text-fg text-xs font-semibold glow-hover"
+          >
+            <GraduationCap className="h-3.5 w-3.5 text-brand" /> Tutorial
+          </button>
         </div>
 
         {/*
@@ -267,7 +338,7 @@ export default function Dashboard() {
           * Rank is the cell that goes on a phone: it is the headline of the
           * Progression tab, which is one tap away.
           */}
-        <div className="card-glow rounded-2xl animate-slide-up" style={{ ['--i' as string]: 1 }}>
+        <div data-tour="stats" className="card-glow rounded-2xl animate-slide-up" style={{ ['--i' as string]: 1 }}>
           <div className="flex items-stretch divide-x divide-line">
             {[
               {
@@ -330,7 +401,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Next action — the one thing to start now ──────────────────── */}
-        <div className="card-glow card-primary glow-next rounded-2xl p-5 animate-slide-up" style={{ ['--i' as string]: 3 }}>
+        <div data-tour="next-action" className="card-glow card-primary glow-next rounded-2xl p-5 animate-slide-up" style={{ ['--i' as string]: 3 }}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <p className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-brand">
               <ListChecks className="h-3.5 w-3.5" /> Next Action
@@ -415,13 +486,17 @@ export default function Dashboard() {
         )}
 
         {/* ── Today's schedule ──────────────────────────────────────────── */}
-        {todaysTasks.length > 0 && (
+        {goals.length > 0 && (
           <Reveal>
+            <div data-tour="schedule">
             <Panel
               id="schedule"
               title="Today's Schedule"
               icon={<CalendarClock className="h-4 w-4 text-brand" />}
-              subtitle="The order to work through today, and which goal each block belongs to."
+              subtitle="The order to work through today, fitted around your calendar."
+              right={
+                <span className="hidden lg:inline-flex text-xs text-muted">{doneToday}/{todaysTasks.length} done</span>
+              }
             >
               {/*
                * The reference also shows capacity chips (minutes scheduled,
@@ -447,12 +522,22 @@ export default function Dashboard() {
                 ))}
               </div>
 
-              <CalendarBar plan={dayPlan} />
+              <CalendarBar
+                plan={dayPlan}
+                onAskCoach={() => openChatWith(
+                  'Look at my calendar and today\'s open tasks, and plan the rest of my day: tell me which task to do in which free gap, and why that gap.',
+                )}
+              />
+
+              {todaysTasks.length === 0 && (
+                <p className="text-sm text-muted py-2">Nothing scheduled for today — the time is yours.</p>
+              )}
 
               <div className="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(min(22rem,100%),1fr))]">
                 {todaysTasks.map((item, i) => {
                   const slot = dayPlan.plan?.slots[`${item.goal.id}-${item.task.id}`];
                   const unplaced = dayPlan.plan?.unplaced.includes(`${item.goal.id}-${item.task.id}`);
+                  const reason = dayPlan.reasons[`${item.goal.id}-${item.task.id}`];
                   return (
                   <div
                     key={`${item.goal.id}-${item.task.id}`}
@@ -486,6 +571,7 @@ export default function Dashboard() {
                               <Clock className="h-3 w-3" />
                               {formatTime(slot.start)} – {formatTime(slot.end)}
                             </span>
+                            {reason && <span className="text-[11px] text-muted">{reason}</span>}
                             <button
                               onClick={() => dayPlan.block(slot)}
                               className="text-[11px] text-muted hover:text-fg underline underline-offset-2"
@@ -512,18 +598,73 @@ export default function Dashboard() {
                 })}
               </div>
             </Panel>
+            </div>
+          </Reveal>
+        )}
+
+        {/* ── Learned patterns ──────────────────────────────────────────── */}
+        {insights.length > 0 && (
+          <Reveal>
+            <div data-tour="insights">
+            <Panel
+              id="insights"
+              title="Coach Insights"
+              icon={<BrainCircuit className="h-4 w-4 text-brand" />}
+              subtitle="Learned from when you actually complete things."
+              defaultOpen
+            >
+              <div className="space-y-2">
+                {insights.map(p => {
+                  const id = `${p.goalId}-${p.taskId}-${p.weekday}`;
+                  return (
+                    <div key={id} className="rounded-xl border border-line bg-card p-3.5">
+                      <p className="text-sm text-fg break-words">
+                        You&apos;ve missed <span className="font-semibold">{p.taskTitle}</span> on{' '}
+                        <span className="font-semibold">{p.missed} of the last {p.scheduled} {WEEKDAYS[p.weekday]}s</span>,
+                        but get it done {Math.round(p.otherRate * 100)}% of the time on other days.
+                      </p>
+                      <p className="text-xs text-muted mt-1 break-words">{p.goalTitle}</p>
+                      <div className="mt-2.5 flex flex-wrap gap-2">
+                        <button
+                          onClick={() => applyPattern(p)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand text-black text-xs font-semibold hover:bg-[var(--brand-dark)]"
+                        >
+                          {p.suggestDay !== null
+                            ? `Move it to ${WEEKDAYS[p.suggestDay]}`
+                            : `Stop scheduling it on ${WEEKDAYS[p.weekday]}s`}
+                        </button>
+                        <button
+                          onClick={() => askCoachAbout(p)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-brand/40 text-brand text-xs font-semibold glow-hover"
+                        >
+                          Ask coach to restructure
+                        </button>
+                        <button
+                          onClick={() => setDismissed(d => new Set(d).add(id))}
+                          className="px-2 py-1.5 text-xs text-muted hover:text-fg"
+                        >
+                          Not now
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Panel>
+            </div>
           </Reveal>
         )}
 
         {/* ── Missions beside activity ──────────────────────────────────── */}
         <Reveal><div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Today's missions */}
+          <div data-tour="missions" className="lg:col-span-2 animate-slide-up">
           <Panel
             id="missions"
             title="Today's Missions"
             icon={<Target className="h-4 w-4 text-brand" />}
             subtitle="Every task due today."
-            className="lg:col-span-2 animate-slide-up"
+            className="h-full"
             right={
               <div className="flex items-center gap-2 flex-wrap justify-end">
                 <span className="text-xs text-muted">
@@ -576,13 +717,15 @@ export default function Dashboard() {
               </div>
             )}
           </Panel>
+          </div>
 
           {/* Activity feed */}
+          <div data-tour="activity" className="animate-slide-up">
           <Panel
             id="activity"
             title="Activity"
             icon={<Activity className="h-4 w-4 text-brand" />}
-            className="animate-slide-up"
+            className="h-full"
           >
             {feed.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
@@ -609,6 +752,7 @@ export default function Dashboard() {
               </div>
             )}
           </Panel>
+          </div>
         </div></Reveal>
 
         {/* ── Active goals — preview only (name, category, progress) ───── */}
@@ -669,6 +813,8 @@ export default function Dashboard() {
           }}
         />
       )}
+
+      {tourOpen && <Tour steps={TOUR_STEPS} onClose={closeTour} />}
 
       {xpToast && <XpToast key={xpToast.id} amount={xpToast.amount} />}
       {sparks && <Sparks key={sparks.id} x={sparks.x} y={sparks.y} />}

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { computeGoalHealth } from '../lib/goalHealth';
+import { computeGoalHealth, BASE_DECAY, DECAY_GROWTH } from '../lib/goalHealth';
 import { dayKey } from '../lib/dates';
 import { makeGoal } from '../scripts/ui-harness/fixtures';
 import type { Goal } from '../lib/types';
@@ -36,10 +36,27 @@ test('stored full ISO dates never produce NaN', () => {
   assert.ok(Number.isFinite(computeGoalHealth(junk).score));
 });
 
-test('today is never judged; each missed past day costs 1.5 per task', () => {
+test('today is never judged; missed days decay health exponentially', () => {
   const h = computeGoalHealth(simple(3));
   assert.equal(h.missedDays, 3);
-  assert.equal(h.score, Math.round(100 - 3 * 1.5));
+  let expected = 100;
+  for (let run = 1; run <= 3; run++) expected *= 1 - BASE_DECAY * DECAY_GROWTH ** (run - 1);
+  assert.equal(h.score, Math.round(expected));
+});
+
+test('a run of missed days costs more than the same misses spread out', () => {
+  // Six missed days in a row, against six misses each followed by a clear day.
+  const streak = computeGoalHealth(simple(6)).score;
+  const spread = computeGoalHealth(simple(12, {
+    taskCompletions: Object.fromEntries([2, 4, 6, 8, 10, 12].map(d => [ago(d), { 1000: true }])),
+  })).score;
+  assert.ok(streak < spread, `${streak} should be below ${spread}`);
+});
+
+test('a long abandonment drives health towards zero, never below', () => {
+  const h = computeGoalHealth(simple(40));
+  assert.ok(h.score < 10, `got ${h.score}`);
+  assert.ok(h.score >= 0);
 });
 
 test('a clean record is capped at 100; credit heals but never banks', () => {
@@ -56,7 +73,7 @@ test('an overdue milestone costs more than a missed task', () => {
   });
   const h = computeGoalHealth(g);
   assert.equal(h.missedMilestones, 1);
-  assert.ok(h.score < 100 - 1.5);
+  assert.ok(h.score <= 100 - 8);
 });
 
 test('opening a new stage does not re-judge past days against it', () => {

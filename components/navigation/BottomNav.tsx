@@ -64,6 +64,7 @@ export default function BottomNav() {
 
           <button
             onClick={() => setShowCreateGoal(true)}
+            data-tour="new-goal"
             aria-label="New Goal"
             className="flex flex-col items-center justify-center w-14 h-14 -mt-5 flex-shrink-0 rounded-full bg-[var(--brand)] shadow-lg shadow-[var(--brand)]/40 active:scale-95 transition-transform"
           >
@@ -164,6 +165,9 @@ export default function BottomNav() {
   );
 }
 
+/** Tutorial stops for the tabs that have one, matching the sidebar's. */
+const TOUR_IDS: Record<string, string> = { '/goals': 'nav-goals', '/calendar': 'nav-calendar', '/progress': 'nav-progress' };
+
 function Tab({
   icon: Icon, label, href, active, onClick, expanded,
 }: {
@@ -197,7 +201,7 @@ function Tab({
 
   if (href) {
     return (
-      <Link href={href} aria-current={active ? 'page' : undefined} className={cls}>
+      <Link href={href} aria-current={active ? 'page' : undefined} className={cls} data-tour={TOUR_IDS[href]}>
         {content}
       </Link>
     );

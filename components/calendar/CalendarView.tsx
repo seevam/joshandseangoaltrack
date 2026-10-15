@@ -3,19 +3,28 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, ChevronDown, Download, CalendarDays, AlertTriangle, CheckCircle2, Flag } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
-import { CATEGORY_COLORS, type Goal } from '@/lib/types';
+import { CATEGORY_COLORS, getGoalStatus, type Goal } from '@/lib/types';
 import { Icon } from '@/components/ui/icons';
 import { AnimatedCheck } from '@/components/ui/motion';
 import Modal from '@/components/ui/Modal';
 import PageHeader from '@/components/ui/PageHeader';
 import { activeTasks, visibleMilestones } from '@/lib/stages';
 import { dayKey } from '@/lib/dates';
-import { logCompletion } from '@/lib/completions';
+import { logCompletion, toggleMilestone } from '@/lib/completions';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
 const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 const OVERDUE_KEY = 'gq_calendar_overdue_open';
+
+interface OverdueMilestone {
+  goal: Goal;
+  milestone: Goal['subtasks'][0];
+  /** Position in goal.subtasks — how a milestone is ticked. */
+  index: number;
+  due: Date;
+  daysLate: number;
+}
 
 interface DayTask {
   goal: Goal;
@@ -32,7 +41,10 @@ const iso = (d: Date) => {
 
 /** Mini calendar on the left, the selected day's tasks on the right. */
 export default function CalendarView() {
-  const goals = useGoalStore(s => s.goals);
+  const allGoals = useGoalStore(s => s.goals);
+  // Only goals still in play. A finished goal's tasks and milestones are not
+  // anything the user has left to do, so they no longer fill the calendar.
+  const goals = useMemo(() => allGoals.filter(g => getGoalStatus(g) !== 'completed'), [allGoals]);
 
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const [month, setMonth] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -165,23 +177,30 @@ export default function CalendarView() {
   const selectedTasks = getTasksForDate(selected);
   const selectedDone = selectedTasks.filter(t => t.done).length;
 
-  /** Incomplete tasks before today — shown whatever day is selected. */
-  const { overdue, overdueTotal } = useMemo(() => {
-    const out: DayTask[] = [];
-    for (let back = 1; back <= 21; back++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - back);
-      out.push(...getTasksForDate(d).filter(t => !t.done));
+  /*
+   * Overdue is a milestone whose target date has passed while it is still
+   * open. Recurring tasks are never "overdue": a missed run on Tuesday is a
+   * missed day, already counted in goal health, not a debt to clear — listing
+   * every one of them buried the commitments that actually slipped.
+   */
+  const overdue = useMemo(() => {
+    const out: OverdueMilestone[] = [];
+    for (const goal of goals) {
+      if (!goal.startDate) continue;
+      const start = new Date(goal.startDate);
+      start.setHours(0, 0, 0, 0);
+      for (const { milestone, index } of visibleMilestones(goal)) {
+        if (milestone.completed) continue;
+        const due = new Date(start);
+        due.setDate(due.getDate() + (milestone.daysFromStart ?? 0));
+        if (due >= today) continue;
+        out.push({ goal, milestone, index, due, daysLate: Math.round((today.getTime() - due.getTime()) / 86400000) });
+      }
     }
-    // The list shows the most recent twelve; the count says how many there
-    // really are, rather than "12 tasks" whenever there are more.
-    return {
-      overdue: out.sort((a, b) => b.dateStr.localeCompare(a.dateStr)).slice(0, 12),
-      overdueTotal: out.length,
-    };
-  }, [getTasksForDate, today]);
+    return out.sort((a, b) => b.daysLate - a.daysLate);
+  }, [goals, today]);
 
-  const TaskRow = ({ item, overdueRow = false, index = 0 }: { item: DayTask; overdueRow?: boolean; index?: number }) => {
+  const TaskRow = ({ item, index = 0 }: { item: DayTask; index?: number }) => {
     const key = `${item.goal.id}-${item.task.id}-${item.dateStr}`;
     const cat = CATEGORY_COLORS[item.goal.category as keyof typeof CATEGORY_COLORS];
     return (
@@ -189,28 +208,17 @@ export default function CalendarView() {
         style={{ ['--i' as string]: index }}
         className={`stagger-fast flex items-center gap-3 p-3 rounded-xl border ${
           flashTask === key ? 'task-flash task-complete-anim' : ''
-        } ${
-          overdueRow
-            ? 'border-red-500/45 bg-red-500/[0.07]'
-            : item.done ? 'border-brand/30' : 'border-line glow-hover'
-        }`}
+        } ${item.done ? 'border-brand/30' : 'border-line glow-hover'}`}
       >
         <span
           className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: overdueRow ? '#F87171' : cat?.hex }}
+          style={{ backgroundColor: cat?.hex }}
         />
         <div className="flex-1 min-w-0">
           <p className={`text-sm font-medium truncate ${item.done ? 'line-through text-muted' : 'text-fg'}`}>
             {item.task.title}
           </p>
-          <p className="text-xs text-muted truncate">
-            {overdueRow && (
-              <span className="text-red-400 font-medium">
-                Missed {new Date(`${item.dateStr}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ·{' '}
-              </span>
-            )}
-            {item.goal.title}
-          </p>
+          <p className="text-xs text-muted truncate">{item.goal.title}</p>
         </div>
         <AnimatedCheck
           checked={item.done}
@@ -229,8 +237,8 @@ export default function CalendarView() {
     const isToday = d.getTime() === today.getTime();
     const isSel = d.getTime() === selected.getTime();
     const allDone = tasks.length > 0 && done === tasks.length;
-    // A day that has ended with work left undone. Today never counts — it
-    // isn't over — the same rule goal health uses.
+    // A past day with work left undone reads muted, not red: only milestones
+    // carry an overdue state.
     const missed = d.getTime() < today.getTime() && tasks.length > 0 && done < tasks.length;
     const milestones = milestonesForDate(d);
     return (
@@ -263,9 +271,9 @@ export default function CalendarView() {
           <>
             <span
               className={`flex items-center gap-0.5 sm:gap-1 min-w-0 max-w-full rounded-md border px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-[11px] ${
-                allDone ? 'border-brand/40 text-brand' : missed ? 'border-red-500/50 bg-red-500/10 text-red-300' : 'border-line text-fg'
+                allDone ? 'border-brand/40 text-brand' : missed ? 'border-line text-muted' : 'border-line text-fg'
               }`}
-              title={missed ? `${tasks.length - done} missed` : undefined}
+              title={missed ? `${tasks.length - done} not done` : undefined}
             >
               {/* The icon goes on a phone: in a ~46px cell it left room for
                   "0…" rather than "0/2". */}
@@ -287,8 +295,8 @@ export default function CalendarView() {
                   key={k}
                   className="h-1 flex-1 rounded-full"
                   style={{
-                    backgroundColor: k < done ? 'var(--brand)' : missed ? '#F87171' : 'var(--line-strong)',
-                    opacity: k < done ? 1 : missed ? 0.75 : 0.9,
+                    backgroundColor: k < done ? 'var(--brand)' : 'var(--line-strong)',
+                    opacity: k < done ? 1 : missed ? 0.5 : 0.9,
                   }}
                 />
               ))}
@@ -467,10 +475,9 @@ export default function CalendarView() {
 
           {overdue.length > 0 && (
             <section className="animate-slide-up">
-              {/* Below the day, not above it: twelve red rows pushed today's
-                  tasks — the reason to open this page — off a phone screen.
-                  It folds away, and the count stays visible when it does, so
-                  hiding it is not the same as forgetting it. */}
+              {/* Below the day, not above it: the selected day's work is the
+                  reason to open this page. It folds away, and the count stays
+                  visible when it does. */}
               <button
                 onClick={() => setShowOverdue(o => { try { localStorage.setItem(OVERDUE_KEY, o ? '0' : '1'); } catch { /* ignore */ } return !o; })}
                 aria-expanded={showOverdue}
@@ -478,25 +485,41 @@ export default function CalendarView() {
               >
                 <h2 className="flex items-center gap-1.5 text-red-400 min-w-0">
                   <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-                  <span className="section-title truncate">Overdue</span>
+                  <span className="section-title truncate">Overdue milestones</span>
                 </h2>
                 <span className="flex items-center gap-1.5 text-xs flex-shrink-0">
                   <span className="rounded-full border border-red-500/50 bg-red-500/15 px-2 py-0.5 font-semibold text-red-300">
-                    {overdueTotal} missed
+                    {overdue.length} late
                   </span>
                   <ChevronDown className={`h-4 w-4 text-red-400 transition-transform ${showOverdue ? 'rotate-180' : ''}`} />
                 </span>
               </button>
               {showOverdue && (
                 <div className="space-y-2">
-                  {overdue.map((item, i) => (
-                    <TaskRow key={`${item.goal.id}-${item.task.id}-${item.dateStr}`} item={item} overdueRow index={i} />
+                  {overdue.map((o, i) => (
+                    <div
+                      key={`${o.goal.id}-${o.index}`}
+                      style={{ ['--i' as string]: i }}
+                      className="stagger-fast flex items-center gap-3 p-3 rounded-xl border border-red-500/45 bg-red-500/[0.07]"
+                    >
+                      <Flag className="h-3.5 w-3.5 text-red-400 flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-fg truncate">{o.milestone.title}</p>
+                        <p className="text-xs text-muted truncate">
+                          <span className="text-red-400 font-medium">
+                            Due {o.due.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} · {o.daysLate}d late ·{' '}
+                          </span>
+                          {o.goal.title}
+                        </p>
+                      </div>
+                      <AnimatedCheck
+                        checked={false}
+                        size={22}
+                        label={`Mark ${o.milestone.title} complete`}
+                        onClick={() => toggleMilestone(o.goal.id, o.index)}
+                      />
+                    </div>
                   ))}
-                  {overdueTotal > overdue.length && (
-                    <p className="text-xs text-muted text-center pt-1">
-                      Showing the {overdue.length} most recent of {overdueTotal} from the last three weeks.
-                    </p>
-                  )}
                 </div>
               )}
             </section>

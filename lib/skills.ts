@@ -279,3 +279,30 @@ export function skillsContext(goals: Goal[]): string {
   }
   return out;
 }
+
+/**
+ * Instruction for the planner: lift the user's weakest skills where the goal
+ * naturally allows it. A marathon plan can carry "lead a group run" for
+ * someone short on Leadership; it should not carry a public-speaking course.
+ *
+ * Weakest is read two ways — what the work so far has built, and what the
+ * user said about themselves — so a new user with no history still gets it.
+ * Empty when there is nothing to go on.
+ */
+export function skillBoostRules(goals: Goal[]): string {
+  const rated = loadSkillBaseline();
+  if (!goals.length && !Object.keys(rated).length) return '';
+  const earned = computeSkills(goals, rated)
+    .filter(s => !s.derived)
+    .sort((a, b) => (a.xp - a.baselineXp) - (b.xp - b.baselineXp));
+  const ids = Array.from(new Set([
+    ...weakestDomains(rated, 2),
+    ...earned.map(s => s.id as GoalDomainId),
+  ])).slice(0, 3);
+  const names = ids.map(id => GOAL_DOMAINS.find(d => d.id === id)?.name).filter(Boolean);
+  if (!names.length) return '';
+  return `SKILL BOOST: the user's weakest skill areas are ${names.join(', ')}. While planning`
+    + ' milestones and tasks, where it genuinely fits THIS goal, make one or two of them also'
+    + ' exercise a weak area (e.g. for Leadership in a running goal: "Lead a group run for'
+    + ' your club"). Never bend the goal out of shape or add unrelated work to do it.';
+}
