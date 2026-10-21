@@ -99,3 +99,46 @@ export function planDay<K extends string>(input: PlanInput<K>): PlanResult<K> {
 export function formatTime(ms: number): string {
   return new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 }
+
+/** An event with a name — the subset of a calendar event the planner reads. */
+export interface NamedInterval extends Interval { title: string }
+
+/** Up to this far from an event, a slot is described relative to it. */
+const NEAR = 45 * MIN;
+
+/**
+ * Why a suggested slot sits where it does, in words: "before Football
+ * practice", "after School". A time with a reason is one people act on; a
+ * bare "4:10 PM" reads as arbitrary. Empty when nothing is close.
+ */
+export function slotReason(slot: Interval, events: NamedInterval[]): string {
+  let before: NamedInterval | null = null;
+  let after: NamedInterval | null = null;
+  for (const e of events) {
+    const lead = e.start - slot.end;
+    if (lead >= 0 && lead <= NEAR && (!before || e.start < before.start)) before = e;
+    const lag = slot.start - e.end;
+    if (lag >= 0 && lag <= NEAR && (!after || e.end > after.end)) after = e;
+  }
+  // Whichever neighbour is nearer explains the slot; a tie goes to "before",
+  // which is the more useful thing to know.
+  if (before && (!after || before.start - slot.end <= slot.start - after.end)) return `before ${before.title}`;
+  if (after) return `after ${after.title}`;
+  return '';
+}
+
+/** The open stretches of a day between `from` and the day's close, merged busy time excluded. */
+export function freeGaps(busy: Interval[], from: number, dayEndHour = 22, minMinutes = 15): Interval[] {
+  const close = new Date(from);
+  close.setHours(dayEndHour, 0, 0, 0);
+  const gaps: Interval[] = [];
+  let cursor = from;
+  for (const b of mergeIntervals(busy)) {
+    if (b.end <= cursor) continue;
+    if (b.start - cursor >= minMinutes * MIN) gaps.push({ start: cursor, end: Math.min(b.start, close.getTime()) });
+    cursor = Math.max(cursor, b.end);
+    if (cursor >= close.getTime()) break;
+  }
+  if (close.getTime() - cursor >= minMinutes * MIN) gaps.push({ start: cursor, end: close.getTime() });
+  return gaps.filter(g => g.end - g.start >= minMinutes * MIN);
+}

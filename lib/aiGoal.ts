@@ -119,12 +119,15 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
 - 3-5 stages: the ordered phases of the journey. Every milestone and task carries
   the stageId of the phase it belongs to, so a long plan reads as a journey rather
   than one flat list. If you showed the user draft chapters, save those same ones.
-- 10-12 milestones spaced every 2-3 weeks — highly specific and measurable, never generic
-- Each milestone MUST include a 1-2 sentence description that says what actually
-  happens in this phase. Specific and explanatory, never a vague gesture:
+- SMALL, FREQUENT MILESTONES: roughly one every 7-10 days — about 12-20 in total, never
+  more than 20, and 3-5 per stage. Each is a modest, specific, measurable step up from
+  the one before, so progress is gradual and there is always a win within reach:
+    ✗ "Run 10km" three weeks after "Run 3km"
+    ✓ "Run 4km without stopping" → "Run 5km" → "Run 6km at easy pace" → …
+- A milestone description is optional: add one short sentence only where the title
+  alone does not make clear what happens. Specific, never a vague gesture:
     ✗ "Explore advanced topics"
-    ✓ "You move to the backend: how a server handles a request and stores data.
-       By the end you have a small API of your own running locally."
+    ✓ "Build a small API of your own that stores data and runs locally."
 - NEVER distribute work uniformly. One task every single day is what a spreadsheet
   produces, not what a coach prescribes. Real plans have heavy days, light days and
   rest days: a long session on a free day, something short on a busy one, and at
@@ -145,19 +148,22 @@ const PLAN_RULES = `PLAN RULES (for create_goal):
     "cumulative" — a total or threshold that builds up across many sessions
       ("Reach 30km in a week", "Read 5 books", "Save $1,000", "10 days in a
       row").
-- Every task gets a one-sentence first instruction (description) and realistic
-  estimatedMinutes.
+- Every task gets realistic estimatedMinutes, and may get a one-sentence first
+  instruction (description) where the title doesn't already say how to start.
 - KEEP create_goal COMPACT. Do NOT write setup, executionSteps, successCriteria or
   fallbacks for tasks or milestones: the step-by-step protocols are written
   separately, straight after the plan is saved. A long create_goal call is cut off
   and the whole plan is lost.
 - ALL tasks type="checkbox". Schedule logically (physical goals 3-5x/week, not daily)
-- daysFromStart MUST be ≤ total days from today to the deadline. Space them evenly.
+- daysFromStart MUST be ≤ total days from today to the deadline. Space them evenly,
+  never more than 14 days apart.
 - DIFFICULTY: assign every milestone and task a difficulty ("easy" | "medium" | "hard" | "epic")
   based on genuine effort required. This drives the user's XP, so be honest and varied —
   early/simple items are easy, sustained or demanding ones are hard/epic. Never make everything medium.`;
 
-export function quickCreatePrompt(coachName: string, style: string, availability?: Availability, otherTasks = 0): string {
+export function quickCreatePrompt(
+  coachName: string, style: string, availability?: Availability, otherTasks = 0, skillBoost = '',
+): string {
   const today = dayKey();
   return `You are ${coachName}, an expert goal coach. ${style}
 
@@ -174,10 +180,11 @@ Call create_goal immediately. Do not ask anything.
 
 ${availability ? availabilityRules(availability, otherTasks) : ''}
 ${PLAN_RULES}
+${skillBoost}
 Today: ${today}.`;
 }
 
-export function chatCoachPrompt(coachName: string, style: string, goalsContext: string): string {
+export function chatCoachPrompt(coachName: string, style: string, goalsContext: string, skillBoost = ''): string {
   const today = dayKey();
   return `You are ${coachName}, an expert goal coach. ${style}
 Always call one of the two tools. Keep replies to 2-3 sentences max.
@@ -188,7 +195,12 @@ SCOPE: You are a general coach, not only a goal-creation funnel. If the user ask
 about progress, priorities, motivation, or anything else, just answer with the respond tool.
 Only enter the goal-creation flow below when they actually want to create a goal.
 If their skills show a neglected area, you may suggest ONE relevant goal — offer it,
-never force it, and never derail what they asked about.
+never force it, and never derail what they asked about. If they ASK for goal ideas
+for a skill, give three concrete ones in the options so they can pick one to start.
+If their calendar is in the context below and they ask what to do when, place work
+only in its free gaps and say where each fits relative to their events.
+If completion patterns are listed below, use them: suggest moving or shrinking work
+on the days they keep missing rather than telling them to try harder.
 
 GOAL-CREATION FLOW (only when they want a new goal)
 
@@ -314,6 +326,7 @@ FORMATTING: Keep it to 2-3 sentences. **bold** for emphasis and the occasional e
 are fine. No option lists, no headings, no recap blocks.
 
 ${PLAN_RULES}
+${skillBoost}
 Today: ${today}.
 ${goalsContext}`;
 }
@@ -439,7 +452,7 @@ export function buildGoalTools() {
             targetValue: { type: 'number', description: 'Numeric target (books, km, kg, $, etc.)' },
             unit:        { type: 'string', description: 'Unit (books, km, kg, $, etc.)' },
             deadline:    { type: 'string', description: `YYYY-MM-DD. Today is ${today}.` },
-            why:         { type: 'string', description: 'Brief goal description (1-2 sentences).' },
+            why:         { type: 'string', description: 'Optional. Brief goal description (1-2 sentences).' },
             stages: {
               type: 'array',
               description:
@@ -455,18 +468,18 @@ export function buildGoalTools() {
                   purpose:  { type: 'string', description: 'One sentence: why this phase exists' },
                   guidance: { type: 'string', description: 'One sentence of concrete approach' },
                 },
-                required: ['id', 'title', 'subtitle'],
+                required: ['id', 'title'],
               },
             },
             subtasks: {
               type: 'array',
-              description: '10-12 milestones spaced every 2-3 weeks.',
+              description: 'Small, frequent milestones: one every 7-10 days, 12-20 in total (max 20), 3-5 per stage.',
               items: {
                 type: 'object',
                 properties: {
                   title:         { type: 'string', description: 'Specific, measurable milestone title' },
                   stageId:       { type: 'string', description: 'id of the stage this milestone belongs to. Required.' },
-                  description:   { type: 'string', description: '1-2 sentences on what actually happens in this phase' },
+                  description:   { type: 'string', description: 'Optional. One sentence, only where the title alone is unclear.' },
                   daysFromStart: { type: 'number', description: 'Day from today; must be ≤ days until deadline' },
                   difficulty:    { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
                   kind: {
@@ -475,7 +488,7 @@ export function buildGoalTools() {
                     description: '"action" = one sitting the user starts and finishes; "cumulative" = a total built across sessions.',
                   },
                 },
-                required: ['title', 'stageId', 'description', 'daysFromStart', 'difficulty', 'kind'],
+                required: ['title', 'stageId', 'daysFromStart', 'difficulty', 'kind'],
               },
             },
             dailyTasks: {
@@ -493,14 +506,14 @@ export function buildGoalTools() {
                   daysOfWeek: { type: 'array', items: { type: 'number' }, description: '0=Sun…6=Sat, e.g. [1,3,5]' },
                   type:       { type: 'string', enum: ['checkbox'] },
                   difficulty: { type: 'string', enum: DIFFICULTY_ENUM, description: 'Honest effort level — drives XP' },
-                  description: { type: 'string', description: 'The first concrete instruction, one sentence.' },
+                  description: { type: 'string', description: 'Optional. The first concrete instruction, one sentence.' },
                   estimatedMinutes: { type: 'number', description: 'Realistic minutes for this task.' },
                 },
-                required: ['title', 'stageId', 'daysOfWeek', 'type', 'difficulty', 'description', 'estimatedMinutes'],
+                required: ['title', 'stageId', 'daysOfWeek', 'type', 'difficulty', 'estimatedMinutes'],
               },
             },
           },
-          required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'why', 'stages', 'subtasks', 'dailyTasks'],
+          required: ['title', 'category', 'targetValue', 'unit', 'deadline', 'stages', 'subtasks', 'dailyTasks'],
         },
       },
     },
@@ -522,7 +535,7 @@ interface RawTask {
 
 export interface CreateGoalArgs {
   title: string; category: string; targetValue: number; unit: string;
-  deadline: string; why: string;
+  deadline: string; why?: string;
   stages?: RawStage[]; subtasks?: RawSubtask[]; dailyTasks?: RawTask[];
 }
 
@@ -655,7 +668,7 @@ export async function materialiseGoal(args: CreateGoalArgs): Promise<Goal | null
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       title: args.title,
-      description: args.why,
+      description: args.why ?? '',
       category: args.category,
       targetValue: args.targetValue,
       currentValue: 0,

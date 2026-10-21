@@ -6,7 +6,7 @@
  * URL flags (query string):
  *   ?empty   — the user has no goals
  *   ?fail    — every write (PUT/DELETE/POST) fails with 500
- *   ?gcal    — Google Calendar is connected, busy 8–16 and 18–19
+ *   ?gcal    — Google Calendar is connected: School 8–16, Football practice 18–19
  */
 import { createRoot } from 'react-dom/client';
 import AppLayout from '@/app/(app)/layout';
@@ -38,7 +38,7 @@ let goals: Goal[] = saved ? JSON.parse(saved) : flags.has('empty') ? [] : struct
 const persist = () => sessionStorage.setItem(STORE_KEY, JSON.stringify(goals));
 
 const at = (h: number) => { const d = new Date(); d.setHours(h, 0, 0, 0); return d.toISOString(); };
-if (flags.has('gcal')) sessionStorage.setItem('gq_gcal_token', JSON.stringify({ value: 'tok', expiresAt: Date.now() + 3600e3 }));
+if (flags.has('gcal')) sessionStorage.setItem('gq_gcal_token_v2', JSON.stringify({ value: 'tok', expiresAt: Date.now() + 3600e3 }));
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -126,8 +126,11 @@ w.__ai = (req: unknown) => {
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
   const method = init?.method ?? 'GET';
-  if (url.includes('freeBusy')) {
-    return json({ calendars: { primary: { busy: [{ start: at(8), end: at(16) }, { start: at(18), end: at(19) }] } } });
+  if (url.includes('googleapis.com/calendar')) {
+    return json({ items: [
+      { summary: 'School', start: { dateTime: at(8) }, end: { dateTime: at(16) } },
+      { summary: 'Football practice', start: { dateTime: at(18) }, end: { dateTime: at(19) } },
+    ] });
   }
   if (url.startsWith('/api/ai/chat')) {
     logCall(`AI ${init?.body}`);

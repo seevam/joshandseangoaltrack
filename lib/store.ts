@@ -29,6 +29,21 @@ interface GoalStore {
   setIsChatOpen: (v: boolean) => void;
   chatSessionId: number;
   openChat: () => void; // increments session so panel resets
+  /**
+   * A question to send on the user's behalf when the chat opens — e.g. "suggest
+   * goal ideas for Leadership" from the Progression page. Consumed once.
+   */
+  chatSeed: string | null;
+  openChatWith: (seed: string) => void;
+  clearChatSeed: () => void;
+
+  /**
+   * Today's calendar as plain text (events and free gaps), set by the
+   * dashboard's day plan once Google Calendar is connected, so the coach can
+   * place work into real free time. Null when not connected.
+   */
+  calendarContext: string | null;
+  setCalendarContext: (v: string | null) => void;
 
   selectedGoal: Goal | null;
   setSelectedGoal: (goal: Goal | null) => void;
@@ -98,6 +113,12 @@ export const useGoalStore = create<GoalStore>((set) => ({
   setIsChatOpen: (v) => set({ isChatOpen: v }),
   chatSessionId: 0,
   openChat: () => set(s => ({ isChatOpen: true, chatSessionId: s.chatSessionId + 1 })),
+  chatSeed: null,
+  openChatWith: (seed) => set(s => ({ isChatOpen: true, chatSessionId: s.chatSessionId + 1, chatSeed: seed })),
+  clearChatSeed: () => set({ chatSeed: null }),
+
+  calendarContext: null,
+  setCalendarContext: (v) => set({ calendarContext: v }),
 
   selectedGoal: null,
   setSelectedGoal: (goal) => set({ selectedGoal: goal }),

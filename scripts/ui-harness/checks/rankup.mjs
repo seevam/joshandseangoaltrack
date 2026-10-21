@@ -44,13 +44,15 @@ async function tick(p) {
   const p = await b.newPage({ viewport: { width: 1440, height: 1000 } });
   await p.goto(`${BASE}?reset#/home`);
   await p.waitForTimeout(1500);
-  const before = await primeHealth(p, 1000); // Health level 4 → 5 at 1,000
-  t('primed one tick short of Health level 5', before >= 980 && before < 1000, String(before));
+  // Level 4 at 600 XP. Not level 5: ranks now change at levels 5, 12, 22…,
+  // so crossing into level 5 is a rank-up and would play that instead.
+  const before = await primeHealth(p, 600);
+  t('primed one tick short of Health level 4', before >= 580 && before < 600, String(before));
   t('reload after priming is silent', await p.getByRole('dialog', { name: /level up|rank up/i }).count() === 0);
   await tick(p);
-  const dlg = p.getByRole('dialog', { name: /Health Level 5/ });
+  const dlg = p.getByRole('dialog', { name: /Health Level 4/ });
   await dlg.waitFor({ timeout: 4000 }).catch(() => {});
-  t('ticking the task plays "Health Level 5"', await dlg.count() === 1);
+  t('ticking the task plays "Health Level 4"', await dlg.count() === 1);
   await p.waitForTimeout(700);
   await p.screenshot({ path: shot('rankup-skill-level') });
   await p.waitForTimeout(300);
@@ -68,10 +70,10 @@ async function tick(p) {
   const p = await b.newPage({ viewport: { width: 390, height: 844 } });
   await p.goto(`${BASE}?reset#/home`);
   await p.waitForTimeout(1500);
-  const before = await primeHealth(p, 1500); // Apprentice → Journeyman at 1,500
-  t('primed one tick short of Journeyman', before >= 1480 && before < 1500, String(before));
+  const before = await primeHealth(p, 1000); // Initiate → Apprentice at level 5 (1,000 XP)
+  t('primed one tick short of Apprentice', before >= 980 && before < 1000, String(before));
   await tick(p);
-  const dlg = p.getByRole('dialog', { name: /Health rank up: Apprentice to Journeyman/ });
+  const dlg = p.getByRole('dialog', { name: /Health rank up: Initiate to Apprentice/ });
   await dlg.waitFor({ timeout: 4000 }).catch(() => {});
   t('ticking the task plays the Health rank-up (mobile)', await dlg.count() === 1);
   await p.waitForTimeout(2200);

@@ -47,19 +47,33 @@ export function milestoneXp(difficulty?: string): number {
   return taskXp(difficulty) * 5;
 }
 
-/** `icon` is a key into the registry in components/ui/icons.tsx, not an emoji. */
-export const RANK_TIERS = [
-  { name: 'Initiate',     minXp: 0,      slug: 'initiate',     icon: 'sprout',     color: '#A1A1A1' },
-  { name: 'Apprentice',   minXp: 500,    slug: 'apprentice',   icon: 'footprints', color: '#5DBC70' },
-  { name: 'Journeyman',   minXp: 1500,   slug: 'journeyman',   icon: 'zap',        color: '#3B82F6' },
-  { name: 'Adept',        minXp: 3500,   slug: 'adept',        icon: 'flame',      color: '#A78BFA' },
-  { name: 'Expert',       minXp: 7000,   slug: 'expert',       icon: 'gem',        color: '#F59E0B' },
-  { name: 'Master',       minXp: 12000,  slug: 'master',       icon: 'crown',      color: '#EC4899' },
-  { name: 'Grandmaster',  minXp: 20000,  slug: 'grandmaster',  icon: 'medal',      color: '#14B8A6' },
-  { name: 'Legend',       minXp: 35000,  slug: 'legend',       icon: 'trophy',     color: '#FBBF24' },
-  { name: 'Mythic',       minXp: 60000,  slug: 'mythic',       icon: 'sparkles',   color: '#F87171' },
-  { name: 'Transcendent', minXp: 100000, slug: 'transcendent', icon: 'star',       color: '#E8F0EC' },
+/** XP at which a level begins, on the shared curve below. */
+export function levelStartXp(level: number): number {
+  return (100 * (level - 1) * level) / 2;
+}
+
+/*
+ * Rank emblems ("badges") upgrade at levels, at widening intervals: +4, +7,
+ * +10, +13, +15, +20, +25, +30, +35. They used to sit at fixed XP marks that
+ * landed every two or three levels early on, so the emblem changed almost
+ * every time the level did and an upgrade meant nothing. Now a level-up is the
+ * small reward and a new emblem is the rare one, and each gets rarer.
+ */
+const RANK_DEFS = [
+  { name: 'Initiate',     minLevel: 1,   slug: 'initiate',     icon: 'sprout',     color: '#A1A1A1' },
+  { name: 'Apprentice',   minLevel: 5,   slug: 'apprentice',   icon: 'footprints', color: '#5DBC70' },
+  { name: 'Journeyman',   minLevel: 12,  slug: 'journeyman',   icon: 'zap',        color: '#3B82F6' },
+  { name: 'Adept',        minLevel: 22,  slug: 'adept',        icon: 'flame',      color: '#A78BFA' },
+  { name: 'Expert',       minLevel: 35,  slug: 'expert',       icon: 'gem',        color: '#F59E0B' },
+  { name: 'Master',       minLevel: 50,  slug: 'master',       icon: 'crown',      color: '#EC4899' },
+  { name: 'Grandmaster',  minLevel: 70,  slug: 'grandmaster',  icon: 'medal',      color: '#14B8A6' },
+  { name: 'Legend',       minLevel: 95,  slug: 'legend',       icon: 'trophy',     color: '#FBBF24' },
+  { name: 'Mythic',       minLevel: 125, slug: 'mythic',       icon: 'sparkles',   color: '#F87171' },
+  { name: 'Transcendent', minLevel: 160, slug: 'transcendent', icon: 'star',       color: '#E8F0EC' },
 ];
+
+/** `icon` is a key into the registry in components/ui/icons.tsx, not an emoji. */
+export const RANK_TIERS = RANK_DEFS.map(r => ({ ...r, minXp: levelStartXp(r.minLevel) }));
 
 export function rankFromXp(totalXp: number) {
   let rank = RANK_TIERS[0];
@@ -74,10 +88,16 @@ export function rankFromXp(totalXp: number) {
  * levels as well as ranks.
  */
 export function skillLevel(xp: number) {
-  const level = Math.floor((-1 + Math.sqrt(1 + (8 * Math.max(0, xp)) / 100)) / 2) + 1;
-  const start = (100 * (level - 1) * level) / 2;
-  const end = (100 * level * (level + 1)) / 2;
-  return { level, levelXp: xp - start, levelSpan: end - start };
+  const safe = Math.max(0, xp);
+  let level = Math.floor((-1 + Math.sqrt(1 + (8 * safe) / 100)) / 2) + 1;
+  // XP can be fractional (a goal's XP is shared across its skills), so the
+  // square root is checked against the integer boundaries: the bar and the
+  // level number must always turn over together.
+  while (levelStartXp(level + 1) <= safe) level++;
+  while (level > 1 && levelStartXp(level) > safe) level--;
+  const start = levelStartXp(level);
+  const end = levelStartXp(level + 1);
+  return { level, levelXp: safe - start, levelSpan: end - start };
 }
 
 export function streaksFromCheckIns(all: string[]): { current: number; longest: number } {

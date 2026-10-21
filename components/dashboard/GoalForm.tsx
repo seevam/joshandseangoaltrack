@@ -139,8 +139,10 @@ export default function GoalForm({ onClose, editGoal }: { onClose: () => void; e
           </div>
 
           <div>
-            <label htmlFor="goal-why" className="block text-sm font-medium text-fg mb-1">Why it matters</label>
-            <textarea id="goal-why" value={form.description} rows={2}
+            <label htmlFor="goal-why" className="block text-sm font-medium text-fg mb-1">
+              Why it matters <span className="font-normal text-muted">(optional)</span>
+            </label>
+            <textarea id="goal-why" value={form.description} rows={2} placeholder="Optional"
               onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
               className={`${field} resize-none`} />
           </div>

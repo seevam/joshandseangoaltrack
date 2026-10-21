@@ -34,7 +34,7 @@ const TIERS: { min: number; status: GoalHealth['status']; color: string }[] = [
 const DAY = 86400000;
 
 /*
- * Health is a balance, not a score out of a rubric.
+ * Health is a balance out of 100, not a score out of a rubric.
  *
  * It opens at 100 the moment the goal is created and is only ever spent, by
  * days that ended with work left undone. The previous model graded a brand new
@@ -46,17 +46,30 @@ const DAY = 86400000;
  * yet. Only completed days can take points away.
  */
 
-/** One skipped daily task. Small on purpose — a missed task is a bad day, not a crisis. */
-const MISS_TASK = 1.5;
-/** Ceiling per day, so a goal with ten daily tasks can't lose everything in one go. */
-const MAX_DAY_PENALTY = 6;
+/*
+ * Missed recurring work decays health exponentially rather than subtracting a
+ * flat amount. Each day with work left undone multiplies health by (1 − rate),
+ * and the rate grows with every consecutive missed day:
+ *
+ *   rate = BASE_DECAY × share of that day's tasks missed × GROWTH^(run − 1)
+ *
+ * One slip barely registers; a week of drift compounds fast. That is the
+ * difference between "a bad day" and "this goal has been abandoned", which a
+ * flat 1.5 points per task could never tell apart.
+ */
+/** Decay for a day with every task missed, on the first day of a run. */
+export const BASE_DECAY = 0.05;
+/** How much faster each consecutive missed day decays than the one before. */
+export const DECAY_GROWTH = 1.35;
+/** Ceiling on a single day's decay, so one day can never wipe a goal out. */
+export const MAX_DAY_DECAY = 0.35;
+/** A day cleared in full heals this share of the gap back to 100. */
+export const CLEAR_DAY_HEAL = 0.08;
 /** A missed milestone is a missed commitment, and costs accordingly. */
 const MISS_MILESTONE = 8;
 /** …growing while it stays open, up to this much on top. */
 const MILESTONE_DRIFT_PER_DAY = 0.5;
 const MAX_MILESTONE_PENALTY = 16;
-/** A day cleared in full pays a little back, so health can be rebuilt. */
-const CLEAR_DAY_CREDIT = 1;
 /** Far enough back to be fair, near enough to stay cheap. */
 const MAX_LOOKBACK_DAYS = 180;
 
@@ -127,8 +140,9 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
   const firstDay = startOfDay(Math.max(startTs, now - MAX_LOOKBACK_DAYS * DAY));
   const completions = goal.taskCompletions || {};
 
-  let dayPenalty = 0;
-  let credit = 0;
+  /** Health from recurring work alone, walked forward one finished day at a time. */
+  let taskHealth = 100;
+  let run = 0;
   let missedDays = 0;
   let missedTasks = 0;
   let clearedDays = 0;
@@ -143,18 +157,22 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
       const days = t.daysOfWeek;
       return !days || days.length === 0 || days.includes(cursor.getDay());
     });
-    if (scheduled.length === 0) continue; // A rest day can't be missed.
+    if (scheduled.length === 0) continue; // A rest day can't be missed, and doesn't break a run.
 
     const logged = completions[iso(cursor)] || {};
     const missed = scheduled.filter(t => !logged[t.id]).length;
 
     if (missed === 0) {
       clearedDays++;
-      credit += CLEAR_DAY_CREDIT;
+      run = 0;
+      // Heals towards 100 but never past it: credit never banks.
+      taskHealth += (100 - taskHealth) * CLEAR_DAY_HEAL;
     } else {
       missedDays++;
       missedTasks += missed;
-      dayPenalty += Math.min(missed * MISS_TASK, MAX_DAY_PENALTY);
+      run++;
+      const rate = Math.min(BASE_DECAY * (missed / scheduled.length) * DECAY_GROWTH ** (run - 1), MAX_DAY_DECAY);
+      taskHealth *= 1 - rate;
     }
   }
 
@@ -173,13 +191,7 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
     );
   }
 
-  /*
-   * Credit heals, it never banks. Capping it at the debt means a long clean run
-   * can bring a damaged goal back to full, but a run of good days before a miss
-   * cannot pre-pay for it — the miss still shows.
-   */
-  const debt = dayPenalty + milestonePenalty;
-  const raw = Math.round(100 - debt + Math.min(credit, debt));
+  const raw = Math.round(taskHealth - milestonePenalty);
   const score = Number.isFinite(raw) ? Math.max(0, Math.min(100, raw)) : 100;
 
   // ── Reasons, most significant first ─────────────────────────────────────

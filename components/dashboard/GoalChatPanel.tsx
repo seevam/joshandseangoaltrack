@@ -10,12 +10,22 @@ import { useGoalStore, type CoachPersona } from '@/lib/store';
 import MarkdownText from '@/components/ui/MarkdownText';
 import { useDismiss } from '@/components/ui/Modal';
 import { dayKey } from '@/lib/dates';
+import { findMissPatterns, WEEKDAYS } from '@/lib/patterns';
 
 interface Message {
   id: number;
   type: 'ai' | 'user';
   content: string;
   isError?: boolean;
+}
+
+/** What the user's history says about when this goal's work slips. */
+function patternLine(goal: Goal): string {
+  const patterns = findMissPatterns([goal]);
+  if (!patterns.length) return '';
+  return 'PATTERNS: ' + patterns.map(p =>
+    `"${p.taskTitle}" missed ${p.missed}/${p.scheduled} ${WEEKDAYS[p.weekday]}s, done ${Math.round(p.otherRate * 100)}% on other days`,
+  ).join('; ') + '. If they ask how to restructure, move or shrink that day\'s work rather than asking for more effort.';
 }
 
 function buildGoalContext(goal: Goal, coachName: string, persona: CoachPersona): {
@@ -81,6 +91,7 @@ CHECK-INS: ${checkInCount} total
 ${subtasksTotal > 0 ? `MILESTONES: ${subtasksDone}/${subtasksTotal} completed` : ''}
 ${dailyTasksTotal > 0 ? `TODAY'S TASKS: ${dailyTasksDone}/${dailyTasksTotal} done` : ''}
 ${goal.description ? `MOTIVATION: "${goal.description}"` : ''}
+${patternLine(goal)}
 
 Coach based on this real data. Be specific — reference actual numbers, streak, days left. If overdue or behind, focus on recovery and motivation. If on track or completed, celebrate and push further.`;
 

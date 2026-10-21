@@ -45,7 +45,7 @@ export default function LandingPage() {
           <span className="text-[var(--brand)]"> achievements</span>
         </h1>
         <p className="text-lg text-muted mb-8 max-w-xl">
-          Set meaningful goals, track daily progress, and get personalised coaching from your AI accountability partner.
+          Set meaningful goals, track daily progress, and get personalised coaching from your AI coach.
         </p>
         <div className="flex flex-col sm:flex-row gap-3">
           <Link href="/sign-up" className="flex items-center justify-center gap-2 px-6 py-3 bg-[var(--brand)] hover:bg-[var(--brand-dark)] text-black rounded-xl font-semibold transition-colors">

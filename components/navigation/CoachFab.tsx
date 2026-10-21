@@ -12,6 +12,7 @@ export default function CoachFab({ onClick, hidden }: { onClick: () => void; hid
   return (
     <button
       onClick={onClick}
+      data-tour="coach"
       aria-label="AI Coach"
       title="AI Coach"
       className="lg:hidden fixed right-4 z-40 h-12 w-12 rounded-full flex items-center justify-center

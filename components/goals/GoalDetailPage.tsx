@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft, Trash2, Pencil, CheckCircle, Flame, ChevronDown, ChevronUp, TrendingUp,
-  Users, UserPlus, Mail, Bot, Sparkles, RepeatIcon, CalendarDays, Map, Check, Undo2,
-  Target, X, Loader2, Play,
+  Bot, Sparkles, RepeatIcon, CalendarDays, Map, Check, Undo2,
+  Target, Loader2, Play,
 } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
 import { CATEGORY_COLORS, getGoalProgress, getGoalStatus, getStreak, type Goal, type Category } from '@/lib/types';
@@ -96,7 +96,6 @@ export default function GoalDetailPage({ goalId }: { goalId: string }) {
 function GoalDetailContent({ goal }: { goal: Goal }) {
   const router = useRouter();
   const actions = useGoalActions();
-  const updateGoal = useGoalStore(s => s.updateGoal);
   /** The completion currently being asked about, if any. */
   const [askDuration, setAskDuration] = useState<
     { taskId: number; title: string; planned?: number } | null
@@ -118,7 +117,6 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
   const [showChat, setShowChat] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const [showShare, setShowShare] = useState(false);
   /** The destructive action awaiting confirmation, if any. One dialog serves all three. */
   const [pendingDelete, setPendingDelete] = useState<
     | { kind: 'goal' }
@@ -127,53 +125,6 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
     | null
   >(null);
   const [expandedMilestone, setExpandedMilestone] = useState<number | null>(null);
-  const [shareEmail, setShareEmail] = useState('');
-  const [shareLoading, setShareLoading] = useState(false);
-  const [shareError, setShareError] = useState('');
-
-  const partners = goal.sharedWith || [];
-
-  const addPartner = async () => {
-    const email = shareEmail.trim().toLowerCase();
-    if (!email || !/\S+@\S+\.\S+/.test(email) || partners.includes(email)) return;
-    setShareLoading(true);
-    setShareError('');
-    try {
-      const res = await fetch(`/api/goals/${goal.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sharedWith: [...partners, email] }),
-      });
-      if (!res.ok) throw new Error();
-      // The saved goal goes back into the store, or the new partner never
-      // appears until a reload — the request succeeded and the list didn't move.
-      updateGoal(await res.json());
-      setShareEmail('');
-    } catch {
-      setShareError('Could not add that partner. Make sure you own this goal.');
-    } finally {
-      setShareLoading(false);
-    }
-  };
-
-  const removePartner = async (email: string) => {
-    setShareLoading(true);
-    setShareError('');
-    try {
-      const res = await fetch(`/api/goals/${goal.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sharedWith: partners.filter(e => e !== email) }),
-      });
-      if (!res.ok) throw new Error();
-      updateGoal(await res.json());
-    } catch {
-      setShareError('Could not remove that partner. Try again.');
-    } finally {
-      setShareLoading(false);
-    }
-  };
-
   const today = dayKey();
   const todayDow = new Date().getDay();
   const cat = CATEGORY_COLORS[goal.category as Category] || CATEGORY_COLORS.personal;
@@ -520,18 +471,31 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
             <Sparkles className="h-5 w-5 text-brand flex-shrink-0 icon-shift" />
           </button>
 
-          <button
-            onClick={() => actions.onCheckIn(goal.id)}
-            disabled={checkedToday}
-            className={`flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl font-semibold text-sm transition-colors ${
-              checkedToday
-                ? 'bg-[var(--brand-light)] text-brand cursor-default border border-[var(--brand)]/30'
-                : 'bg-brand hover:bg-[var(--brand-dark)] text-black'
-            }`}
-          >
-            <CheckCircle className="h-4 w-4" />
-            {checkedToday ? 'Checked in today' : 'Check in today'}
-          </button>
+          {/*
+            * Check-in is automatic: ticking the last of today's tasks checks
+            * you in. The manual button is kept only for a day with nothing
+            * scheduled, when there is no task whose completion could do it.
+            */}
+          {checkedToday ? (
+            <div className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl font-semibold text-sm bg-[var(--brand-light)] text-brand border border-[var(--brand)]/30">
+              <CheckCircle className="h-4 w-4" /> Checked in today
+            </div>
+          ) : todaysTasks.length > 0 ? (
+            <div className="flex flex-col items-center justify-center gap-0.5 px-4 py-3 rounded-2xl border border-line bg-card text-center">
+              <span className="flex items-center gap-2 text-sm font-semibold text-fg">
+                <CheckCircle className="h-4 w-4 text-muted" />
+                {todaysTasks.filter(t => !!todayCompletions[t.id]).length}/{todaysTasks.length} of today&apos;s tasks done
+              </span>
+              <span className="text-xs text-muted">You&apos;re checked in automatically when they&apos;re all done.</span>
+            </div>
+          ) : status !== 'completed' ? (
+            <button
+              onClick={() => actions.onCheckIn(goal.id)}
+              className="flex items-center justify-center gap-2 px-4 py-3.5 rounded-2xl font-semibold text-sm transition-colors bg-brand hover:bg-[var(--brand-dark)] text-black"
+            >
+              <CheckCircle className="h-4 w-4" /> Rest day — check in
+            </button>
+          ) : null}
         </div>
       </Reveal>
 
@@ -748,7 +712,9 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
 
             {recurringTasks.length === 0 ? (
               <p className="text-sm text-muted text-center py-6">
-                No recurring tasks yet. These are the habits that move the goal day to day.
+                {status === 'completed'
+                  ? 'Goal complete — its recurring tasks have been cleared from your schedule.'
+                  : 'No recurring tasks yet. These are the habits that move the goal day to day.'}
               </p>
             ) : showTasks && (
               <div className="space-y-2">
@@ -825,72 +791,7 @@ function GoalDetailContent({ goal }: { goal: Goal }) {
         </div>
       </Reveal>
 
-      {/* ── 7. Accountability partners ──────────────────────────────────── */}
-      <Reveal>
-        <div className="card-glow rounded-2xl p-4 sm:p-5">
-          <button
-            onClick={() => setShowShare(!showShare)}
-            aria-expanded={showShare}
-            className="flex items-center justify-between w-full"
-          >
-            <span className="flex items-center gap-2 font-semibold text-fg">
-              <Users className="h-4 w-4 text-brand" />
-              <span className="section-title">Accountability Partners</span>
-              {partners.length > 0 && (
-                <span className="text-xs bg-brand text-black rounded-full px-1.5 py-0.5 font-semibold">{partners.length}</span>
-              )}
-            </span>
-            {showShare ? <ChevronUp className="h-4 w-4 text-muted" /> : <ChevronDown className="h-4 w-4 text-muted" />}
-          </button>
-
-          {showShare && (
-            <div className="space-y-3 mt-3">
-              {partners.length > 0 && (
-                <ul className="space-y-2">
-                  {partners.map(email => (
-                    <li key={email} className="flex items-center justify-between gap-2 bg-elevated rounded-xl px-3 py-2 border border-line">
-                      <span className="flex items-center gap-2 min-w-0">
-                        <Mail className="h-3.5 w-3.5 text-muted flex-shrink-0" />
-                        <span className="text-sm text-fg truncate">{email}</span>
-                      </span>
-                      <button
-                        onClick={() => removePartner(email)}
-                        aria-label={`Remove ${email}`}
-                        className="flex-shrink-0 text-muted hover:text-red-400"
-                      >
-                        <X className="h-4 w-4" />
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              <div className="flex gap-2">
-                <input
-                  type="email"
-                  value={shareEmail}
-                  onChange={e => setShareEmail(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && addPartner()}
-                  aria-label="Partner's email address"
-                  placeholder="Partner's email address"
-                  className="flex-1 min-w-0 px-3 py-2 bg-elevated border border-line rounded-xl text-sm text-fg placeholder:text-muted-dim focus:outline-none focus:border-brand"
-                />
-                <button
-                  onClick={addPartner}
-                  disabled={shareLoading || !shareEmail.trim()}
-                  aria-label="Add partner"
-                  className="px-3 py-2 bg-brand hover:bg-[var(--brand-dark)] disabled:bg-line text-black rounded-xl flex-shrink-0"
-                >
-                  <UserPlus className="h-4 w-4" />
-                </button>
-              </div>
-              {shareError && <p className="text-xs text-red-400">{shareError}</p>}
-              <p className="text-xs text-muted">Partners can view this goal&apos;s progress when they log in.</p>
-            </div>
-          )}
-        </div>
-      </Reveal>
-
-      {/* ── 8. Management ───────────────────────────────────────────────── */}
+      {/* ── 7. Management ───────────────────────────────────────────────── */}
       <div className="pt-1">
         <button
           onClick={() => setPendingDelete({ kind: 'goal' })}

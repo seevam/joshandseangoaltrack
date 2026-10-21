@@ -1,5 +1,6 @@
-// #7 — overdue reads as red; today comes first; past days show the stage
-// that was live then, so a new stage doesn't flood "missed" with its tasks.
+// Overdue is milestones only — a late milestone reads red with its due date;
+// recurring tasks are never "overdue". Today comes first; past days show the
+// stage that was live then.
 import { launch, BASE } from '../browser.mjs';
 const b = await launch();
 let fails = 0;
@@ -10,11 +11,12 @@ await p.goto(`${BASE}#/calendar`); await p.waitForTimeout(1600);
 
 const row = p.locator('section').filter({ has: p.getByRole('heading', { name: /Overdue/ }) });
 const firstRow = row.locator('div.rounded-xl').first();
-const rc = await firstRow.evaluate(el => ({ border: getComputedStyle(el).borderTopColor, bg: getComputedStyle(el).backgroundColor, label: el.querySelector('.text-red-400')?.textContent }));
+const rc = await firstRow.evaluate(el => ({ border: getComputedStyle(el).borderTopColor, bg: getComputedStyle(el).backgroundColor, label: el.querySelector('span.text-red-400')?.textContent, text: el.textContent }));
 t('overdue rows have a red border and tint', /rgba\(239, 68, 68/.test(rc.border) && /rgba\(239, 68, 68/.test(rc.bg), JSON.stringify(rc));
-t('each says when it was missed, in red', /^Missed \w+ \d+/.test(rc.label ?? ''), rc.label);
-const pill = await row.getByText(/\d+ missed/).textContent();
-t('header shows the true total', /^\d+ missed$/.test(pill), pill);
+t('each says when it was due and how late, in red', /^Due \w+ \d+ · \d+d late/.test(rc.label ?? ''), rc.label);
+t('the overdue item is a milestone, not a recurring task', /continuous \d+km|Reach \d+km/.test(rc.text) && !/easy conversational pace/.test(await row.textContent()), rc.text);
+const pill = await row.getByText(/\d+ late/).textContent();
+t('header shows the count', /^\d+ late$/.test(pill), pill);
 
 const order = await p.evaluate(() => {
   const secs = [...document.querySelectorAll('section')].map(s => s.querySelector('h2')?.textContent ?? '');
@@ -27,7 +29,7 @@ const yLabel = y.toLocaleDateString('en-US', { weekday: 'long', month: 'long', d
 const cell = p.getByRole('button', { name: yLabel });
 if (await cell.count()) {
   const chip = await cell.locator('span.rounded-md').first().evaluate(el => getComputedStyle(el).borderTopColor);
-  t('a past day with work left is red in the grid', /rgba\(239, 68, 68/.test(chip), chip);
+  t('a past day with work left is not painted overdue-red', !/rgba\(239, 68, 68/.test(chip), chip);
 }
 const flag = p.locator('[aria-label$="due"]').first();
 if (await flag.count()) t('milestone chip is not truncated', await flag.evaluate(el => el.scrollWidth <= el.clientWidth + 1));
@@ -43,8 +45,7 @@ if (await cell.count()) await cell.click();
 await p.waitForTimeout(300);
 const dayText = await p.locator('section').first().textContent();
 t("yesterday still shows stage 1's tasks", dayText.includes('Run 3km') && !/Run 5km at an easy conversational pace\s*(Missed \w+ \d+ · )?Run my first marathon/.test(dayText));
-const missedText = await row.textContent();
-t("stage 2's tasks are not listed as missed", !/Run [56]km at an easy conversational paceMissed \w+ \d+ · Run my first marathon/.test(missedText));
+t('no recurring task is listed as missed anywhere', !/Missed \w+ \d+ ·/.test(await p.textContent('body')));
 await b.close();
 console.log(fails ? `\n${fails} FAILING` : '\nall pass');
 process.exit(fails ? 1 : 0);

@@ -96,8 +96,8 @@ button:active:not(:disabled) { transform: scale(0.97); }
 /*
  * Panel accents. One green, deliberately: a dashboard where every box glowed a
  * different colour read as a set of unrelated widgets rather than one surface.
- * Exactly one panel is allowed to differ — Next Action — and it uses blue so
- * that the single most important box on the page is the one that stands out.
+ * Next Action shares the green too; it stands out by brightness (.card-primary),
+ * not by hue.
  */
 .glow-brand,
 .glow-rank,
@@ -107,9 +107,8 @@ button:active:not(:disabled) { transform: scale(0.97); }
 .glow-plan,
 .glow-missions,
 .glow-activity,
-.glow-goals   { --glow: var(--brand); }
-
-.glow-next    { --glow: #38BDF8; }
+.glow-goals,
+.glow-next    { --glow: var(--brand); }
 
 /* ── Surfaces ─────────────────────────────────────────────────────────────── */
 /*

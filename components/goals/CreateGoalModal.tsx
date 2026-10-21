@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Zap, MessageSquare, ChevronRight, ChevronDown, ArrowLeft, Loader2, Send, Sparkles, ListChecks } from 'lucide-react';
 import { useGoalStore } from '@/lib/store';
+import { skillBoostRules } from '@/lib/skills';
 import {
   buildGoalTools, quickCreatePrompt, chatCoachPrompt, personaStyle, materialiseGoal, splitInlineOptions,
   requestPlan, PlanError, PLAN_MAX_TOKENS, CATEGORY_HEX,
@@ -209,7 +210,13 @@ function QuickCreate({ mode, setMode, onBack, onCreated, coachName, persona, oth
       deadline.setMonth(deadline.getMonth() + months);
       const { args } = await requestPlan({
         messages: [
-          { role: 'system', content: quickCreatePrompt(coachName, personaStyle(persona), availability, otherTaskCount) },
+          {
+            role: 'system',
+            content: quickCreatePrompt(
+              coachName, personaStyle(persona), availability, otherTaskCount,
+              skillBoostRules(useGoalStore.getState().goals),
+            ),
+          },
           {
             role: 'user',
             content: `Goal: ${ambition.trim()}\nCategory: ${category}\nTimeframe: ${months} month${months === 1 ? '' : 's'} `
@@ -370,7 +377,9 @@ function QuickCreate({ mode, setMode, onBack, onCreated, coachName, persona, oth
                 className={`${fieldCls} ${invalid.has('title') ? 'border-red-500/70' : ''}`} />
             </div>
             <div>
-              <label htmlFor="manual-why" className="block text-xs font-semibold text-fg mb-1.5">Why it matters</label>
+              <label htmlFor="manual-why" className="block text-xs font-semibold text-fg mb-1.5">
+                Why it matters <span className="font-normal text-muted">(optional)</span>
+              </label>
               <textarea id="manual-why" value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Optional" className={`${fieldCls} resize-none`} />
             </div>
             <div>
@@ -439,7 +448,13 @@ function DetailedConsultation({ onBack, onCreated, coachName, persona }: {
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
 
   const call = (msgs: { role: string; content: string }[], force: boolean) => requestPlan({
-    messages: [{ role: 'system', content: chatCoachPrompt(coachName, personaStyle(persona), 'Creating a new goal.') }, ...msgs],
+    messages: [{
+      role: 'system',
+      content: chatCoachPrompt(
+        coachName, personaStyle(persona), 'Creating a new goal.',
+        skillBoostRules(useGoalStore.getState().goals),
+      ),
+    }, ...msgs],
     tools: force
       ? buildGoalTools().filter(t => t.function.name === 'create_goal')
       : buildGoalTools(),

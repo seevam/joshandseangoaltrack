@@ -14,11 +14,11 @@ import { RankEmblem } from '@/components/ui/icons';
 import { isNavActive } from '@/lib/nav';
 
 const NAV = [
-  { icon: LayoutDashboard, label: 'Dashboard',   href: '/home' },
-  { icon: Target,          label: 'Goals',       href: '/goals' },
-  { icon: Calendar,        label: 'Calendar',    href: '/calendar' },
-  { icon: Trophy,          label: 'Progression', href: '/progress' },
-  { icon: Settings,        label: 'Settings',    href: '/profile' },
+  { icon: LayoutDashboard, label: 'Dashboard',   href: '/home',     tour: 'nav-home' },
+  { icon: Target,          label: 'Goals',       href: '/goals',    tour: 'nav-goals' },
+  { icon: Calendar,        label: 'Calendar',    href: '/calendar', tour: 'nav-calendar' },
+  { icon: Trophy,          label: 'Progression', href: '/progress', tour: 'nav-progress' },
+  { icon: Settings,        label: 'Settings',    href: '/profile',  tour: 'nav-settings' },
 ];
 
 export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) {
@@ -64,6 +64,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
       <div className="px-3 pb-3 flex-shrink-0">
         <button
           onClick={() => setShowCreateGoal(true)}
+          data-tour="new-goal"
           title="New Goal"
           className="w-full h-9 flex items-center justify-center gap-2 bg-brand hover:bg-brand-dark text-black font-semibold rounded-lg text-sm transition-colors"
         >
@@ -80,6 +81,7 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
             <Link
               key={item.href}
               href={item.href}
+              data-tour={item.tour}
               title={collapsed ? item.label : undefined}
               className={`h-10 flex items-center gap-3 rounded-lg text-sm transition-colors ${
                 collapsed ? 'justify-center px-0' : 'px-3'
@@ -90,13 +92,13 @@ export default function Sidebar({ onToggleChat }: { onToggleChat: () => void }) 
             </Link>
           );
         })}
-        {/* The coach sits apart from navigation — bordered and lit so it reads
-            as a thing you can talk to rather than another page link. */}
+        {/* Styled like any other nav row — it used to be bordered and lit,
+            which pulled the eye away from the page the user was on. */}
         <button
           onClick={onToggleChat}
+          data-tour="coach"
           title={collapsed ? 'AI Coach' : undefined}
-          className={`w-full h-10 mt-2 flex items-center gap-3 rounded-lg text-sm font-medium text-brand
-            border border-brand/30 bg-brand/5 card-glow glow-focus transition-colors hover:bg-brand/10 ${
+          className={`w-full h-10 flex items-center gap-3 rounded-lg text-sm transition-colors text-muted hover:text-fg hover:bg-elevated ${
             collapsed ? 'justify-center px-0' : 'px-3'
           }`}
         >

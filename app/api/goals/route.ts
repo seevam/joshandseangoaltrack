@@ -1,4 +1,4 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
+import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
@@ -24,26 +24,7 @@ export async function GET() {
       orderBy: { createdAt: 'desc' },
     });
 
-    // Fetch goals shared with the current user's email
-    let sharedGoals: typeof ownGoals = [];
-    try {
-      const clerk = await clerkClient();
-      const user = await clerk.users.getUser(userId);
-      const email = user.emailAddresses[0]?.emailAddress;
-      if (email) {
-        const raw = await prisma.$queryRaw<typeof ownGoals>`
-          SELECT * FROM goals
-          WHERE "sharedWith" @> ${JSON.stringify([email])}::jsonb
-            AND "userId" != ${userId}
-          ORDER BY "createdAt" DESC
-        `;
-        sharedGoals = Array.isArray(raw) ? raw : [];
-      }
-    } catch {
-      // shared goals query is best-effort
-    }
-
-    return NextResponse.json([...ownGoals, ...sharedGoals]);
+    return NextResponse.json(ownGoals);
   } catch (err) {
     const column = missingColumn(err);
     if (column) {
@@ -92,7 +73,6 @@ export async function POST(req: Request) {
       checkIns: body.checkIns ?? [],
       progressHistory: body.progressHistory ?? [],
       milestones: body.milestones ?? [],
-      sharedWith: body.sharedWith ?? [],
     };
 
     try {
