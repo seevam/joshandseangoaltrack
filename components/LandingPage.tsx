@@ -105,6 +105,10 @@ export default function LandingPage() {
       {/* Footer */}
       <footer className="py-6 text-center text-xs text-muted">
         © {new Date().getFullYear()} Goal Quest. Built with Next.js, Clerk, and OpenAI.
+        <span className="mx-2">·</span>
+        <Link href="/privacy" className="hover:text-fg">Privacy</Link>
+        <span className="mx-2">·</span>
+        <Link href="/terms" className="hover:text-fg">Terms</Link>
       </footer>
     </div>
   );
