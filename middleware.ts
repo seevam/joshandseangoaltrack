@@ -4,6 +4,9 @@ const isPublic = createRouteMatcher([
   '/',
   '/sign-in(.*)',
   '/sign-up(.*)',
+  // Linked from Google's OAuth consent screen — must load signed out.
+  '/privacy',
+  '/terms',
 ]);
 
 export default clerkMiddleware((auth, req) => {
