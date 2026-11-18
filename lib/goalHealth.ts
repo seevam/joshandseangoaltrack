@@ -42,29 +42,45 @@ const DAY = 86400000;
  * on day one — so every goal was born "Slipping", which told the user their
  * plan had failed before they had a chance to start it.
  *
- * Today is never judged: the day is not over, so nothing on it can be missed
- * yet. Only completed days can take points away.
+ * Today is never judged against you: the day is not over, so nothing on it
+ * can be missed yet. But work done today counts straight away — ticking tasks
+ * has to move the number, or the score reads as broken.
+ *
+ * It reads the plan's outcomes as well as its habits. Milestones are what the
+ * goal is actually for, so a user well ahead of the timeline on milestones
+ * gets most of what missed habits cost them back. A goal at 91% complete,
+ * months early, must never read "Stalled 0/100".
  */
 
 /*
  * Missed recurring work decays health exponentially rather than subtracting a
- * flat amount. Each day with work left undone multiplies health by (1 − rate),
- * and the rate grows with every consecutive missed day:
+ * flat amount. Each day with work left undone multiplies health by (1 − rate):
  *
  *   rate = BASE_DECAY × share of that day's tasks missed × GROWTH^(run − 1)
  *
- * One slip barely registers; a week of drift compounds fast. That is the
- * difference between "a bad day" and "this goal has been abandoned", which a
- * flat 1.5 points per task could never tell apart.
+ * `run` counts consecutive days on which NOTHING was done. A partial day —
+ * some of the work done — costs only its missed share and never escalates:
+ * showing up and doing half is not abandonment.
+ *
+ * The first version compounded at 1.35× a day up to 35% a day, so three weeks
+ * of doing one task out of two drove a goal to 0 even while its milestones
+ * were months ahead. These rates keep the shape (drift compounds) at a pace a
+ * person can climb back from.
  */
 /** Decay for a day with every task missed, on the first day of a run. */
-export const BASE_DECAY = 0.05;
-/** How much faster each consecutive missed day decays than the one before. */
-export const DECAY_GROWTH = 1.35;
-/** Ceiling on a single day's decay, so one day can never wipe a goal out. */
-export const MAX_DAY_DECAY = 0.35;
+export const BASE_DECAY = 0.04;
+/** How much faster each consecutive empty day decays than the one before. */
+export const DECAY_GROWTH = 1.15;
+/** Ceiling on a single day's decay. */
+export const MAX_DAY_DECAY = 0.1;
 /** A day cleared in full heals this share of the gap back to 100. */
-export const CLEAR_DAY_HEAL = 0.08;
+export const CLEAR_DAY_HEAL = 0.15;
+/**
+ * Being ahead of the timeline on milestones heals up to this share of what
+ * missed habits cost, reached when 40+ points ahead of where the plan expects.
+ */
+export const MAX_PACE_HEAL = 0.6;
+const PACE_FULL_AT = 40;
 /** A missed milestone is a missed commitment, and costs accordingly. */
 const MISS_MILESTONE = 8;
 /** …growing while it stays open, up to this much on top. */
@@ -129,8 +145,8 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
   const startTs = dayStartTs(goal.startDate) ?? dayStartTs(goal.createdAt) ?? now;
   const endTs = dayStartTs(goal.endDate);
 
-  // Kept for the card's "x% complete, y% expected by now" line. It is a
-  // reference point the user can read, not a thing that moves the score.
+  // Where the plan expects the goal to be by now. Being ahead of it lifts the
+  // score (see Pace below); being behind is charged through overdue milestones.
   const expectedRate = endTs && endTs > startTs
     ? Math.round((Math.max(0, Math.min(now - startTs, endTs - startTs)) / (endTs - startTs)) * 100)
     : null;
@@ -170,11 +186,28 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
     } else {
       missedDays++;
       missedTasks += missed;
-      run++;
+      // Only a day with nothing done extends a run; a partial day resets it.
+      run = missed === scheduled.length ? run + 1 : 1;
       const rate = Math.min(BASE_DECAY * (missed / scheduled.length) * DECAY_GROWTH ** (run - 1), MAX_DAY_DECAY);
       taskHealth *= 1 - rate;
     }
   }
+
+  // ── Today: credited as you go, never charged ───────────────────────────
+  const todayTasks = activeTasks(goal).filter(t => {
+    const days = t.daysOfWeek;
+    return !days || days.length === 0 || days.includes(today.getDay());
+  });
+  const loggedToday = completions[iso(today)] || {};
+  const doneToday = todayTasks.filter(t => loggedToday[t.id]).length;
+  if (todayTasks.length > 0 && doneToday > 0) {
+    taskHealth += (100 - taskHealth) * CLEAR_DAY_HEAL * (doneToday / todayTasks.length);
+  }
+
+  // ── Pace: ahead of the timeline on milestones ──────────────────────────
+  const aheadBy = expectedRate !== null ? completionRate - expectedRate : 0;
+  const paceHeal = aheadBy > 0 ? Math.min(aheadBy / PACE_FULL_AT, 1) * MAX_PACE_HEAL : 0;
+  taskHealth += (100 - taskHealth) * paceHeal;
 
   // ── Milestones past their date ──────────────────────────────────────────
   let milestonePenalty = 0;
@@ -205,6 +238,12 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
       `${missedTasks} task${missedTasks === 1 ? '' : 's'} missed across ${missedDays} day${missedDays === 1 ? '' : 's'}.`,
     );
   }
+  if (paceHeal > 0 && aheadBy >= 10) {
+    reasons.push(`Ahead of plan: ${completionRate}% done where ${expectedRate}% is expected — this is lifting the score.`);
+  }
+  if (doneToday > 0) {
+    reasons.push(`${doneToday}/${todayTasks.length} of today\u2019s tasks done — already counted.`);
+  }
   if (clearedDays > 0 && missedDays === 0) {
     reasons.push(`${clearedDays} day${clearedDays === 1 ? '' : 's'} cleared in full — nothing has slipped.`);
   } else if (clearedDays > 0) {
@@ -216,7 +255,7 @@ export function computeGoalHealth(goal: Goal): GoalHealth {
     reasons.push(`Behind the timeline: ${completionRate}% done where it expects ${expectedRate}%.`);
   }
   if (reasons.length === 0) {
-    reasons.push('Nothing missed yet. Health only moves at the end of a day with work left undone.');
+    reasons.push('Nothing missed yet. Health only drops at the end of a day with work left undone.');
   }
 
   const last = lastActivity(goal);

@@ -94,3 +94,34 @@ test('milestones ticked before completedAt existed are treated as ticked today',
   g.taskCompletions = Object.fromEntries(Array.from({ length: 5 }, (_, i) => [ago(i + 1), { 1000: true, 1001: true }]));
   assert.equal(computeGoalHealth(g).score, 100);
 });
+
+test('a goal far ahead on milestones is never Stalled for missing half its habits', () => {
+  // The reported case: 10/11 milestones done in under four weeks of a six-month
+  // plan, one of two daily tasks done most days. It read "Stalled 0/100".
+  const g = makeGoal({ id: 'sp', title: 'Learn Spanish', category: 'education', stages: 4, daysAgo: 26 });
+  g.endDate = new Date(Date.now() + 147 * DAY).toISOString();
+  g.subtasks = g.subtasks.slice(0, 11).map((m, i) => ({
+    ...m, completed: i < 10, completedAt: new Date(Date.now() - (20 - i) * DAY).toISOString(), daysFromStart: 14 * (i + 1),
+  }));
+  g.dailyTasks = g.dailyTasks.slice(0, 2).map(t => ({ ...t, stageId: undefined }));
+  g.taskCompletions = Object.fromEntries(Array.from({ length: 24 }, (_, i) => [ago(i + 1), (i < 22 ? { 1000: true } : { 1000: true, 1001: true }) as Record<string, boolean>]));
+  const h = computeGoalHealth(g);
+  assert.ok(h.score >= 65, `got ${h.score}`);
+  assert.ok(h.reasons.some(r => r.startsWith('Ahead of plan')));
+});
+
+test('ticking today’s tasks raises health straight away', () => {
+  const before = computeGoalHealth(simple(10)).score;
+  const after = computeGoalHealth(simple(10, { taskCompletions: { [ago(0)]: { 1000: true } } })).score;
+  assert.ok(after > before, `${after} should be above ${before}`);
+});
+
+test('a partial day costs less than an empty one and does not escalate', () => {
+  const two = (done: boolean) => {
+    const g = simple(10);
+    g.dailyTasks = [g.dailyTasks[0], { ...g.dailyTasks[0], id: 1001 }];
+    g.taskCompletions = done ? Object.fromEntries(Array.from({ length: 10 }, (_, i) => [ago(i + 1), { 1000: true }])) : {};
+    return computeGoalHealth(g).score;
+  };
+  assert.ok(two(true) > two(false) + 20, `${two(true)} vs ${two(false)}`);
+});
