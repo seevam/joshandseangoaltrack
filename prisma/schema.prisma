@@ -32,6 +32,9 @@ model Goal {
   stages          Json     @default("[]")
   milestones      Json     @default("[]")
   sharedWith      Json     @default("[]")
+  /// Recovery Mode: { at } — when the plan was last rebuilt. Nullable and additive, so
+  /// existing rows are untouched until a goal is first recovered.
+  recovery        Json?
 
   @@index([userId])
   @@map("goals")

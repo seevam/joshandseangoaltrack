@@ -7,6 +7,7 @@
  *   ?empty   — the user has no goals
  *   ?fail    — every write (PUT/DELETE/POST) fails with 500
  *   ?gcal    — Google Calendar is connected: School 8–16, Football practice 18–19
+ *   ?gcal403 — with ?gcal: Google answers 403, Calendar API not enabled
  */
 import { createRoot } from 'react-dom/client';
 import AppLayout from '@/app/(app)/layout';
@@ -127,6 +128,9 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = String(input);
   const method = init?.method ?? 'GET';
   if (url.includes('googleapis.com/calendar')) {
+    if (flags.has('gcal403')) {
+      return json({ error: { code: 403, message: 'Google Calendar API has not been used in project 123 before or it is disabled.', errors: [{ reason: 'accessNotConfigured' }] } }, 403);
+    }
     return json({ items: [
       { summary: 'School', start: { dateTime: at(8) }, end: { dateTime: at(16) } },
       { summary: 'Football practice', start: { dateTime: at(18) }, end: { dateTime: at(19) } },

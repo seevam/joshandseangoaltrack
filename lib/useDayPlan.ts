@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   connect as gConnect, disconnect as gDisconnect, fetchEvents, busyFrom, isConfigured, isConnected,
+  connectedBefore, preload,
   type CalendarEvent,
 } from './googleCalendar';
 import { planDay, freeGaps, slotReason, formatTime, type Interval } from './schedule';
@@ -65,15 +66,24 @@ export function useDayPlan(tasks: { key: string; minutes?: number; title?: strin
       setConnected(true);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Could not read your calendar.';
-      if (msg === 'expired') { setConnected(false); setEvents([]); }
-      else setError(msg);
+      // An expired token is normal (Google limits it to an hour): back to the
+      // one-click Reconnect state. Anything else is a real fault, and is shown.
+      setConnected(false);
+      setEvents([]);
+      if (msg !== 'expired') setError(msg);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // A token from earlier in this tab is reused silently.
-  useEffect(() => { if (isConnected()) load(); }, [load]);
+  // A token from earlier in this tab is reused silently, and Google's script
+  // is loaded now so the connect click can open its pop-up straight away.
+  const [returning, setReturning] = useState(false);
+  useEffect(() => {
+    preload();
+    setReturning(connectedBefore());
+    if (isConnected()) load();
+  }, [load]);
 
   const connect = useCallback(async () => {
     setError(null);
@@ -88,6 +98,7 @@ export function useDayPlan(tasks: { key: string; minutes?: number; title?: strin
   const disconnect = useCallback(() => {
     gDisconnect();
     setConnected(false);
+    setReturning(false);
     setEvents([]);
   }, []);
 
@@ -137,6 +148,8 @@ export function useDayPlan(tasks: { key: string; minutes?: number; title?: strin
 
   return {
     available: isConfigured(),
+    /** Connected in this browser before — offer Reconnect, not the full pitch. */
+    returning,
     connected, loading, error, busy, events, plan, reasons,
     connect, disconnect, block, refresh: load,
   };
