@@ -28,7 +28,7 @@ const TOKEN_KEY = 'gq_gcal_token_v2';
 
 interface StoredToken { value: string; expiresAt: number }
 
-interface TokenResponse { access_token?: string; expires_in?: number; error?: string }
+interface TokenResponse { access_token?: string; expires_in?: number; error?: string; scope?: string }
 interface TokenClient { requestAccessToken: (o?: { prompt?: string }) => void }
 declare global {
   interface Window {
@@ -66,6 +66,30 @@ export function isConnected(): boolean {
   return readToken() !== null;
 }
 
+/*
+ * Whether this browser has connected before. The token itself lives only an
+ * hour in one tab, so without this a new tab or an expired token looked like
+ * a user who had never connected: the full pitch again, as if the feature had
+ * forgotten them. Now it offers a one-click "Reconnect" instead.
+ */
+const SEEN_KEY = 'gq_gcal_connected_before';
+export function connectedBefore(): boolean {
+  try { return localStorage.getItem(SEEN_KEY) === '1'; } catch { return false; }
+}
+function rememberConnected(on: boolean) {
+  try { if (on) localStorage.setItem(SEEN_KEY, '1'); else localStorage.removeItem(SEEN_KEY); } catch { /* ignore */ }
+}
+
+/**
+ * Loads Google's sign-in script ahead of the click. Loading it inside the
+ * click handler meant the pop-up opened after an async wait, outside the
+ * click's "user gesture" — which Safari (and Chrome after a delay) treat as an
+ * unrequested pop-up and silently block.
+ */
+export function preload(): void {
+  if (isConfigured() && typeof window !== 'undefined') loadGis().catch(() => { /* reported on click */ });
+}
+
 let gisLoading: Promise<void> | null = null;
 function loadGis(): Promise<void> {
   if (window.google?.accounts?.oauth2) return Promise.resolve();
@@ -84,7 +108,9 @@ function loadGis(): Promise<void> {
 /** Opens Google's consent pop-up. Resolves once a token is in hand. */
 export async function connect(): Promise<void> {
   if (!isConfigured()) throw new Error('Google Calendar is not set up for this app yet.');
-  await loadGis();
+  // Only wait when the script isn't there yet: the pop-up must open in the
+  // same turn as the click, or browsers count it as unrequested.
+  if (!window.google?.accounts?.oauth2) await loadGis();
   await new Promise<void>((resolve, reject) => {
     const client = window.google!.accounts.oauth2.initTokenClient({
       client_id: CLIENT_ID,
@@ -94,6 +120,14 @@ export async function connect(): Promise<void> {
           reject(new Error(r.error === 'access_denied' ? 'Access was not granted.' : 'Google did not return access.'));
           return;
         }
+        // Google's consent screen lets people untick the calendar box and
+        // still press Continue. The token then can't read events, and every
+        // request after it failed with nothing shown.
+        if (r.scope !== undefined && !r.scope.split(' ').includes(SCOPE)) {
+          reject(new Error('Calendar access wasn\u2019t granted. Try again and leave the \u201cSee events\u201d box ticked on Google\u2019s screen.'));
+          return;
+        }
+        rememberConnected(true);
         try {
           sessionStorage.setItem(TOKEN_KEY, JSON.stringify({
             value: r.access_token,
@@ -103,7 +137,11 @@ export async function connect(): Promise<void> {
         resolve();
       },
       // Closing the pop-up lands here rather than in `callback`.
-      error_callback: e => reject(new Error(e.type === 'popup_closed' ? 'The Google window was closed.' : 'Could not reach Google.')),
+      error_callback: e => reject(new Error(
+        e.type === 'popup_closed' ? 'The Google window was closed.'
+          : e.type === 'popup_failed_to_open' ? 'Your browser blocked the Google window. Allow pop-ups for this site and try again.'
+            : 'Could not reach Google.',
+      )),
     });
     client.requestAccessToken({ prompt: '' });
   });
@@ -111,6 +149,7 @@ export async function connect(): Promise<void> {
 
 export function disconnect() {
   const t = readToken();
+  rememberConnected(false);
   try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
   if (t && window.google?.accounts?.oauth2) window.google.accounts.oauth2.revoke(t.value);
 }
@@ -141,9 +180,24 @@ export async function fetchEvents(from: number, to: number): Promise<CalendarEve
     headers: { Authorization: `Bearer ${t.value}` },
   });
 
-  if (res.status === 401 || res.status === 403) {
+  if (res.status === 401) {
     try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
     throw new Error('expired');
+  }
+  if (res.status === 403) {
+    // 403 is not "logged out" — it was treated as such, so the real cause
+    // (API off, permission missing) never reached the screen.
+    const body = await res.json().catch(() => null) as { error?: { message?: string; errors?: { reason?: string }[]; details?: { reason?: string }[] } } | null;
+    const reasons = [...(body?.error?.errors ?? []), ...(body?.error?.details ?? [])].map(x => x.reason ?? '').join(' ');
+    const text = `${reasons} ${body?.error?.message ?? ''}`;
+    try { sessionStorage.removeItem(TOKEN_KEY); } catch { /* ignore */ }
+    if (/accessNotConfigured|SERVICE_DISABLED|has not been used|is disabled/i.test(text)) {
+      throw new Error('The Google Calendar API isn\u2019t enabled in this app\u2019s Google Cloud project yet (APIs & Services \u2192 Library \u2192 Google Calendar API \u2192 Enable).');
+    }
+    if (/insufficient|SCOPE/i.test(text)) {
+      throw new Error('Calendar access wasn\u2019t granted. Reconnect and leave the \u201cSee events\u201d box ticked.');
+    }
+    throw new Error(`Google refused the calendar request${body?.error?.message ? `: ${body.error.message}` : '.'}`);
   }
   if (!res.ok) throw new Error(`Google Calendar returned ${res.status}.`);
 

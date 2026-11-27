@@ -116,6 +116,11 @@ export interface Goal {
   progressHistory: ProgressEntry[];
   milestones: unknown[];
   sharedWith: string[];
+  /**
+   * Set by Recovery Mode: when the plan was last rebuilt. Goal health's
+   * consistency only counts days after it. Absent until first recovery.
+   */
+  recovery?: { at: string } | null;
 }
 
 /**

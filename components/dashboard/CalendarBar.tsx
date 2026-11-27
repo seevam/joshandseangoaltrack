@@ -24,6 +24,27 @@ export default function CalendarBar({ plan, onAskCoach }: {
 }) {
   const [notSetUp, setNotSetUp] = useState(false);
 
+  if (!plan.connected && plan.returning && plan.available) {
+    return (
+      <div data-tour="calendar" className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-line bg-elevated p-3">
+        <CalendarDays className="hidden sm:block h-5 w-5 text-brand flex-shrink-0" />
+        <p className="flex-1 min-w-0 text-sm text-muted leading-relaxed">
+          <span className="text-fg font-medium">Calendar disconnected.</span>{' '}
+          Google ends the connection after an hour or in a new tab — one click brings it back.
+        </p>
+        <button
+          onClick={plan.connect}
+          disabled={plan.loading}
+          className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand px-3.5 py-2 text-sm font-semibold text-black hover:bg-brand-dark disabled:opacity-60 flex-shrink-0"
+        >
+          {plan.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Reconnect
+        </button>
+        {plan.error && <p className="text-xs text-red-400 sm:basis-full" role="alert">{plan.error}</p>}
+      </div>
+    );
+  }
+
   if (!plan.connected) {
     return (
       <div data-tour="calendar" className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl border border-line bg-elevated p-3">
@@ -41,7 +62,7 @@ export default function CalendarBar({ plan, onAskCoach }: {
           {plan.loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CalendarDays className="h-4 w-4" />}
           Sync Google Calendar
         </button>
-        {plan.error && <p className="text-xs text-red-400 sm:basis-full">{plan.error}</p>}
+        {plan.error && <p className="text-xs text-red-400 sm:basis-full" role="alert">{plan.error}</p>}
         {notSetUp && (
           <p className="text-xs text-amber-300/90 sm:basis-full">
             Google Calendar isn&apos;t set up for this app yet — it needs a Google OAuth client ID
